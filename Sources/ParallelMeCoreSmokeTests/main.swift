@@ -256,6 +256,58 @@ struct ParallelMeCoreSmokeTests {
             try expect(summary.stage == .archived)
         }
 
+        try runner.run("meeting timeline summarizes current paper progress") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let probe = question("timeline_probe", "真正怕失去什么？", .coreFears)
+            let probing = try engine.receiveProbeQuestions([probe], in: started)
+            let answered = try engine.answerProbe([
+                ScribeAnswer(
+                    questionID: probe.id,
+                    selectedOptionID: "custom",
+                    selectedOptionLabel: "都不准，我自己说",
+                    questionText: probe.text,
+                    freeText: "我怕继续撑下去，身体会先垮。"
+                )
+            ], in: probing)
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: answered)
+            let roundtable = try engine.confirmProposal(in: proposed)
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "你们怎么看身体底线？"),
+                turns: [RoundtableTurn(voiceID: .lay, text: "先承认身体不是无限资源。")],
+                in: opened
+            )
+            let inquiry = try engine.startInquiry(in: moved)
+            let inquiryAnswered = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: "timeline_inquiry",
+                    question: "24 小时内能完成的行动是什么？",
+                    selectedOptionID: "custom",
+                    selectedLabel: "都不准，我自己说",
+                    customText: "今晚先约体检。"
+                )
+            ], in: inquiry)
+            let settled = try engine.settle(sampleSettlement, profile: completeProfile, in: inquiryAnswered)
+            let archived = try engine.archive(state: settled)
+            let timeline = MeetingTimeline.items(for: archived)
+
+            try expect(timeline.map(\.kind) == [
+                .started,
+                .definingAnswer,
+                .proposal,
+                .roundtableOpened,
+                .roundtableMove,
+                .inquiryAnswer,
+                .settlement,
+                .archived
+            ])
+            try expect(timeline.first?.detail == "我想辞职又怕没钱")
+            try expect(timeline.contains { $0.detail.contains("身体会先垮") })
+            try expect(timeline.contains { $0.title == "追问全桌" && $0.detail.contains("身体底线") })
+            try expect(timeline.last?.stage == .archived)
+        }
+
         try runner.run("settlement revisions override resolved text and headline") {
             var settlement = sampleSettlement
             settlement.revise(moduleID: .coreValues, text: "我要守住自己写下的主轴。")

@@ -2,6 +2,8 @@
 
 ParallelMe is not a generic chat app. A meeting has a host, a fixed cast, and a real ending.
 
+During an active meeting, the iOS app keeps a current-paper timeline visible near the stage rail. This gives the user a compact sense of what has already happened without turning the product into a raw chat transcript.
+
 ## 1. Raw Petition
 
 The user starts with a messy, emotional, incomplete description. The product should accept this as-is. The first job is not advice; it is issue definition.

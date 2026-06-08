@@ -21,6 +21,7 @@ public struct ParallelMeRootView: View {
                         }
                         if let state = viewModel.state {
                             MeetingStageRail(stage: state.stage)
+                            MeetingPaperContextView(state: state)
                             stageBody(state, viewModel: viewModel)
                         } else {
                             startCard
@@ -103,6 +104,101 @@ public struct ParallelMeRootView: View {
             }
         case .archived:
             ArchivedView(reset: viewModel.reset)
+        }
+    }
+}
+
+private struct MeetingPaperContextView: View {
+    var state: MeetingFlowState
+
+    private var summary: MeetingSummary {
+        MeetingSummary(state: state)
+    }
+
+    private var timelineItems: [MeetingTimelineItem] {
+        MeetingTimeline.items(for: state)
+    }
+
+    private var visibleItems: [MeetingTimelineItem] {
+        Array(timelineItems.suffix(5))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                    Text(summary.title)
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                        .lineLimit(2)
+                    Text(summary.subtitle)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                }
+                Spacer(minLength: ParallelMeSpacing.sm)
+                Text("\(timelineItems.count) 步")
+                    .font(ParallelMeTypography.eyebrow)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                    .padding(.horizontal, ParallelMeSpacing.sm)
+                    .padding(.vertical, ParallelMeSpacing.xs)
+                    .background(ParallelMeColor.paper)
+                    .clipShape(Capsule())
+            }
+
+            DisclosureGroup("纸页脉络") {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                    ForEach(visibleItems) { item in
+                        TimelineRow(item: item)
+                    }
+                }
+                .padding(.top, ParallelMeSpacing.xs)
+            }
+            .font(ParallelMeTypography.compact)
+            .foregroundStyle(ParallelMeColor.ink)
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+        )
+    }
+}
+
+private struct TimelineRow: View {
+    var item: MeetingTimelineItem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+            Circle()
+                .fill(color(for: item.stage))
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(ParallelMeTypography.compact.weight(.medium))
+                    .foregroundStyle(ParallelMeColor.ink)
+                Text(item.detail)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                    .lineLimit(2)
+            }
+        }
+    }
+
+    private func color(for stage: MeetingStage) -> Color {
+        switch stage {
+        case .defining:
+            return ParallelMeColor.inkMuted
+        case .roundtable:
+            return ParallelMeColor.roam
+        case .inquiry:
+            return ParallelMeColor.future
+        case .settlement:
+            return ParallelMeColor.money
+        case .archived:
+            return ParallelMeColor.rest
         }
     }
 }
