@@ -39,6 +39,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 kind: kind,
                 role: "你是 ParallelMe 的书记员，只负责把用户的模糊输入推进为四 Key 议题提案，或提出 1-3 个不重复的高密度问题。",
                 constraints: [
+                    contextConstraint,
                     "每次最多提出 1-3 个问题，但不得设置总轮数上限。",
                     "问题必须覆盖 surfaceDilemma、currentConstraints、coreFears、expectedResolution 中仍缺证据的部分。",
                     "Key 3 coreFears 与 Key 4 expectedResolution 必须拆开，不要重复追问同一主题。",
@@ -56,6 +57,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 kind: kind,
                 role: "你要为 ParallelMe 固定五声生成开场，让每一声用第一人称把自己的底线放到桌面上。",
                 constraints: [
+                    contextConstraint,
                     "只允许 lay、money、roam、filial、future 五个 voiceID，且必须各出现一次。",
                     "不得创造临时角色，不得省略任何固定声音。",
                     "每个声音必须守住自己的 coreValue、concern 和 pull，不替用户做最终决定。",
@@ -71,6 +73,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 kind: kind,
                 role: "你要推进 ParallelMe 五声圆桌，根据用户选择的 move 生成下一组具体发言。",
                 constraints: [
+                    contextConstraint,
                     "move.type=continue_all 时让五声各说一次。",
                     "move.type=user_to_table 时五声都必须回答 userText。",
                     "move.type=user_to_voice 时只让 targetVoiceID 回答 userText。",
@@ -88,6 +91,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 kind: kind,
                 role: "你是后台书记员，只负责把圆桌内容更新为观察账本。",
                 constraints: [
+                    contextConstraint,
                     "只记录有证据的观察，不做诊断，不打断用户。",
                     "观察必须服务于最终五个 settlement landing zones。",
                     "不要把同一句话重复归入多个模块，除非证据确实支持。"
@@ -102,6 +106,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 kind: kind,
                 role: "你是最终问询阶段的书记员，只问会改变本心落定质量的问题。",
                 constraints: [
+                    contextConstraint,
                     "没有总题数上限；是否结束只由证据充足度决定。",
                     "不要重复 questions 或 answers 里已经覆盖的问题。",
                     "每次最多问 1-3 个高密度问题。",
@@ -118,6 +123,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 kind: kind,
                 role: "你要生成 ParallelMe 的最终「本心落定」，文案具体、克制、可被用户改写。",
                 constraints: [
+                    contextConstraint,
                     "必须基于 taskFrame、proposal、ledger、answers、profile 中已有证据。",
                     "不要输出治疗、诊断、命令式建议或夸张鸡汤。",
                     "minimumViableCommitment 必须是 24 小时内可执行的小行动。",
@@ -130,5 +136,9 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 """
             )
         }
+    }
+
+    private static var contextConstraint: String {
+        "如果 input.context 存在，它是用户长期背景和表达偏好；只能用于校准语气、追问角度和证据解释，不得覆盖本轮 rawInput、proposal、move、answers 或 userFeedback。"
     }
 }

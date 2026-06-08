@@ -55,6 +55,7 @@ public struct ParallelMeRootView: View {
         }
         .task {
             await viewModel.loadProviderSettings()
+            await viewModel.loadProviderContext()
             await viewModel.loadRecentMeetings()
             await viewModel.loadSessionEvents()
         }
@@ -252,6 +253,19 @@ private struct ProviderSettingsPanel: View {
                 .textFieldStyle(.roundedBorder)
                 .font(ParallelMeTypography.compact)
             }
+            DisclosureGroup("个人上下文") {
+                VStack(spacing: ParallelMeSpacing.sm) {
+                    TextField("我是谁 / 长期处境", text: $viewModel.contextMeCard, axis: .vertical)
+                        .lineLimit(2...5)
+                    TextField("偏好的语气 / 判断方式", text: $viewModel.contextTasteProfile, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+                .textFieldStyle(.roundedBorder)
+                .font(ParallelMeTypography.compact)
+                .padding(.top, ParallelMeSpacing.xs)
+            }
+            .font(ParallelMeTypography.compact)
+            .foregroundStyle(ParallelMeColor.ink)
         }
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)

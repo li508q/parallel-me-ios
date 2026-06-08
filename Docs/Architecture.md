@@ -31,6 +31,7 @@ The provider boundary is intentionally typed:
 - `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type.
 - `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key.
 - `MockLLMProvider` is the precise test double used when a test needs one exact payload per task.
+- `ProviderContext` carries optional durable user background and response preferences through every provider payload. Prompt specs explicitly treat it as calibration only, so it cannot override the current petition, proposal, moves, answers, or feedback.
 
 This keeps prompt iteration, network transport, and product state transitions independently testable.
 
@@ -52,6 +53,12 @@ Provider runtime settings are split deliberately:
 - API keys are stored through `SecretStore`; the default app implementation uses Keychain.
 - Tests use in-memory secret storage and verify that API keys never appear in metadata JSON.
 
+Provider context is stored separately from provider credentials:
+
+- `FileProviderContextStore` stores normalized optional context as local JSON.
+- Empty or whitespace-only fields are dropped before persistence and before provider requests.
+- Tests verify that stored context is normalized, clearable, and actually forwarded by the session coordinator.
+
 ## Project Generation
 
 `project.yml` is the source of truth for Xcode project shape. `ParallelMe.xcodeproj` is generated with XcodeGen and checked in so iOS developers can open the app directly in Xcode.
@@ -66,6 +73,6 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Repeated questions are filtered before they reach UI.
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - The final inquiry loop has no hard cap; tests assert this invariant.
-- Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, and required settlement modules.
+- Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
 - Session events record provider requests, provider responses, persistence, and failures; the default app keeps the latest events in memory and exposes them through the collapsible running trace panel.

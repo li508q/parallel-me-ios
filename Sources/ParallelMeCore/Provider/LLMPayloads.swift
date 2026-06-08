@@ -8,6 +8,23 @@ public struct ProviderContext: Codable, Equatable, Sendable {
         self.meCard = meCard
         self.tasteProfile = tasteProfile
     }
+
+    public var normalized: ProviderContext {
+        ProviderContext(
+            meCard: meCard?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmptyProviderContextText,
+            tasteProfile: tasteProfile?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmptyProviderContextText
+        )
+    }
+
+    public var isEmpty: Bool {
+        normalized.meCard == nil && normalized.tasteProfile == nil
+    }
+}
+
+private extension String {
+    var nonEmptyProviderContextText: String? {
+        isEmpty ? nil : self
+    }
 }
 
 public struct IssueDefinitionInput: Codable, Equatable, Sendable {
@@ -182,4 +199,3 @@ public struct HeartSettlementResponse: Codable, Equatable, Sendable {
         self.settlement = settlement
     }
 }
-

@@ -217,6 +217,8 @@ struct ParallelMeCoreSmokeTests {
 
         try runner.run("provider prompt specs preserve product contracts") {
             let definitionPrompt = ProviderPromptSpec.spec(for: .defineIssue).systemPrompt
+            try expect(definitionPrompt.contains("input.context"))
+            try expect(definitionPrompt.contains("不得覆盖本轮"))
             try expect(definitionPrompt.contains("1-3"))
             try expect(definitionPrompt.contains("不得设置总轮数上限"))
             try expect(definitionPrompt.contains("coreFears"))
@@ -228,9 +230,11 @@ struct ParallelMeCoreSmokeTests {
             for voiceID in VoiceID.allCases {
                 try expect(openingPrompt.contains(voiceID.rawValue))
             }
+            try expect(openingPrompt.contains("input.context"))
             try expect(openingPrompt.contains("不得创造临时角色"))
 
             let inquiryPrompt = ProviderPromptSpec.spec(for: .alignmentInquiry).systemPrompt
+            try expect(inquiryPrompt.contains("input.context"))
             try expect(inquiryPrompt.contains("没有总题数上限"))
             try expect(inquiryPrompt.contains("readyForSettlement=true"))
             try expect(inquiryPrompt.contains("creativeHopelessness"))
@@ -401,6 +405,28 @@ struct ParallelMeCoreSmokeTests {
             try expect(metadataText.contains("gpt-4o-mini"))
         }
 
+        try await runner.runAsync("provider context store normalizes and clears context") {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("parallel-me-context-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let store = FileProviderContextStore(
+                fileURL: directory.appendingPathComponent("provider-context.json")
+            )
+            let context = ProviderContext(
+                meCard: "  我长期在高压工作里消耗自己  ",
+                tasteProfile: "\n直接一点，但不要替我决定\n"
+            )
+
+            try await store.saveContext(context)
+            let loaded = try await store.loadContext()
+            try await store.clearContext()
+            let cleared = try await store.loadContext()
+
+            try expect(loaded.meCard == "我长期在高压工作里消耗自己")
+            try expect(loaded.tasteProfile == "直接一点，但不要替我决定")
+            try expect(cleared.isEmpty)
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -423,6 +449,27 @@ struct ParallelMeCoreSmokeTests {
             try expect(opened.stage == .roundtable)
             try expect(opened.roundtable.openingTurns.map(\.voiceID) == VoiceID.allCases)
             try expect(saved?.roundtable.openingTurns.count == 5)
+        }
+
+        try await runner.runAsync("session coordinator forwards provider context") {
+            let provider = ContextRecordingProvider(
+                definitionResponse: IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true)
+            )
+            let coordinator = MeetingSessionCoordinator(
+                provider: provider,
+                repository: InMemoryMeetingRepository(),
+                context: ProviderContext(
+                    meCard: "  我需要在低噪音里思考  ",
+                    tasteProfile: "\n先问边界，再给判断\n"
+                )
+            )
+
+            _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            _ = try await coordinator.requestDefinition()
+            let input = await provider.latestDefinitionInput()
+
+            try expect(input?.context?.meCard == "我需要在低噪音里思考")
+            try expect(input?.context?.tasteProfile == "先问边界，再给判断")
         }
 
         try await runner.runAsync("session coordinator refines proposal from user feedback") {
@@ -777,4 +824,31 @@ private func expect(_ condition: @autoclosure () -> Bool) throws {
 private func unwrap<T>(_ value: T?, _ message: String) throws -> T {
     guard let value else { throw TestFailure(message) }
     return value
+}
+
+private actor ContextRecordingProvider: LLMProvider {
+    private let definitionResponse: IssueDefinitionResponse
+    private var recordedDefinitionInput: IssueDefinitionInput?
+
+    init(definitionResponse: IssueDefinitionResponse) {
+        self.definitionResponse = definitionResponse
+    }
+
+    func latestDefinitionInput() -> IssueDefinitionInput? {
+        recordedDefinitionInput
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .defineIssue,
+              let input = request.payload as? IssueDefinitionInput,
+              let payload = definitionResponse as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        recordedDefinitionInput = input
+        return LLMEnvelope(payload: payload, trace: ["recording:\(request.kind.rawValue)"])
+    }
 }

@@ -15,22 +15,28 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var providerBaseURL: String = "https://api.openai.com/v1"
     @Published public var providerModel: String = "gpt-4o-mini"
     @Published public var providerAPIKey: String = ""
+    @Published public var contextMeCard: String = ""
+    @Published public var contextTasteProfile: String = ""
 
     private var coordinator: any MeetingCoordinating
     private let meetingRepository: AnyMeetingRepository
     private let providerSettingsStore: (any ProviderSettingsStoring)?
+    private let providerContextStore: (any ProviderContextStoring)?
     private let sessionEventSink: InMemoryMeetingSessionEventSink?
     private var hasLoadedProviderSettings = false
+    private var hasLoadedProviderContext = false
 
     public init(
         coordinator: any MeetingCoordinating,
         meetingRepository: any MeetingRepository = InMemoryMeetingRepository(),
         providerSettingsStore: (any ProviderSettingsStoring)? = nil,
+        providerContextStore: (any ProviderContextStoring)? = nil,
         sessionEventSink: InMemoryMeetingSessionEventSink? = nil
     ) {
         self.coordinator = coordinator
         self.meetingRepository = AnyMeetingRepository(meetingRepository)
         self.providerSettingsStore = providerSettingsStore
+        self.providerContextStore = providerContextStore
         self.sessionEventSink = sessionEventSink
     }
 
@@ -46,6 +52,7 @@ public final class MeetingViewModel: ObservableObject {
             coordinator: coordinator,
             meetingRepository: repository,
             providerSettingsStore: ProviderSettingsRepository.defaultRepository(),
+            providerContextStore: FileProviderContextStore.defaultStore(),
             sessionEventSink: sessionEventSink
         )
     }
@@ -71,6 +78,14 @@ public final class MeetingViewModel: ObservableObject {
         return state.inquiryQuestions.filter { !answered.contains($0.id) }
     }
 
+    public var providerContext: ProviderContext? {
+        let context = ProviderContext(
+            meCard: contextMeCard,
+            tasteProfile: contextTasteProfile
+        ).normalized
+        return context.isEmpty ? nil : context
+    }
+
     public func dismissError() {
         errorMessage = nil
     }
@@ -82,6 +97,16 @@ public final class MeetingViewModel: ObservableObject {
             applyProviderSettings(try await providerSettingsStore.loadSettings())
         } catch {
             errorMessage = String(describing: error)
+        }
+    }
+
+    public func loadProviderContext() async {
+        guard !hasLoadedProviderContext, let providerContextStore else { return }
+        hasLoadedProviderContext = true
+        do {
+            applyProviderContext(try await providerContextStore.loadContext())
+        } catch {
+            errorMessage = Self.userFacingMessage(for: error)
         }
     }
 
@@ -258,17 +283,22 @@ public final class MeetingViewModel: ObservableObject {
 
     private func rebuildCoordinatorIfNeeded() async throws {
         try await providerSettingsStore?.saveSettings(providerSettings)
+        try await providerContextStore?.saveContext(
+            ProviderContext(meCard: contextMeCard, tasteProfile: contextTasteProfile)
+        )
         let provider = try ProviderRuntimeFactory.makeProvider(settings: providerSettings)
         if let sessionEventSink {
             coordinator = MeetingSessionCoordinator(
                 provider: provider,
                 repository: meetingRepository,
-                eventSink: sessionEventSink
+                eventSink: sessionEventSink,
+                context: providerContext
             )
         } else {
             coordinator = MeetingSessionCoordinator(
                 provider: provider,
-                repository: meetingRepository
+                repository: meetingRepository,
+                context: providerContext
             )
         }
     }
@@ -278,6 +308,11 @@ public final class MeetingViewModel: ObservableObject {
         providerBaseURL = settings.baseURLString
         providerModel = settings.model
         providerAPIKey = settings.apiKey
+    }
+
+    private func applyProviderContext(_ context: ProviderContext) {
+        contextMeCard = context.normalized.meCard ?? ""
+        contextTasteProfile = context.normalized.tasteProfile ?? ""
     }
 
     private func run(_ operation: @escaping @MainActor () async throws -> Void) {

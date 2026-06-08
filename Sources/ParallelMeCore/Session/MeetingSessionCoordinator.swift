@@ -34,7 +34,8 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         self.deduplicator = deduplicator
         self.readinessEvaluator = readinessEvaluator
         self.eventSink = eventSink
-        self.context = context
+        let normalizedContext = context?.normalized
+        self.context = normalizedContext?.isEmpty == true ? nil : normalizedContext
     }
 
     public func currentState() async -> MeetingFlowState? {

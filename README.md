@@ -32,6 +32,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - `DemoLLMProvider` drives a complete local meeting without network, useful for UI work and smoke tests.
 - `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object`, uses `ProviderPromptSpec` for tested product contracts, and decodes structured JSON back into typed product payloads.
 - `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
+- Optional `ProviderContext` stores the user's durable background and response preferences locally, then passes them through every provider task as calibration rather than as a replacement for the current meeting evidence.
 
 ## Local Development
 
