@@ -23,6 +23,10 @@ The web version proves the product but couples state orchestration to page compo
 
 Stage-one proposal refinement also lives in the coordinator. User feedback is appended to `definingDialogue`, persisted, then sent back through the provider boundary as `IssueDefinitionInput.userFeedback`; the UI only dispatches the intent and renders the regenerated proposal.
 
+## UI Composition
+
+`ParallelMeRootView` stays focused on app-level composition: loading the view model, choosing the current stage surface, and arranging the home or active-paper shell. Stage-specific surfaces remain in the UI module, while reusable home, paper-context, timeline, stage rail, error, and diagnostics views live in smaller files. This keeps SwiftUI iteration local and prevents presentation details from growing back into one page-level component.
+
 ## Provider Strategy
 
 The provider boundary is intentionally typed:

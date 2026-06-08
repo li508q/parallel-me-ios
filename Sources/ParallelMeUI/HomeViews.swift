@@ -1,0 +1,304 @@
+import ParallelMeCore
+import ParallelMeDesign
+import SwiftUI
+
+struct ProviderSettingsPanel: View {
+    @ObservedObject var viewModel: MeetingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Picker("Provider", selection: $viewModel.providerMode) {
+                ForEach(ProviderRuntimeMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            if viewModel.providerMode == .openAICompatible {
+                VStack(spacing: ParallelMeSpacing.sm) {
+                    TextField("Base URL", text: $viewModel.providerBaseURL)
+                        .textContentType(.URL)
+                    TextField("Model", text: $viewModel.providerModel)
+                    SecureField("API Key", text: $viewModel.providerAPIKey)
+                }
+                .textFieldStyle(.roundedBorder)
+                .font(ParallelMeTypography.compact)
+            }
+            DisclosureGroup("个人上下文") {
+                VStack(spacing: ParallelMeSpacing.sm) {
+                    TextField("我是谁 / 长期处境", text: $viewModel.contextMeCard, axis: .vertical)
+                        .lineLimit(2...5)
+                    TextField("偏好的语气 / 判断方式", text: $viewModel.contextTasteProfile, axis: .vertical)
+                        .lineLimit(2...5)
+                }
+                .textFieldStyle(.roundedBorder)
+                .font(ParallelMeTypography.compact)
+                .padding(.top, ParallelMeSpacing.xs)
+            }
+            .font(ParallelMeTypography.compact)
+            .foregroundStyle(ParallelMeColor.ink)
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.line, lineWidth: 1)
+        )
+    }
+}
+
+struct ResumeMeetingCard: View {
+    var meeting: MeetingSummary
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text("继续未完成纸页")
+                .font(ParallelMeTypography.eyebrow)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+            Text(meeting.title)
+                .font(ParallelMeTypography.bodyStrong)
+                .foregroundStyle(ParallelMeColor.ink)
+                .lineLimit(2)
+            Text(meeting.subtitle)
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+            HStack(spacing: ParallelMeSpacing.sm) {
+                Button {
+                    restore(meeting.id)
+                } label: {
+                    Label("继续", systemImage: "arrow.uturn.forward.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                DeletePaperButton(meeting: meeting, delete: delete) {
+                    Image(systemName: "trash")
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.future.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.future.opacity(0.35), lineWidth: 1)
+        )
+    }
+}
+
+struct PaperLibrarySection: View {
+    var library: MeetingLibrarySnapshot
+    var sourceLibrary: MeetingLibrarySnapshot
+    @Binding var searchText: String
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    private var hasQuery: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        if !sourceLibrary.isEmpty {
+            VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("纸页库")
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                    Spacer()
+                    Text(statusText)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                }
+
+                HStack(spacing: ParallelMeSpacing.xs) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                    TextField("搜索纸页", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(ParallelMeTypography.compact)
+                    if hasQuery {
+                        Button {
+                            searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .accessibilityLabel(Text("清空搜索"))
+                    }
+                }
+                .padding(.horizontal, ParallelMeSpacing.sm)
+                .padding(.vertical, ParallelMeSpacing.xs)
+                .background(ParallelMeColor.paperLift)
+                .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                        .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+                )
+
+                if library.isEmpty {
+                    Text("没有匹配纸页")
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .padding(ParallelMeSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(ParallelMeColor.paperLift)
+                        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                } else {
+                    if !library.unfinished.isEmpty {
+                        PaperLibraryGroup(
+                            title: "未完成",
+                            meetings: library.unfinished,
+                            tint: ParallelMeColor.future,
+                            restore: restore,
+                            delete: delete
+                        )
+                    }
+
+                    if !library.archived.isEmpty {
+                        PaperLibraryGroup(
+                            title: "已归档",
+                            meetings: library.archived,
+                            tint: ParallelMeColor.money,
+                            restore: restore,
+                            delete: delete
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var statusText: String {
+        if hasQuery {
+            return "\(library.totalCount) 个匹配"
+        }
+        return "\(sourceLibrary.totalCount) 张 · \(sourceLibrary.archivedCount) 已归档"
+    }
+}
+
+private struct PaperLibraryGroup: View {
+    var title: String
+    var meetings: [MeetingSummary]
+    var tint: Color
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        DisclosureGroup("\(title) · \(meetings.count)") {
+            VStack(spacing: ParallelMeSpacing.sm) {
+                ForEach(meetings) { meeting in
+                    PaperLibraryRow(
+                        meeting: meeting,
+                        tint: tint,
+                        restore: restore,
+                        delete: delete
+                    )
+                }
+            }
+            .padding(.top, ParallelMeSpacing.xs)
+        }
+        .font(ParallelMeTypography.compact)
+        .foregroundStyle(ParallelMeColor.ink)
+    }
+}
+
+private struct PaperLibraryRow: View {
+    var meeting: MeetingSummary
+    var tint: Color
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+            Button {
+                restore(meeting.id)
+            } label: {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                    Text(meeting.title)
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                        .lineLimit(2)
+                    Text(meeting.subtitle)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            DeletePaperButton(meeting: meeting, delete: delete) {
+                Image(systemName: "trash")
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(Text("删除纸页"))
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(tint.opacity(0.35), lineWidth: 1)
+        )
+    }
+}
+
+private struct DeletePaperButton<Label: View>: View {
+    var meeting: MeetingSummary
+    var delete: (String) -> Void
+    @ViewBuilder var label: () -> Label
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            isConfirmingDelete = true
+        } label: {
+            label()
+        }
+        .confirmationDialog(
+            "删除这张纸页？",
+            isPresented: $isConfirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("删除纸页", role: .destructive) {
+                delete(meeting.id)
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("“\(meeting.title)” 会从这台设备移除。这个操作不能撤销。")
+        }
+    }
+}
+
+public struct VoicePrimerGrid: View {
+    public init() {}
+
+    public var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: ParallelMeSpacing.sm)], spacing: ParallelMeSpacing.sm) {
+            ForEach(VoicePersonas.all) { persona in
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                    Text(persona.name)
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                    Text(persona.coreValue)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(ParallelMeSpacing.md)
+                .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+                .background(ParallelMeTheme.voiceColor(persona.id.rawValue).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                        .stroke(ParallelMeTheme.voiceColor(persona.id.rawValue).opacity(0.35), lineWidth: 1)
+                )
+            }
+        }
+    }
+}
