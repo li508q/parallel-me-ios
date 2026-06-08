@@ -492,6 +492,36 @@ struct ParallelMeCoreSmokeTests {
             try expect(timeline.contains { $0.detail.contains("身体会先垮") })
             try expect(timeline.contains { $0.title == "追问全桌" && $0.detail.contains("身体底线") })
             try expect(timeline.last?.stage == .archived)
+            try expect(timeline.first { $0.kind == .settlement }?.createdAt == archived.settledAt)
+            try expect(timeline.last?.createdAt == archived.archivedAt)
+        }
+
+        try runner.run("meeting summaries use settlement and archive timestamps") {
+            let engine = MeetingFlowEngine()
+            var active = try engine.start(rawInput: "待落定纸页")
+            active.createdAt = Date(timeIntervalSince1970: 10)
+            active.stage = .settlement
+            active.heartSettlement = sampleSettlement
+            active.settledAt = Date(timeIntervalSince1970: 80)
+
+            var olderArchived = try engine.start(rawInput: "较早归档")
+            olderArchived.createdAt = Date(timeIntervalSince1970: 100)
+            olderArchived.stage = .archived
+            olderArchived.heartSettlement = sampleSettlement
+            olderArchived.archivedAt = Date(timeIntervalSince1970: 120)
+
+            var newerArchived = try engine.start(rawInput: "较新归档")
+            newerArchived.createdAt = Date(timeIntervalSince1970: 20)
+            newerArchived.stage = .archived
+            newerArchived.heartSettlement = sampleSettlement
+            newerArchived.archivedAt = Date(timeIntervalSince1970: 200)
+
+            let summary = MeetingSummary(state: active)
+            let library = MeetingLibrarySnapshot(states: [olderArchived, newerArchived, active], recentLimit: 3)
+
+            try expect(summary.updatedAt == Date(timeIntervalSince1970: 80))
+            try expect(library.recent.map(\.id) == [newerArchived.id, olderArchived.id, active.id])
+            try expect(library.archived.map(\.id) == [newerArchived.id, olderArchived.id])
         }
 
         try runner.run("meeting archive snapshot renders archived paper detail") {

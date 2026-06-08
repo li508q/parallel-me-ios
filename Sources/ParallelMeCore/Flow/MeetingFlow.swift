@@ -26,6 +26,8 @@ public enum MeetingFlowError: Error, Equatable, Sendable {
 public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var createdAt: Date
+    public var settledAt: Date?
+    public var archivedAt: Date?
     public var stage: MeetingStage
     public var rawInput: String
     public var runtimeSnapshot: MeetingRuntimeSnapshot?
@@ -49,6 +51,8 @@ public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
     ) {
         self.id = id
         self.createdAt = createdAt
+        self.settledAt = nil
+        self.archivedAt = nil
         self.stage = .defining
         self.rawInput = rawInput
         self.runtimeSnapshot = runtimeSnapshot?.normalized
@@ -222,6 +226,7 @@ public struct MeetingFlowEngine: Sendable {
         var next = state
         next.alignmentProfile = profile
         next.heartSettlement = settlement
+        next.settledAt = Date()
         next.stage = .settlement
         return next
     }
@@ -230,6 +235,7 @@ public struct MeetingFlowEngine: Sendable {
         try require(.settlement, state)
         var next = state
         next.stage = .archived
+        next.archivedAt = Date()
         return next
     }
 
@@ -246,6 +252,7 @@ public struct MeetingFlowEngine: Sendable {
         }
         var next = state
         next.heartSettlement = settlement
+        next.settledAt = Date()
         return next
     }
 

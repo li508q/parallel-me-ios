@@ -62,7 +62,7 @@ Provider context is stored separately from provider credentials:
 - Empty or whitespace-only fields are dropped before persistence and before provider requests.
 - Tests verify that stored context is normalized, clearable, and actually forwarded by the session coordinator.
 
-Each new meeting also stores a `MeetingRuntimeSnapshot` in `MeetingFlowState`. The snapshot records the provider mode, model, non-sensitive endpoint metadata, and normalized provider context used when the paper started. This gives restored meetings and debugging views one durable source of truth without storing API keys in meeting JSON.
+Each new meeting also stores a `MeetingRuntimeSnapshot` in `MeetingFlowState`. The snapshot records the provider mode, model, non-sensitive endpoint metadata, and normalized provider context used when the paper started. Settlement and archive timestamps are stored on the same state, so library sorting and timeline display can reflect real lifecycle events instead of inferring them from earlier answers. This gives restored meetings and debugging views one durable source of truth without storing API keys in meeting JSON.
 
 ## Project Generation
 
@@ -75,6 +75,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Every user-visible transition is represented by `MeetingStage`.
 - Current-paper timeline items are derived in Core and tested against complete meeting progress.
 - Archived-paper detail rows are derived in Core and tested against user settlement revisions.
+- Settlement and archive timestamps are stored in Core state and tested through summaries, library sorting, and timelines.
 - Resume selection is derived in Core and ignores archived papers.
 - Paper library grouping, ordering, and search filtering are derived in Core and tested without UI.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.

@@ -123,7 +123,7 @@ public enum MeetingTimeline {
                     stage: .settlement,
                     title: "本心落定生成",
                     detail: settlement.headline.timelineDetail,
-                    createdAt: items.last?.createdAt ?? state.createdAt
+                    createdAt: state.settledAt ?? items.last?.createdAt ?? state.createdAt
                 )
             )
         }
@@ -136,7 +136,7 @@ public enum MeetingTimeline {
                     stage: .archived,
                     title: "纸页归档",
                     detail: "已保存为本地纸页",
-                    createdAt: items.last?.createdAt ?? state.createdAt
+                    createdAt: state.archivedAt ?? items.last?.createdAt ?? state.createdAt
                 )
             )
         }

@@ -69,7 +69,9 @@ public struct MeetingSummary: Codable, Equatable, Sendable, Identifiable {
             state.roundtable.moves.map(\.createdAt).max(),
             state.roundtable.turns.map(\.createdAt).max(),
             state.inquiryAnswers.map(\.answeredAt).max(),
-            state.roundtable.openingTurns.map(\.createdAt).max()
+            state.roundtable.openingTurns.map(\.createdAt).max(),
+            state.settledAt,
+            state.archivedAt
         ]
         .compactMap { $0 })
         .max() ?? state.createdAt
