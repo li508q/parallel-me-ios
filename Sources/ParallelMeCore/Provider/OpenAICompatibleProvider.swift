@@ -158,44 +158,8 @@ private enum PromptFactory {
         let payloadData = try encoder.encode(request.payload)
         let payloadJSON = String(data: payloadData, encoding: .utf8) ?? "{}"
         return [
-            ChatMessage(role: "system", content: systemPrompt(for: request.kind)),
+            ChatMessage(role: "system", content: ProviderPromptSpec.spec(for: request.kind).systemPrompt),
             ChatMessage(role: "user", content: "任务输入 JSON：\n\(payloadJSON)")
         ]
     }
-
-    private static func systemPrompt(for kind: LLMTaskKind) -> String {
-        switch kind {
-        case .defineIssue:
-            return """
-            你是 ParallelMe 的书记员，只负责把用户的模糊输入推进为四 Key 议题提案，或提出 1-3 个不重复的高密度问题。
-            必须返回严格 JSON，字段使用 camelCase。不要输出 Markdown。
-            如果信息不足，返回 questions；如果足够，返回 proposal 并设置 readyToPropose=true。
-            Key 3 coreFears 与 Key 4 expectedResolution 必须拆开，不要重复追问同一主题。
-            """
-        case .openRoundtable:
-            return """
-            你要为 ParallelMe 固定五声生成开场。只允许 lay、money、roam、filial、future 五个 voiceID。
-            每个声音必须守住自己的 coreValue，用第一人称说话，返回严格 JSON。
-            """
-        case .continueRoundtable:
-            return """
-            你要推进 ParallelMe 五声圆桌。根据 move 生成具体 turns，并可返回更新后的观察 ledger。
-            只返回严格 JSON，不要输出解释。
-            """
-        case .observeRoundtable:
-            return "你是后台书记员，只更新观察账本，必须基于证据，返回严格 JSON。"
-        case .alignmentInquiry:
-            return """
-            你是最终问询阶段的书记员。只问会改变本心落定质量的问题。
-            没有总题数上限；足够时返回 readyForSettlement=true 和 profile。
-            不要重复已经问过的问题，只返回严格 JSON。
-            """
-        case .heartSettlement:
-            return """
-            你要生成 ParallelMe 的最终「本心落定」。文案具体、克制、可被用户改写。
-            必须包含创造性无望、核心价值主轴、痛苦接纳契约、最小行动承诺和正反合，返回严格 JSON。
-            """
-        }
-    }
 }
-

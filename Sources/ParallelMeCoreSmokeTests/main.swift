@@ -215,6 +215,35 @@ struct ParallelMeCoreSmokeTests {
             }
         }
 
+        try runner.run("provider prompt specs preserve product contracts") {
+            let definitionPrompt = ProviderPromptSpec.spec(for: .defineIssue).systemPrompt
+            try expect(definitionPrompt.contains("1-3"))
+            try expect(definitionPrompt.contains("不得设置总轮数上限"))
+            try expect(definitionPrompt.contains("coreFears"))
+            try expect(definitionPrompt.contains("expectedResolution"))
+            try expect(definitionPrompt.contains("userFeedback"))
+            try expect(definitionPrompt.contains("custom"))
+
+            let openingPrompt = ProviderPromptSpec.spec(for: .openRoundtable).systemPrompt
+            for voiceID in VoiceID.allCases {
+                try expect(openingPrompt.contains(voiceID.rawValue))
+            }
+            try expect(openingPrompt.contains("不得创造临时角色"))
+
+            let inquiryPrompt = ProviderPromptSpec.spec(for: .alignmentInquiry).systemPrompt
+            try expect(inquiryPrompt.contains("没有总题数上限"))
+            try expect(inquiryPrompt.contains("readyForSettlement=true"))
+            try expect(inquiryPrompt.contains("creativeHopelessness"))
+            try expect(inquiryPrompt.contains("dialecticSynthesis"))
+            try expect(inquiryPrompt.contains("custom"))
+
+            let settlementPrompt = ProviderPromptSpec.spec(for: .heartSettlement).systemPrompt
+            try expect(settlementPrompt.contains("24 小时"))
+            try expect(settlementPrompt.contains("creativeHopelessness"))
+            try expect(settlementPrompt.contains("minimumViableCommitment"))
+            try expect(settlementPrompt.contains("dialecticSynthesis"))
+        }
+
         try runner.run("meeting summary prefers settlement headline") {
             var state = try MeetingFlowEngine().start(rawInput: "我想换工作")
             state = try MeetingFlowEngine().receiveIssueProposal(completeProposal, in: state)
