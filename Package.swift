@@ -23,7 +23,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "ParallelMeCoreSmokeTests",
-            dependencies: ["ParallelMeCore"]
+            dependencies: ["ParallelMeCore", "ParallelMeUI"]
         )
     ]
 )

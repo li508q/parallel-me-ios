@@ -24,6 +24,7 @@ public final class MeetingViewModel: ObservableObject {
     private let providerSettingsStore: (any ProviderSettingsStoring)?
     private let providerContextStore: (any ProviderContextStoring)?
     private let sessionEventSink: InMemoryMeetingSessionEventSink?
+    private let providerFactory: (ProviderRuntimeSettings) throws -> AnyLLMProvider
     private var hasLoadedProviderSettings = false
     private var hasLoadedProviderContext = false
 
@@ -32,13 +33,15 @@ public final class MeetingViewModel: ObservableObject {
         meetingRepository: any MeetingRepository = InMemoryMeetingRepository(),
         providerSettingsStore: (any ProviderSettingsStoring)? = nil,
         providerContextStore: (any ProviderContextStoring)? = nil,
-        sessionEventSink: InMemoryMeetingSessionEventSink? = nil
+        sessionEventSink: InMemoryMeetingSessionEventSink? = nil,
+        providerFactory: @escaping (ProviderRuntimeSettings) throws -> AnyLLMProvider = ProviderRuntimeFactory.makeProvider
     ) {
         self.coordinator = coordinator
         self.meetingRepository = AnyMeetingRepository(meetingRepository)
         self.providerSettingsStore = providerSettingsStore
         self.providerContextStore = providerContextStore
         self.sessionEventSink = sessionEventSink
+        self.providerFactory = providerFactory
     }
 
     public static func makeDefault() -> MeetingViewModel {
@@ -151,6 +154,7 @@ public final class MeetingViewModel: ObservableObject {
         if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
 
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let answer = ScribeAnswer(
                 questionID: question.id,
                 selectedOptionID: option.id,
@@ -164,6 +168,7 @@ public final class MeetingViewModel: ObservableObject {
 
     public func confirmProposal() {
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.confirmProposalAndOpenRoundtable()
         }
     }
@@ -172,12 +177,14 @@ public final class MeetingViewModel: ObservableObject {
         let trimmed = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.refineProposal(feedback: trimmed)
         }
     }
 
     public func continueRoundtable() {
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .continueAll)
             self.state = try await self.coordinator.submitRoundtableMove(move)
         }
@@ -187,6 +194,7 @@ public final class MeetingViewModel: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .userToTable, userText: trimmed)
             self.state = try await self.coordinator.submitRoundtableMove(move)
         }
@@ -196,6 +204,7 @@ public final class MeetingViewModel: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .userToVoice, targetVoiceID: voiceID, userText: trimmed)
             self.state = try await self.coordinator.submitRoundtableMove(move)
         }
@@ -204,6 +213,7 @@ public final class MeetingViewModel: ObservableObject {
     public func startDuel(from fromVoiceID: VoiceID, to toVoiceID: VoiceID) {
         guard fromVoiceID != toVoiceID else { return }
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .duel, fromVoiceID: fromVoiceID, toVoiceID: toVoiceID)
             self.state = try await self.coordinator.submitRoundtableMove(move)
         }
@@ -211,6 +221,7 @@ public final class MeetingViewModel: ObservableObject {
 
     public func startInquiry() {
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.startInquiry()
         }
     }
@@ -224,6 +235,7 @@ public final class MeetingViewModel: ObservableObject {
         if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
 
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let answer = ScribeInquiryAnswer(
                 questionID: question.id,
                 question: question.question,
@@ -237,6 +249,7 @@ public final class MeetingViewModel: ObservableObject {
 
     public func requestSettlement() {
         run { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.requestSettlement()
         }
     }
@@ -258,7 +271,11 @@ public final class MeetingViewModel: ObservableObject {
     public func restoreMeeting(id: String) {
         run { [self] in
             guard let restored = try await self.meetingRepository.load(id: id) else { return }
-            self.state = try await self.coordinator.restore(restored)
+            if restored.stage == .archived {
+                self.state = try await self.coordinator.restore(restored)
+            } else {
+                self.state = try await self.rebuildCoordinatorIfNeeded(restoring: restored)
+            }
             await self.loadMeetingLibrary()
         }
     }
@@ -285,28 +302,41 @@ public final class MeetingViewModel: ObservableObject {
         closeCurrentPaper()
     }
 
-    private func rebuildCoordinatorIfNeeded() async throws {
+    @discardableResult
+    private func rebuildCoordinatorIfNeeded(restoring restoredState: MeetingFlowState? = nil) async throws -> MeetingFlowState? {
         try await providerSettingsStore?.saveSettings(providerSettings)
         try await providerContextStore?.saveContext(
             ProviderContext(meCard: contextMeCard, tasteProfile: contextTasteProfile)
         )
-        let provider = try ProviderRuntimeFactory.makeProvider(settings: providerSettings)
+        let provider = try providerFactory(providerSettings)
+        let restoredSnapshot = restoredState?.runtimeSnapshot?.normalized
+        let effectiveContext = providerContext ?? restoredSnapshot?.context
+        let effectiveSnapshot = MeetingRuntimeSnapshot(settings: providerSettings, context: effectiveContext).normalized
+        let stateToRestore = restoredState.map { state in
+            var next = state
+            next.runtimeSnapshot = effectiveSnapshot
+            return next
+        }
         if let sessionEventSink {
             coordinator = MeetingSessionCoordinator(
                 provider: provider,
                 repository: meetingRepository,
                 eventSink: sessionEventSink,
-                context: providerContext,
-                runtimeSnapshot: runtimeSnapshot
+                context: effectiveContext,
+                runtimeSnapshot: effectiveSnapshot
             )
         } else {
             coordinator = MeetingSessionCoordinator(
                 provider: provider,
                 repository: meetingRepository,
-                context: providerContext,
-                runtimeSnapshot: runtimeSnapshot
+                context: effectiveContext,
+                runtimeSnapshot: effectiveSnapshot
             )
         }
+        if let stateToRestore {
+            return try await coordinator.restore(stateToRestore)
+        }
+        return nil
     }
 
     private var runtimeSnapshot: MeetingRuntimeSnapshot {

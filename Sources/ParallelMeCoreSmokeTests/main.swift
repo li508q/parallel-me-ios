@@ -1,5 +1,6 @@
 import Foundation
 import ParallelMeCore
+import ParallelMeUI
 
 @main
 struct ParallelMeCoreSmokeTests {
@@ -778,6 +779,71 @@ struct ParallelMeCoreSmokeTests {
             try expect(input?.context?.tasteProfile == "先问边界，再给判断")
         }
 
+        try await runner.runAsync("meeting view model rebuilds runtime when restoring unfinished paper") {
+            let repository = InMemoryMeetingRepository()
+            let provider = ViewModelRuntimeRecordingProvider()
+            let engine = MeetingFlowEngine()
+            var restored = try engine.start(
+                rawInput: "我想辞职又怕没钱",
+                runtimeSnapshot: MeetingRuntimeSnapshot(
+                    providerMode: .demo,
+                    providerModel: "old-demo-runtime",
+                    context: ProviderContext(meCard: "纸页原始上下文")
+                )
+            )
+            restored = try engine.receiveIssueProposal(completeProposal, in: restored)
+            try await repository.save(restored)
+
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(provider: DemoLLMProvider(), repository: repository),
+                meetingRepository: repository,
+                providerFactory: { _ in AnyLLMProvider(provider) }
+            )
+            viewModel.providerModel = "current-demo-runtime"
+            viewModel.contextMeCard = "当前用户上下文"
+            viewModel.contextTasteProfile = "当前回应偏好"
+
+            viewModel.restoreMeeting(id: restored.id)
+            try await waitFor("restored unfinished paper") {
+                !viewModel.isBusy && viewModel.state?.id == restored.id
+            }
+            viewModel.confirmProposal()
+            try await waitFor("restored paper roundtable") {
+                !viewModel.isBusy && viewModel.state?.stage == .roundtable
+            }
+            let input = await provider.latestOpeningInput()
+
+            try expect(input?.context?.meCard == "当前用户上下文")
+            try expect(input?.context?.tasteProfile == "当前回应偏好")
+            try expect(viewModel.state?.runtimeSnapshot?.providerModel == "current-demo-runtime")
+            try expect(viewModel.state?.runtimeSnapshot?.context?.meCard == "当前用户上下文")
+            try expect(viewModel.state?.roundtable.openingTurns.count == 5)
+        }
+
+        try await runner.runAsync("meeting view model restores archived paper offline") {
+            let repository = InMemoryMeetingRepository()
+            var archived = try MeetingFlowEngine().start(rawInput: "已经完成的纸页")
+            archived.stage = .archived
+            archived.heartSettlement = sampleSettlement
+            try await repository.save(archived)
+
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(provider: DemoLLMProvider(), repository: repository),
+                meetingRepository: repository,
+                providerFactory: { _ in throw ProviderRuntimeFactoryError.invalidOpenAICompatibleSettings }
+            )
+            viewModel.providerMode = .openAICompatible
+            viewModel.providerAPIKey = ""
+
+            viewModel.restoreMeeting(id: archived.id)
+            try await waitFor("archived paper restore") {
+                !viewModel.isBusy && viewModel.state?.id == archived.id
+            }
+
+            try expect(viewModel.state?.stage == .archived)
+            try expect(viewModel.errorMessage == nil)
+        }
+
         try await runner.runAsync("session coordinator refines proposal from user feedback") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -1137,6 +1203,21 @@ private func unwrap<T>(_ value: T?, _ message: String) throws -> T {
     return value
 }
 
+@MainActor
+private func waitFor(
+    _ name: String,
+    timeout: TimeInterval = 2,
+    condition: @MainActor @escaping () -> Bool
+) async throws {
+    let deadline = Date().addingTimeInterval(timeout)
+    while !condition() {
+        if Date() >= deadline {
+            throw TestFailure("Timed out waiting for \(name)")
+        }
+        try await Task.sleep(nanoseconds: 20_000_000)
+    }
+}
+
 private actor ContextRecordingProvider: LLMProvider {
     private let definitionResponse: IssueDefinitionResponse
     private var recordedDefinitionInput: IssueDefinitionInput?
@@ -1161,5 +1242,42 @@ private actor ContextRecordingProvider: LLMProvider {
         }
         recordedDefinitionInput = input
         return LLMEnvelope(payload: payload, trace: ["recording:\(request.kind.rawValue)"])
+    }
+}
+
+private actor ViewModelRuntimeRecordingProvider: LLMProvider {
+    private var recordedOpeningInput: RoundtableOpeningInput?
+
+    func latestOpeningInput() -> RoundtableOpeningInput? {
+        recordedOpeningInput
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .openRoundtable,
+              let input = request.payload as? RoundtableOpeningInput,
+              let payload = RoundtableOpeningResponse(
+                openings: VoiceID.allCases.map { opening($0) }
+              ) as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        recordedOpeningInput = input
+        return LLMEnvelope(payload: payload, trace: ["recording:\(request.kind.rawValue)"])
+    }
+
+    private func opening(_ id: VoiceID) -> VoiceOpeningTurn {
+        VoiceOpeningTurn(
+            voiceID: id,
+            payload: VoiceOpeningPayload(
+                thesis: "这件事让你卡住。",
+                protectedValue: "守住 \(id.displayName)",
+                concern: "要承认代价。",
+                taskEvidence: "来自议题。",
+                pull: "先说清楚。"
+            )
+        )
     }
 }

@@ -63,6 +63,7 @@ Provider context is stored separately from provider credentials:
 - Tests verify that stored context is normalized, clearable, and actually forwarded by the session coordinator.
 
 Each new meeting also stores a `MeetingRuntimeSnapshot` in `MeetingFlowState`. The snapshot records the provider mode, model, non-sensitive endpoint metadata, and normalized provider context used when the paper started. Settlement and archive timestamps are stored on the same state, so library sorting and timeline display can reflect real lifecycle events instead of inferring them from earlier answers. This gives restored meetings and debugging views one durable source of truth without storing API keys in meeting JSON.
+When an unfinished paper is restored from the library, `MeetingViewModel` rebuilds the session coordinator before the next model-backed action. The rebuilt runtime uses the current provider credentials and current provider context, falling back to the paper's stored context only when the current context is empty, and writes that effective runtime snapshot back onto the restored state. Archived papers bypass provider rebuilding so they remain readable offline even when credentials are missing or invalid.
 
 ## Project Generation
 
@@ -79,6 +80,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Resume selection is derived in Core and ignores archived papers.
 - Paper library grouping, ordering, and search filtering are derived in Core and tested without UI.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
+- Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
 - Repeated questions are filtered before they reach UI.
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
