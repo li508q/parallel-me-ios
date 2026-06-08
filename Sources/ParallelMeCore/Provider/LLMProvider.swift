@@ -39,6 +39,22 @@ public protocol LLMProvider: Sendable {
     where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable
 }
 
+public actor AnyLLMProvider: LLMProvider {
+    private let base: any LLMProvider
+
+    public init(_ base: any LLMProvider) {
+        self.base = base
+    }
+
+    public func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        try await base.generate(request: request, responseType: responseType)
+    }
+}
+
 public actor MockLLMProvider: LLMProvider {
     private var responses: [LLMTaskKind: Any] = [:]
 
@@ -66,4 +82,3 @@ public actor MockLLMProvider: LLMProvider {
 public enum MockLLMProviderError: Error, Equatable, Sendable {
     case missingResponse(kind: LLMTaskKind)
 }
-

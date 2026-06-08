@@ -159,6 +159,38 @@ struct ParallelMeCoreSmokeTests {
             try expect(readiness.isReady)
         }
 
+        try runner.run("provider settings validate demo and openai-compatible modes") {
+            try expect(ProviderRuntimeSettings(mode: .demo).isUsable)
+            try expect(!ProviderRuntimeSettings(mode: .openAICompatible).isUsable)
+            try expect(
+                ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "https://api.openai.com/v1",
+                    model: "gpt-4o-mini",
+                    apiKey: "test-key"
+                ).isUsable
+            )
+            do {
+                _ = try ProviderRuntimeFactory.makeProvider(settings: ProviderRuntimeSettings(mode: .openAICompatible))
+                throw TestFailure("Expected invalid provider settings")
+            } catch ProviderRuntimeFactoryError.invalidOpenAICompatibleSettings {
+                // expected
+            }
+        }
+
+        try await runner.runAsync("provider factory creates demo provider") {
+            let provider = try ProviderRuntimeFactory.makeProvider(settings: ProviderRuntimeSettings(mode: .demo))
+            let envelope = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(rawInput: "我想辞职又怕没钱", dialogue: [])
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
+            try expect(envelope.payload.proposal?.isComplete == true)
+            try expect(envelope.trace == ["demo:defineIssue"])
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()

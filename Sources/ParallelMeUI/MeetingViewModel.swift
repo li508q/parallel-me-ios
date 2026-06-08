@@ -8,8 +8,12 @@ public final class MeetingViewModel: ObservableObject {
     @Published public private(set) var state: MeetingFlowState?
     @Published public private(set) var isBusy = false
     @Published public private(set) var errorMessage: String?
+    @Published public var providerMode: ProviderRuntimeMode = .demo
+    @Published public var providerBaseURL: String = "https://api.openai.com/v1"
+    @Published public var providerModel: String = "gpt-4o-mini"
+    @Published public var providerAPIKey: String = ""
 
-    private let coordinator: any MeetingCoordinating
+    private var coordinator: any MeetingCoordinating
 
     public init(coordinator: any MeetingCoordinating) {
         self.coordinator = coordinator
@@ -23,8 +27,19 @@ public final class MeetingViewModel: ObservableObject {
         return MeetingViewModel(coordinator: coordinator)
     }
 
+    public var providerSettings: ProviderRuntimeSettings {
+        ProviderRuntimeSettings(
+            mode: providerMode,
+            baseURLString: providerBaseURL,
+            model: providerModel,
+            apiKey: providerAPIKey
+        )
+    }
+
     public var canStart: Bool {
-        !petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isBusy
+        !petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        providerSettings.isUsable &&
+        !isBusy
     }
 
     public var activeInquiryQuestions: [ScribeInquiryQuestion] {
@@ -40,6 +55,7 @@ public final class MeetingViewModel: ObservableObject {
     public func startMeeting() {
         let input = petition
         run { [self] in
+            try self.rebuildCoordinatorIfNeeded()
             let started = try await self.coordinator.start(rawInput: input)
             self.state = started
             self.state = try await self.coordinator.requestDefinition()
@@ -106,6 +122,14 @@ public final class MeetingViewModel: ObservableObject {
         state = nil
         errorMessage = nil
         isBusy = false
+    }
+
+    private func rebuildCoordinatorIfNeeded() throws {
+        let provider = try ProviderRuntimeFactory.makeProvider(settings: providerSettings)
+        coordinator = MeetingSessionCoordinator(
+            provider: provider,
+            repository: FileMeetingRepository.defaultRepository()
+        )
     }
 
     private func run(_ operation: @escaping @MainActor () async throws -> Void) {

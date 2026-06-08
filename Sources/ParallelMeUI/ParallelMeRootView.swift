@@ -51,6 +51,7 @@ public struct ParallelMeRootView: View {
 
     private var startCard: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+            ProviderSettingsPanel(viewModel: viewModel)
             TextEditor(text: $viewModel.petition)
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.ink)
@@ -90,6 +91,39 @@ public struct ParallelMeRootView: View {
         case .archived:
             ArchivedView(reset: viewModel.reset)
         }
+    }
+}
+
+private struct ProviderSettingsPanel: View {
+    @ObservedObject var viewModel: MeetingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Picker("Provider", selection: $viewModel.providerMode) {
+                ForEach(ProviderRuntimeMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            if viewModel.providerMode == .openAICompatible {
+                VStack(spacing: ParallelMeSpacing.sm) {
+                    TextField("Base URL", text: $viewModel.providerBaseURL)
+                        .textContentType(.URL)
+                    TextField("Model", text: $viewModel.providerModel)
+                    SecureField("API Key", text: $viewModel.providerAPIKey)
+                }
+                .textFieldStyle(.roundedBorder)
+                .font(ParallelMeTypography.compact)
+            }
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.line, lineWidth: 1)
+        )
     }
 }
 
