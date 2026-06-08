@@ -408,6 +408,15 @@ struct ParallelMeCoreSmokeTests {
             let proposed = try await coordinator.requestDefinition()
             let opened = try await coordinator.confirmProposalAndOpenRoundtable()
             let moved = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
+            let tableAsked = try await coordinator.submitRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "你们都觉得我最不能牺牲什么？")
+            )
+            let voiceAsked = try await coordinator.submitRoundtableMove(
+                RoundtableMove(type: .userToVoice, targetVoiceID: .money, userText: "我需要多少钱才算有退路？")
+            )
+            let dueled = try await coordinator.submitRoundtableMove(
+                RoundtableMove(type: .duel, fromVoiceID: .money, toVoiceID: .lay)
+            )
             let inquiry = try await coordinator.startInquiry()
             let question = try unwrap(inquiry.inquiryQuestions.first, "Expected demo inquiry question")
             let option = try unwrap(question.options.first, "Expected demo inquiry option")
@@ -425,6 +434,12 @@ struct ParallelMeCoreSmokeTests {
             try expect(proposed.issueProposal?.isComplete == true)
             try expect(opened.roundtable.openingTurns.count == 5)
             try expect(!moved.roundtable.turns.isEmpty)
+            try expect(tableAsked.roundtable.moves.last?.type == .userToTable)
+            try expect(tableAsked.roundtable.turns.suffix(5).map(\.voiceID) == VoiceID.allCases)
+            try expect(voiceAsked.roundtable.moves.last?.targetVoiceID == .money)
+            try expect(voiceAsked.roundtable.turns.last?.voiceID == .money)
+            try expect(dueled.roundtable.moves.last?.type == .duel)
+            try expect(dueled.roundtable.turns.suffix(2).map(\.voiceID) == [.money, .lay])
             try expect(ready.alignmentProfile != nil)
             try expect(settled.stage == .settlement)
             try expect(archived.stage == .archived)

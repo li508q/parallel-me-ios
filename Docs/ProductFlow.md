@@ -33,6 +33,8 @@ The fixed voices are:
 
 They are not agents invented per session. They are stable product personas with durable values and fears. The user can continue the table, ask one voice, ask all voices, or let two voices speak directly.
 
+The iOS roundtable exposes all four moves explicitly: continue all voices, ask the whole table, ask a selected voice, and start a two-voice dialogue.
+
 ## 5. Invisible Scribe Observation
 
 The scribe maintains a background ledger. This ledger records evidence for the final settlement modules but does not interrupt the roundtable or appear as a user-facing diagnosis.

@@ -358,6 +358,11 @@ private struct ProbeQuestionView: View {
 private struct RoundtableView: View {
     var state: MeetingFlowState
     @ObservedObject var viewModel: MeetingViewModel
+    @State private var tableQuestion = ""
+    @State private var voiceQuestion = ""
+    @State private var selectedVoice: VoiceID = .future
+    @State private var duelFrom: VoiceID = .money
+    @State private var duelTo: VoiceID = .lay
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
@@ -369,6 +374,12 @@ private struct RoundtableView: View {
             ForEach(state.roundtable.turns) { turn in
                 VoiceTurnView(name: turn.name ?? "圆桌", voiceID: turn.voiceID, text: turn.text, footnote: nil)
             }
+            roundtableControls
+        }
+    }
+
+    private var roundtableControls: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             HStack {
                 Button(action: viewModel.continueRoundtable) {
                     Label("继续一轮", systemImage: "arrow.triangle.2.circlepath")
@@ -379,8 +390,72 @@ private struct RoundtableView: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-            .disabled(viewModel.isBusy)
+            DisclosureGroup("问全桌") {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                    TextField("把你想抛给全桌的问题写在这里", text: $tableQuestion, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                    Button {
+                        viewModel.askTable(tableQuestion)
+                        tableQuestion = ""
+                    } label: {
+                        Label("发送给全桌", systemImage: "paperplane.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(tableQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(.top, ParallelMeSpacing.sm)
+            }
+            DisclosureGroup("问一声") {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                    Picker("声音", selection: $selectedVoice) {
+                        ForEach(VoiceID.allCases) { voice in
+                            Text(voice.displayName).tag(voice)
+                        }
+                    }
+                    TextField("问这一声一句", text: $voiceQuestion, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                    Button {
+                        viewModel.askVoice(selectedVoice, text: voiceQuestion)
+                        voiceQuestion = ""
+                    } label: {
+                        Label("发送给\(selectedVoice.displayName)", systemImage: "person.wave.2.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(voiceQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(.top, ParallelMeSpacing.sm)
+            }
+            DisclosureGroup("让两声对话") {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                    Picker("发问", selection: $duelFrom) {
+                        ForEach(VoiceID.allCases) { voice in
+                            Text(voice.displayName).tag(voice)
+                        }
+                    }
+                    Picker("回应", selection: $duelTo) {
+                        ForEach(VoiceID.allCases) { voice in
+                            Text(voice.displayName).tag(voice)
+                        }
+                    }
+                    Button {
+                        viewModel.startDuel(from: duelFrom, to: duelTo)
+                    } label: {
+                        Label("开始对话", systemImage: "arrow.left.and.right")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(duelFrom == duelTo)
+                }
+                .padding(.top, ParallelMeSpacing.sm)
+            }
         }
+        .disabled(viewModel.isBusy)
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+        )
     }
 }
 

@@ -123,6 +123,32 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
+    public func askTable(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        run { [self] in
+            let move = RoundtableMove(type: .userToTable, userText: trimmed)
+            self.state = try await self.coordinator.submitRoundtableMove(move)
+        }
+    }
+
+    public func askVoice(_ voiceID: VoiceID, text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        run { [self] in
+            let move = RoundtableMove(type: .userToVoice, targetVoiceID: voiceID, userText: trimmed)
+            self.state = try await self.coordinator.submitRoundtableMove(move)
+        }
+    }
+
+    public func startDuel(from fromVoiceID: VoiceID, to toVoiceID: VoiceID) {
+        guard fromVoiceID != toVoiceID else { return }
+        run { [self] in
+            let move = RoundtableMove(type: .duel, fromVoiceID: fromVoiceID, toVoiceID: toVoiceID)
+            self.state = try await self.coordinator.submitRoundtableMove(move)
+        }
+    }
+
     public func startInquiry() {
         run { [self] in
             self.state = try await self.coordinator.startInquiry()

@@ -22,13 +22,7 @@ public actor DemoLLMProvider: LLMProvider {
         case .continueRoundtable:
             let move = (request.payload as? RoundtableMoveInput)?.move
             payload = RoundtableMoveResponse(
-                turns: VoiceID.allCases.map { id in
-                    RoundtableTurn(
-                        moveID: move?.id,
-                        voiceID: id,
-                        text: "\(id.displayName)：我会把这件事里我守护的那部分先放到桌面上，但不替你做决定。"
-                    )
-                },
+                turns: Self.turns(for: move),
                 ledger: ScribeObservationLedger(moduleSignals: [
                     .creativeHopelessness: ["用户开始看见无代价方案不存在。"],
                     .coreValues: ["自由与安全感同时出现。"]
@@ -125,6 +119,60 @@ public actor DemoLLMProvider: LLMProvider {
         )
     }
 
+    private static func turns(for move: RoundtableMove?) -> [RoundtableTurn] {
+        guard let move else {
+            return VoiceID.allCases.map { id in
+                RoundtableTurn(
+                    voiceID: id,
+                    text: "\(id.displayName)：我会把这件事里我守护的那部分先放到桌面上，但不替你做决定。"
+                )
+            }
+        }
+
+        switch move.type {
+        case .continueAll:
+            return VoiceID.allCases.map { id in
+                RoundtableTurn(
+                    moveID: move.id,
+                    voiceID: id,
+                    text: "\(id.displayName)：我会把这件事里我守护的那部分先放到桌面上，但不替你做决定。"
+                )
+            }
+        case .userToTable:
+            return VoiceID.allCases.map { id in
+                RoundtableTurn(
+                    moveID: move.id,
+                    voiceID: id,
+                    text: "\(id.displayName)：你刚刚问“\(move.userText ?? "这件事")”。我这一声会先回答我最在意的代价。"
+                )
+            }
+        case .userToVoice:
+            let target = move.targetVoiceID ?? .future
+            return [
+                RoundtableTurn(
+                    moveID: move.id,
+                    voiceID: target,
+                    text: "\(target.displayName)：你问我“\(move.userText ?? "这件事")”。我的回答是：先别急着证明，先守住我负责的那条底线。"
+                )
+            ]
+        case .duel:
+            let from = move.fromVoiceID ?? .money
+            let to = move.toVoiceID ?? .lay
+            return [
+                RoundtableTurn(
+                    moveID: move.id,
+                    voiceID: from,
+                    text: "\(from.displayName)：\(to.displayName)，你这条路要付出的代价，准备让谁来承担？"
+                ),
+                RoundtableTurn(
+                    moveID: move.id,
+                    voiceID: to,
+                    text: "\(to.displayName)：我不反对承担代价，但我不接受继续把身体当成无限资源。"
+                )
+            ]
+        }
+    }
+
     private static var profile: AlignmentProfile {
         AlignmentProfile(
             falsifiedFantasy: "你无法同时拥有零风险、零痛苦和彻底自由。",
@@ -168,4 +216,3 @@ public actor DemoLLMProvider: LLMProvider {
         )
     }
 }
-
