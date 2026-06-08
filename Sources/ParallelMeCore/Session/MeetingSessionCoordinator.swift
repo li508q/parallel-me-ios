@@ -4,6 +4,7 @@ public enum MeetingSessionError: Error, Equatable, Sendable {
     case noActiveMeeting
     case missingProposal
     case missingTaskFrame
+    case emptyFeedback
     case emptyModelResult
     case settlementNotReady(missing: [SettlementModuleID])
 }
@@ -76,20 +77,38 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
 
     public func refineProposal(feedback: String) async throws -> MeetingFlowState {
         let current = try requireState()
+        let trimmedFeedback = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedFeedback.isEmpty else { throw MeetingSessionError.emptyFeedback }
+
+        var feedbackState = current
+        feedbackState.definingDialogue.append(
+            DefiningDialogueEntry(
+                role: .user,
+                answer: ScribeAnswer(
+                    questionID: "proposal_feedback",
+                    selectedOptionID: nil,
+                    selectedOptionLabel: nil,
+                    questionText: "你想让书记员如何修订这版议题？",
+                    freeText: trimmedFeedback
+                )
+            )
+        )
+        state = try await persist(feedbackState)
+
         let input = IssueDefinitionInput(
-            rawInput: current.rawInput,
-            dialogue: current.definingDialogue,
-            currentProposal: current.issueProposal,
-            userFeedback: feedback,
+            rawInput: feedbackState.rawInput,
+            dialogue: feedbackState.definingDialogue,
+            currentProposal: feedbackState.issueProposal,
+            userFeedback: trimmedFeedback,
             context: context
         )
-        await emit(.providerRequest, meetingID: current.id, message: "Refining issue proposal")
+        await emit(.providerRequest, meetingID: feedbackState.id, message: "Refining issue proposal")
         let envelope = try await provider.generate(
             request: LLMRequest(kind: .defineIssue, payload: input),
             responseType: IssueDefinitionResponse.self
         )
-        await emit(.providerResponse, meetingID: current.id, message: "Received refined definition", trace: envelope.trace)
-        return try await applyDefinition(envelope.payload, to: current)
+        await emit(.providerResponse, meetingID: feedbackState.id, message: "Received refined definition", trace: envelope.trace)
+        return try await applyDefinition(envelope.payload, to: feedbackState)
     }
 
     public func confirmProposalAndOpenRoundtable() async throws -> MeetingFlowState {

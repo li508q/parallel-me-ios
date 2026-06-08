@@ -6,13 +6,13 @@ This repository intentionally does not port the web app one file at a time. It k
 
 ## Product Flow
 
-1. `Defining`: the scribe turns a raw petition into a four-key issue proposal.
+1. `Defining`: the scribe turns a raw petition into a four-key issue proposal, then lets the user refine that definition before confirmation.
 2. `Roundtable`: five fixed voices open and continue the discussion.
 3. `Inquiry`: the scribe asks only the remaining high-density questions needed for settlement.
 4. `Settlement`: the user receives and can revise the final Heart Settlement.
 5. `Archive`: the completed meeting is stored locally.
 
-There is no global question-count cap. The app closes loops through explicit sufficiency checks: proposal completeness, purpose coverage, duplicate filtering, inquiry readiness, and user confirmation.
+There is no global question-count cap. The app closes loops through explicit sufficiency checks: proposal completeness, purpose coverage, duplicate filtering, proposal refinement, inquiry readiness, and user confirmation.
 
 ## Modules
 

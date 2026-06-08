@@ -21,6 +21,8 @@ The web version proves the product but couples state orchestration to page compo
 
 `MeetingSessionCoordinator` sits above the flow engine. It is intentionally an actor: model calls, persistence, and user actions can arrive asynchronously, but state transitions still pass through one serialized coordinator.
 
+Stage-one proposal refinement also lives in the coordinator. User feedback is appended to `definingDialogue`, persisted, then sent back through the provider boundary as `IssueDefinitionInput.userFeedback`; the UI only dispatches the intent and renders the regenerated proposal.
+
 ## Provider Strategy
 
 The provider boundary is intentionally typed:
@@ -56,6 +58,7 @@ Provider runtime settings are split deliberately:
 - Every model-facing action returns a typed payload.
 - Every user-visible transition is represented by `MeetingStage`.
 - Repeated questions are filtered before they reach UI.
+- Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - The final inquiry loop has no hard cap; tests assert this invariant.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
 - Session events record provider requests, provider responses, persistence, and failures for future debug surfaces.

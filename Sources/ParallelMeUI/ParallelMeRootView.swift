@@ -273,6 +273,7 @@ public struct VoicePrimerGrid: View {
 private struct DefiningView: View {
     var state: MeetingFlowState
     @ObservedObject var viewModel: MeetingViewModel
+    @State private var proposalFeedback = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
@@ -283,6 +284,12 @@ private struct DefiningView: View {
                 .foregroundStyle(ParallelMeColor.inkMuted)
             if let proposal = state.issueProposal {
                 IssueProposalView(proposal: proposal)
+                ProposalRevisionView(
+                    feedback: $proposalFeedback,
+                    isBusy: viewModel.isBusy
+                ) {
+                    viewModel.refineProposal(proposalFeedback)
+                }
                 Button(action: viewModel.confirmProposal) {
                     Label("确认议题，进入圆桌", systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
@@ -305,6 +312,33 @@ private struct DefiningView: View {
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
         .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+    }
+}
+
+private struct ProposalRevisionView: View {
+    @Binding var feedback: String
+    var isBusy: Bool
+    var refine: () -> Void
+
+    private var canRefine: Bool {
+        !feedback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isBusy
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Divider()
+                .padding(.vertical, ParallelMeSpacing.xs)
+            TextField("哪里不准？直接写给书记员", text: $feedback, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .font(ParallelMeTypography.body)
+                .lineLimit(2...4)
+            Button(action: refine) {
+                Label("修订这版议题", systemImage: "arrow.triangle.2.circlepath")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!canRefine)
+        }
     }
 }
 

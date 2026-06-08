@@ -21,6 +21,8 @@ The scribe can ask 1-3 questions per turn. There is no total-turn cap. Repetitio
 
 The user can confirm, edit, or ask the scribe to refine the proposal. The app cannot enter the roundtable until the proposal is complete enough to map into a task frame.
 
+On iOS, proposal refinement is a first-class loop: the user can write what feels inaccurate, the feedback is stored in the defining dialogue, and the scribe regenerates the four-key proposal before the user confirms.
+
 ## 4. Five-Voice Roundtable
 
 The fixed voices are:

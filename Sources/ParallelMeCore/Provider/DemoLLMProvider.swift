@@ -12,10 +12,16 @@ public actor DemoLLMProvider: LLMProvider {
         switch request.kind {
         case .defineIssue:
             let input = request.payload as? IssueDefinitionInput
+            let feedback = input?.userFeedback?.trimmingCharacters(in: .whitespacesAndNewlines)
             payload = IssueDefinitionResponse(
-                proposal: Self.proposal(rawInput: input?.rawInput ?? "这件事还没有被说清楚"),
+                proposal: Self.proposal(
+                    rawInput: input?.rawInput ?? "这件事还没有被说清楚",
+                    feedback: feedback?.isEmpty == false ? feedback : nil
+                ),
                 readyToPropose: true,
-                thinking: "演示模式：直接生成四 Key 议题提案。"
+                thinking: feedback?.isEmpty == false
+                    ? "演示模式：按用户反馈修订四 Key 议题提案。"
+                    : "演示模式：直接生成四 Key 议题提案。"
             )
         case .openRoundtable:
             payload = RoundtableOpeningResponse(openings: VoiceID.allCases.map(Self.opening))
@@ -79,12 +85,13 @@ public actor DemoLLMProvider: LLMProvider {
         return LLMEnvelope(payload: typedPayload, trace: ["demo:\(request.kind.rawValue)"])
     }
 
-    private static func proposal(rawInput: String) -> IssueProposal {
-        IssueProposal(
-            issueSentence: rawInput,
+    private static func proposal(rawInput: String, feedback: String? = nil) -> IssueProposal {
+        let feedbackLine = feedback.map { "用户修订重点：\($0)" }
+        return IssueProposal(
+            issueSentence: feedbackLine ?? rawInput,
             surfaceDilemma: IssueProposalKey(
                 title: "选择岔路",
-                content: "一边是继续维持现状，一边是承认自己想换一种活法。",
+                content: feedbackLine ?? "一边是继续维持现状，一边是承认自己想换一种活法。",
                 details: ["继续沿着旧轨道走", "设置一个观察期，测试新方向"]
             ),
             currentConstraints: IssueProposalKey(
@@ -99,7 +106,8 @@ public actor DemoLLMProvider: LLMProvider {
             ),
             expectedResolution: IssueProposalKey(
                 title: "圆桌任务",
-                content: "确认哪一种代价必须接受，哪一种底线不能碰。",
+                content: feedback.map { "围绕“\($0)”重新确认哪一种代价必须接受，哪一种底线不能碰。" }
+                    ?? "确认哪一种代价必须接受，哪一种底线不能碰。",
                 details: ["排出代价优先级", "给出一个 24 小时行动"]
             )
         )

@@ -208,7 +208,19 @@ struct ParallelMeCoreSmokeTests {
                 ),
                 responseType: IssueDefinitionResponse.self
             )
+            let refined = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(
+                        rawInput: "我想辞职又怕没钱",
+                        dialogue: [],
+                        userFeedback: "请聚焦身体底线"
+                    )
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
             try expect(envelope.payload.proposal?.isComplete == true)
+            try expect(refined.payload.proposal?.expectedResolution.content.contains("身体底线") == true)
             try expect(envelope.trace == ["demo:defineIssue"])
         }
 
@@ -261,6 +273,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(opened.stage == .roundtable)
             try expect(opened.roundtable.openingTurns.map(\.voiceID) == VoiceID.allCases)
             try expect(saved?.roundtable.openingTurns.count == 5)
+        }
+
+        try await runner.runAsync("session coordinator refines proposal from user feedback") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            let feedback = "这不是辞职冲动，重点是身体底线和观察期。"
+            var refinedProposal = completeProposal
+            refinedProposal.issueSentence = "重新定义：身体底线和观察期"
+            refinedProposal.expectedResolution = IssueProposalKey(
+                title: "圆桌任务",
+                content: "围绕身体底线和观察期重新确认代价。",
+                details: ["身体底线", "观察期"]
+            )
+            await provider.register(
+                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            _ = try await coordinator.requestDefinition()
+            do {
+                _ = try await coordinator.refineProposal(feedback: "  ")
+                throw TestFailure("Expected empty proposal feedback error")
+            } catch MeetingSessionError.emptyFeedback {
+                // expected
+            }
+            await provider.register(
+                IssueDefinitionResponse(proposal: refinedProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            let refined = try await coordinator.refineProposal(feedback: feedback)
+            let saved = try await repository.load(id: started.id)
+
+            try expect(refined.issueProposal?.issueSentence == "重新定义：身体底线和观察期")
+            try expect(refined.issueProposal?.expectedResolution.details == ["身体底线", "观察期"])
+            try expect(refined.definingDialogue.last?.answer?.freeText == feedback)
+            try expect(saved?.definingDialogue.last?.answer?.questionID == "proposal_feedback")
         }
 
         try await runner.runAsync("session coordinator settles only after readiness") {

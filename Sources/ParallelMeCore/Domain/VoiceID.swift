@@ -46,5 +46,14 @@ public enum SettlementModuleID: String, CaseIterable, Codable, Sendable, Identif
     case dialecticSynthesis = "dialectic_synthesis"
 
     public var id: String { rawValue }
-}
 
+    public var label: String {
+        switch self {
+        case .creativeHopelessness: "创造性无望"
+        case .coreValues: "核心价值主轴"
+        case .costAcceptance: "痛苦接纳契约"
+        case .minimumAction: "最小行动承诺"
+        case .dialecticSynthesis: "正反合"
+        }
+    }
+}

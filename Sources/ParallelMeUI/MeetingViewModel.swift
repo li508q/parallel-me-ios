@@ -116,6 +116,14 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
+    public func refineProposal(_ feedback: String) {
+        let trimmed = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        run { [self] in
+            self.state = try await self.coordinator.refineProposal(feedback: trimmed)
+        }
+    }
+
     public func continueRoundtable() {
         run { [self] in
             let move = RoundtableMove(type: .continueAll)
@@ -232,9 +240,50 @@ public final class MeetingViewModel: ObservableObject {
             do {
                 try await operation()
             } catch {
-                errorMessage = String(describing: error)
+                errorMessage = Self.userFacingMessage(for: error)
             }
             isBusy = false
+        }
+    }
+
+    private static func userFacingMessage(for error: any Error) -> String {
+        switch error {
+        case MeetingFlowError.emptyPetition:
+            return "先写下一句真实困惑，书记员才知道从哪里开始。"
+        case MeetingFlowError.incompleteProposal(let missing):
+            let labels = missing.map(\.label).joined(separator: "、")
+            return "这版议题还差 \(labels)，先别急着进圆桌。"
+        case MeetingFlowError.missingRoundtableOpenings:
+            return "五声还没有完成开场，等它们先把位置坐稳。"
+        case MeetingFlowError.missingAlignmentProfile:
+            return "书记员还没拿到足够证据，先回答最后几个关键问题。"
+        case MeetingFlowError.missingHeartSettlement:
+            return "还没有可修订的本心落定。"
+        case MeetingFlowError.missingTaskFrame, MeetingSessionError.missingTaskFrame:
+            return "这次议题还没形成可讨论的任务框架，请先修订定义。"
+        case MeetingSessionError.noActiveMeeting:
+            return "当前没有打开的纸页。"
+        case MeetingSessionError.missingProposal:
+            return "书记员还没有生成可确认的议题。"
+        case MeetingSessionError.emptyFeedback:
+            return "写一句你想修订的地方，再让书记员重整。"
+        case MeetingSessionError.emptyModelResult:
+            return "这次模型没有返回可用内容，请再试一次。"
+        case MeetingSessionError.settlementNotReady(let missing):
+            let labels = missing.map(\.label).joined(separator: "、")
+            return "本心落定还差 \(labels) 的证据。"
+        case ProviderRuntimeFactoryError.invalidOpenAICompatibleSettings:
+            return "OpenAI 配置还不完整，请检查 Base URL、模型名和 API Key。"
+        case OpenAICompatibleProviderError.transport(let statusCode, _):
+            return "模型服务返回 \(statusCode)，请检查网络、Key 或服务地址。"
+        case OpenAICompatibleProviderError.missingMessageContent:
+            return "模型没有返回正文，请再试一次。"
+        case OpenAICompatibleProviderError.invalidJSON:
+            return "模型返回的结构不符合 ParallelMe 需要的格式，请再试一次。"
+        case MockLLMProviderError.missingResponse:
+            return "测试 provider 缺少这一阶段的响应。"
+        default:
+            return "这一步没有完成，请稍后再试。"
         }
     }
 }
