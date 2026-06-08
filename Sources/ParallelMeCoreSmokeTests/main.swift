@@ -191,6 +191,33 @@ struct ParallelMeCoreSmokeTests {
             try expect(envelope.trace == ["demo:defineIssue"])
         }
 
+        try await runner.runAsync("provider settings repository keeps api key out of metadata") {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("parallel-me-provider-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let fileURL = directory.appendingPathComponent("provider-settings.json")
+            let metadataStore = FileProviderRuntimeMetadataStore(fileURL: fileURL)
+            let secretStore = InMemorySecretStore()
+            let repository = ProviderSettingsRepository(
+                metadataStore: metadataStore,
+                secretStore: secretStore
+            )
+            let settings = ProviderRuntimeSettings(
+                mode: .openAICompatible,
+                baseURLString: "https://api.openai.com/v1",
+                model: "gpt-4o-mini",
+                apiKey: "sk-test-secret"
+            )
+
+            try await repository.saveSettings(settings)
+            let loaded = try await repository.loadSettings()
+            let metadataText = try String(contentsOf: fileURL, encoding: .utf8)
+
+            try expect(loaded == settings)
+            try expect(!metadataText.contains("sk-test-secret"))
+            try expect(metadataText.contains("gpt-4o-mini"))
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()

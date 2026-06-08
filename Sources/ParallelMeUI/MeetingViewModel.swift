@@ -14,9 +14,15 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var providerAPIKey: String = ""
 
     private var coordinator: any MeetingCoordinating
+    private let providerSettingsStore: (any ProviderSettingsStoring)?
+    private var hasLoadedProviderSettings = false
 
-    public init(coordinator: any MeetingCoordinating) {
+    public init(
+        coordinator: any MeetingCoordinating,
+        providerSettingsStore: (any ProviderSettingsStoring)? = nil
+    ) {
         self.coordinator = coordinator
+        self.providerSettingsStore = providerSettingsStore
     }
 
     public static func makeDefault() -> MeetingViewModel {
@@ -24,7 +30,10 @@ public final class MeetingViewModel: ObservableObject {
             provider: DemoLLMProvider(),
             repository: FileMeetingRepository.defaultRepository()
         )
-        return MeetingViewModel(coordinator: coordinator)
+        return MeetingViewModel(
+            coordinator: coordinator,
+            providerSettingsStore: ProviderSettingsRepository.defaultRepository()
+        )
     }
 
     public var providerSettings: ProviderRuntimeSettings {
@@ -52,10 +61,20 @@ public final class MeetingViewModel: ObservableObject {
         errorMessage = nil
     }
 
+    public func loadProviderSettings() async {
+        guard !hasLoadedProviderSettings, let providerSettingsStore else { return }
+        hasLoadedProviderSettings = true
+        do {
+            applyProviderSettings(try await providerSettingsStore.loadSettings())
+        } catch {
+            errorMessage = String(describing: error)
+        }
+    }
+
     public func startMeeting() {
         let input = petition
         run { [self] in
-            try self.rebuildCoordinatorIfNeeded()
+            try await self.rebuildCoordinatorIfNeeded()
             let started = try await self.coordinator.start(rawInput: input)
             self.state = started
             self.state = try await self.coordinator.requestDefinition()
@@ -124,12 +143,20 @@ public final class MeetingViewModel: ObservableObject {
         isBusy = false
     }
 
-    private func rebuildCoordinatorIfNeeded() throws {
+    private func rebuildCoordinatorIfNeeded() async throws {
+        try await providerSettingsStore?.saveSettings(providerSettings)
         let provider = try ProviderRuntimeFactory.makeProvider(settings: providerSettings)
         coordinator = MeetingSessionCoordinator(
             provider: provider,
             repository: FileMeetingRepository.defaultRepository()
         )
+    }
+
+    private func applyProviderSettings(_ settings: ProviderRuntimeSettings) {
+        providerMode = settings.mode
+        providerBaseURL = settings.baseURLString
+        providerModel = settings.model
+        providerAPIKey = settings.apiKey
     }
 
     private func run(_ operation: @escaping @MainActor () async throws -> Void) {

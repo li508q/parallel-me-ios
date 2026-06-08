@@ -1,0 +1,344 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		57FC1848147C48C9639D524C /* ParallelMeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 3D2475D8C8CA8A11F555AB0C /* ParallelMeUI */; };
+		9CA866A4F1538BFC4B2646BB /* ParallelMeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9936644F39C5A322452A4E2A /* ParallelMeCore */; };
+		A6C9B91261E0BD7CFA9CDA22 /* ParallelMeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 674FE29FCE0056AFDF285CA8 /* ParallelMeApp.swift */; };
+		E921F9F2AF70B836531C3FB1 /* ParallelMeDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 532E31FA3CCB6C26BA3B8794 /* ParallelMeDesign */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		674FE29FCE0056AFDF285CA8 /* ParallelMeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelMeApp.swift; sourceTree = "<group>"; };
+		9463348FB709F34D3A6757A9 /* parallel-me-ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "parallel-me-ios"; path = .; sourceTree = SOURCE_ROOT; };
+		AC40066E1D636A253D204101 /* ParallelMe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ParallelMe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		21849EC876F8C4E7D8F4EDEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9CA866A4F1538BFC4B2646BB /* ParallelMeCore in Frameworks */,
+				E921F9F2AF70B836531C3FB1 /* ParallelMeDesign in Frameworks */,
+				57FC1848147C48C9639D524C /* ParallelMeUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2926295A078B71358757E4F9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AC40066E1D636A253D204101 /* ParallelMe.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2AEFBE2F96033AB5BE5430D1 /* ParallelMe */ = {
+			isa = PBXGroup;
+			children = (
+				674FE29FCE0056AFDF285CA8 /* ParallelMeApp.swift */,
+			);
+			name = ParallelMe;
+			path = App/ParallelMe;
+			sourceTree = "<group>";
+		};
+		617A15EBC5E23D13F12E0F78 = {
+			isa = PBXGroup;
+			children = (
+				B8C1F3095586870992C08509 /* Packages */,
+				2AEFBE2F96033AB5BE5430D1 /* ParallelMe */,
+				2926295A078B71358757E4F9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B8C1F3095586870992C08509 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				9463348FB709F34D3A6757A9 /* parallel-me-ios */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		841DAF86EFC820ADBAE38DEA /* ParallelMe */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 525F69216557BFAA46671F3A /* Build configuration list for PBXNativeTarget "ParallelMe" */;
+			buildPhases = (
+				3FBC1A44FA535D1FF2FFD85C /* Sources */,
+				21849EC876F8C4E7D8F4EDEE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ParallelMe;
+			packageProductDependencies = (
+				9936644F39C5A322452A4E2A /* ParallelMeCore */,
+				532E31FA3CCB6C26BA3B8794 /* ParallelMeDesign */,
+				3D2475D8C8CA8A11F555AB0C /* ParallelMeUI */,
+			);
+			productName = ParallelMe;
+			productReference = AC40066E1D636A253D204101 /* ParallelMe.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2A169733299F56F3717EBB30 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = B57F0C2A791CFEA4EEF9672E /* Build configuration list for PBXProject "ParallelMe" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 617A15EBC5E23D13F12E0F78;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9A59EFB67026411B6D38DF5D /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2926295A078B71358757E4F9 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				841DAF86EFC820ADBAE38DEA /* ParallelMe */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3FBC1A44FA535D1FF2FFD85C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A6C9B91261E0BD7CFA9CDA22 /* ParallelMeApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		24E428FC56E9C6AB8C10D3E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		79E6D5606AE36F70AB15ABC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parallelme.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C41AC95F0150CB2B82AE84BB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.parallelme.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F8B093729154A907092D87A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		525F69216557BFAA46671F3A /* Build configuration list for PBXNativeTarget "ParallelMe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				79E6D5606AE36F70AB15ABC2 /* Debug */,
+				C41AC95F0150CB2B82AE84BB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B57F0C2A791CFEA4EEF9672E /* Build configuration list for PBXProject "ParallelMe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F8B093729154A907092D87A7 /* Debug */,
+				24E428FC56E9C6AB8C10D3E2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		9A59EFB67026411B6D38DF5D /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3D2475D8C8CA8A11F555AB0C /* ParallelMeUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ParallelMeUI;
+		};
+		532E31FA3CCB6C26BA3B8794 /* ParallelMeDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ParallelMeDesign;
+		};
+		9936644F39C5A322452A4E2A /* ParallelMeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ParallelMeCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 2A169733299F56F3717EBB30 /* Project object */;
+}

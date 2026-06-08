@@ -40,6 +40,16 @@ This keeps prompt iteration, network transport, and product state transitions in
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
 
+Provider runtime settings are split deliberately:
+
+- Non-sensitive metadata, such as mode, base URL, and model, is stored as local JSON.
+- API keys are stored through `SecretStore`; the default app implementation uses Keychain.
+- Tests use in-memory secret storage and verify that API keys never appear in metadata JSON.
+
+## Project Generation
+
+`project.yml` is the source of truth for Xcode project shape. `ParallelMe.xcodeproj` is generated with XcodeGen and checked in so iOS developers can open the app directly in Xcode.
+
 ## Debugging Strategy
 
 - Every model-facing action returns a typed payload.

@@ -33,6 +33,9 @@ public struct ParallelMeRootView: View {
             }
             .parallelMeInlineNavigationTitle()
         }
+        .task {
+            await viewModel.loadProviderSettings()
+        }
     }
 
     private var header: some View {
