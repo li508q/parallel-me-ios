@@ -3,7 +3,7 @@ import ParallelMeCore
 
 @main
 struct ParallelMeCoreSmokeTests {
-    static func main() throws {
+    static func main() async throws {
         var runner = Runner()
         try runner.run("fixed five voices") {
             try expect(VoicePersonas.all.map(\.id) == VoiceID.allCases)
@@ -159,6 +159,65 @@ struct ParallelMeCoreSmokeTests {
             try expect(readiness.isReady)
         }
 
+        try await runner.runAsync("session coordinator persists definition and openings") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            await provider.register(
+                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            await provider.register(
+                RoundtableOpeningResponse(openings: VoiceID.allCases.map { opening($0) }),
+                for: .openRoundtable
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try await coordinator.requestDefinition()
+            let opened = try await coordinator.confirmProposalAndOpenRoundtable()
+            let saved = try await repository.load(id: started.id)
+
+            try expect(proposed.issueProposal?.isComplete == true)
+            try expect(opened.stage == .roundtable)
+            try expect(opened.roundtable.openingTurns.map(\.voiceID) == VoiceID.allCases)
+            try expect(saved?.roundtable.openingTurns.count == 5)
+        }
+
+        try await runner.runAsync("session coordinator settles only after readiness") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            await provider.register(
+                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            await provider.register(
+                RoundtableOpeningResponse(openings: VoiceID.allCases.map { opening($0) }),
+                for: .openRoundtable
+            )
+            await provider.register(
+                AlignmentInquiryResponse(
+                    readyForSettlement: true,
+                    profile: completeProfile,
+                    ledger: ScribeObservationLedger(moduleSignals: [.minimumAction: ["今晚写预算"]])
+                ),
+                for: .alignmentInquiry
+            )
+            await provider.register(
+                HeartSettlementResponse(settlement: sampleSettlement),
+                for: .heartSettlement
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            _ = try await coordinator.requestDefinition()
+            _ = try await coordinator.confirmProposalAndOpenRoundtable()
+            _ = try await coordinator.startInquiry()
+            let settled = try await coordinator.requestSettlement()
+
+            try expect(settled.stage == .settlement)
+            try expect(settled.heartSettlement?.headline == sampleSettlement.headline)
+        }
+
         runner.finish()
     }
 
@@ -213,8 +272,37 @@ struct ParallelMeCoreSmokeTests {
             purpose: purpose
         )
     }
+
+    private static var completeProfile: AlignmentProfile {
+        AlignmentProfile(
+            falsifiedFantasy: "没有无代价的自由。",
+            coreValueAxis: "用可持续的方式守住自由。",
+            acceptedCosts: ["短期收入波动"],
+            hegelianSynthesis: HegelianSynthesis(
+                thesis: "我想离开高压工作。",
+                antithesis: "我也需要现实退路。",
+                synthesis: "先用一个月观察期换回判断力。"
+            ),
+            userSelfStatements: ["我可以接受慢一点，但不能继续耗空。"]
+        )
+    }
+
+    private static var sampleSettlement: HeartSettlement {
+        HeartSettlement(
+            creativeHopelessness: SettlementModule(title: "无望", report: "没有无代价的自由。"),
+            coreValueAxis: SettlementModule(title: "主轴", report: "守住可持续的自由。"),
+            costAcceptanceContract: SettlementModule(title: "契约", report: "接受短期收入波动。"),
+            minimumViableCommitment: SettlementModule(title: "行动", report: "今晚写出预算和观察期。"),
+            dialecticSynthesis: DialecticSynthesis(
+                thesis: "我想离开。",
+                antithesis: "我需要退路。",
+                synthesis: "先用一个月观察期换回判断力。"
+            )
+        )
+    }
 }
 
+@MainActor
 private struct Runner {
     private var passed = 0
 
@@ -232,6 +320,17 @@ private struct Runner {
     func finish() {
         print("All \(passed) smoke tests passed.")
     }
+
+    mutating func runAsync(_ name: String, _ body: @MainActor () async throws -> Void) async throws {
+        do {
+            try await body()
+            passed += 1
+            print("PASS \(name)")
+        } catch {
+            print("FAIL \(name): \(error)")
+            throw error
+        }
+    }
 }
 
 private struct TestFailure: Error, CustomStringConvertible {
@@ -247,4 +346,3 @@ private func expect(_ condition: @autoclosure () -> Bool) throws {
         throw TestFailure("Expectation failed")
     }
 }
-

@@ -22,7 +22,9 @@ There is no global question-count cap. The app closes loops through explicit suf
 | `ParallelMeDesign` | iPhone design tokens: color, spacing, typography, motion intent. |
 | `ParallelMeUI` | SwiftUI surfaces that render core state and dispatch user intent. |
 | `App/ParallelMe` | Thin iOS app entry point. |
-| `Tests/ParallelMeCoreTests` | Unit tests for flow rules, persona invariants, deduplication, and no hard inquiry cap. |
+| `ParallelMeCoreSmokeTests` | Executable tests for flow rules, persona invariants, deduplication, session coordination, and no hard inquiry cap. |
+
+`MeetingSessionCoordinator` is the app-service boundary. It owns the active meeting state, calls an injected `LLMProvider`, applies the `MeetingFlowEngine`, and persists through an injected `MeetingRepository`.
 
 ## Local Development
 
