@@ -229,11 +229,18 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
-    public func reset() {
+    public func closeCurrentPaper() {
+        guard !isBusy else { return }
         petition = ""
         state = nil
         errorMessage = nil
-        isBusy = false
+        Task { @MainActor in
+            await self.loadRecentMeetings()
+        }
+    }
+
+    public func reset() {
+        closeCurrentPaper()
     }
 
     private func rebuildCoordinatorIfNeeded() async throws {

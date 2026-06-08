@@ -21,7 +21,11 @@ public struct ParallelMeRootView: View {
                         }
                         if let state = viewModel.state {
                             MeetingStageRail(stage: state.stage)
-                            MeetingPaperContextView(state: state)
+                            MeetingPaperContextView(
+                                state: state,
+                                isBusy: viewModel.isBusy,
+                                close: viewModel.closeCurrentPaper
+                            )
                             stageBody(state, viewModel: viewModel)
                         } else {
                             if let resumable = viewModel.resumableMeeting {
@@ -117,6 +121,8 @@ public struct ParallelMeRootView: View {
 
 private struct MeetingPaperContextView: View {
     var state: MeetingFlowState
+    var isBusy: Bool
+    var close: () -> Void
 
     private var summary: MeetingSummary {
         MeetingSummary(state: state)
@@ -143,13 +149,23 @@ private struct MeetingPaperContextView: View {
                         .foregroundStyle(ParallelMeColor.inkMuted)
                 }
                 Spacer(minLength: ParallelMeSpacing.sm)
-                Text("\(timelineItems.count) 步")
-                    .font(ParallelMeTypography.eyebrow)
-                    .foregroundStyle(ParallelMeColor.inkMuted)
-                    .padding(.horizontal, ParallelMeSpacing.sm)
-                    .padding(.vertical, ParallelMeSpacing.xs)
-                    .background(ParallelMeColor.paper)
-                    .clipShape(Capsule())
+                VStack(alignment: .trailing, spacing: ParallelMeSpacing.xs) {
+                    Text("\(timelineItems.count) 步")
+                        .font(ParallelMeTypography.eyebrow)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .padding(.horizontal, ParallelMeSpacing.sm)
+                        .padding(.vertical, ParallelMeSpacing.xs)
+                        .background(ParallelMeColor.paper)
+                        .clipShape(Capsule())
+                    Button(action: close) {
+                        Label("回首页", systemImage: "house")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isBusy)
+                    .accessibilityLabel(Text("回到首页，稍后继续这张纸页"))
+                }
             }
 
             DisclosureGroup("纸页脉络") {
