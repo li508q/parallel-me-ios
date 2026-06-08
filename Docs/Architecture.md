@@ -68,4 +68,4 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - The final inquiry loop has no hard cap; tests assert this invariant.
 - Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, and required settlement modules.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
-- Session events record provider requests, provider responses, persistence, and failures for future debug surfaces.
+- Session events record provider requests, provider responses, persistence, and failures; the default app keeps the latest events in memory and exposes them through the collapsible running trace panel.

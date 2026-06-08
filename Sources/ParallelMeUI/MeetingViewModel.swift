@@ -8,6 +8,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public private(set) var state: MeetingFlowState?
     @Published public private(set) var recentMeetings: [MeetingSummary] = []
     @Published public private(set) var resumableMeeting: MeetingSummary?
+    @Published public private(set) var sessionEvents: [MeetingSessionEvent] = []
     @Published public private(set) var isBusy = false
     @Published public private(set) var errorMessage: String?
     @Published public var providerMode: ProviderRuntimeMode = .demo
@@ -18,28 +19,34 @@ public final class MeetingViewModel: ObservableObject {
     private var coordinator: any MeetingCoordinating
     private let meetingRepository: AnyMeetingRepository
     private let providerSettingsStore: (any ProviderSettingsStoring)?
+    private let sessionEventSink: InMemoryMeetingSessionEventSink?
     private var hasLoadedProviderSettings = false
 
     public init(
         coordinator: any MeetingCoordinating,
         meetingRepository: any MeetingRepository = InMemoryMeetingRepository(),
-        providerSettingsStore: (any ProviderSettingsStoring)? = nil
+        providerSettingsStore: (any ProviderSettingsStoring)? = nil,
+        sessionEventSink: InMemoryMeetingSessionEventSink? = nil
     ) {
         self.coordinator = coordinator
         self.meetingRepository = AnyMeetingRepository(meetingRepository)
         self.providerSettingsStore = providerSettingsStore
+        self.sessionEventSink = sessionEventSink
     }
 
     public static func makeDefault() -> MeetingViewModel {
         let repository = FileMeetingRepository.defaultRepository()
+        let sessionEventSink = InMemoryMeetingSessionEventSink()
         let coordinator = MeetingSessionCoordinator(
             provider: DemoLLMProvider(),
-            repository: repository
+            repository: repository,
+            eventSink: sessionEventSink
         )
         return MeetingViewModel(
             coordinator: coordinator,
             meetingRepository: repository,
-            providerSettingsStore: ProviderSettingsRepository.defaultRepository()
+            providerSettingsStore: ProviderSettingsRepository.defaultRepository(),
+            sessionEventSink: sessionEventSink
         )
     }
 
@@ -88,6 +95,11 @@ public final class MeetingViewModel: ObservableObject {
         } catch {
             errorMessage = Self.userFacingMessage(for: error)
         }
+    }
+
+    public func loadSessionEvents() async {
+        guard let sessionEventSink else { return }
+        sessionEvents = Array(await sessionEventSink.allEvents().suffix(12))
     }
 
     public func startMeeting() {
@@ -236,6 +248,7 @@ public final class MeetingViewModel: ObservableObject {
         errorMessage = nil
         Task { @MainActor in
             await self.loadRecentMeetings()
+            await self.loadSessionEvents()
         }
     }
 
@@ -246,10 +259,18 @@ public final class MeetingViewModel: ObservableObject {
     private func rebuildCoordinatorIfNeeded() async throws {
         try await providerSettingsStore?.saveSettings(providerSettings)
         let provider = try ProviderRuntimeFactory.makeProvider(settings: providerSettings)
-        coordinator = MeetingSessionCoordinator(
-            provider: provider,
-            repository: meetingRepository
-        )
+        if let sessionEventSink {
+            coordinator = MeetingSessionCoordinator(
+                provider: provider,
+                repository: meetingRepository,
+                eventSink: sessionEventSink
+            )
+        } else {
+            coordinator = MeetingSessionCoordinator(
+                provider: provider,
+                repository: meetingRepository
+            )
+        }
     }
 
     private func applyProviderSettings(_ settings: ProviderRuntimeSettings) {
@@ -267,8 +288,18 @@ public final class MeetingViewModel: ObservableObject {
             do {
                 try await operation()
             } catch {
-                errorMessage = Self.userFacingMessage(for: error)
+                let message = Self.userFacingMessage(for: error)
+                errorMessage = message
+                await sessionEventSink?.record(
+                    MeetingSessionEvent(
+                        meetingID: state?.id,
+                        kind: .failed,
+                        message: message,
+                        trace: [String(describing: error)]
+                    )
+                )
             }
+            await loadSessionEvents()
             isBusy = false
         }
     }

@@ -43,6 +43,9 @@ public struct ParallelMeRootView: View {
                             )
                             VoicePrimerGrid()
                         }
+                        if !viewModel.sessionEvents.isEmpty {
+                            SessionDiagnosticsPanel(events: viewModel.sessionEvents)
+                        }
                     }
                     .padding(.horizontal, ParallelMeSpacing.md)
                     .padding(.vertical, ParallelMeSpacing.xl)
@@ -53,6 +56,7 @@ public struct ParallelMeRootView: View {
         .task {
             await viewModel.loadProviderSettings()
             await viewModel.loadRecentMeetings()
+            await viewModel.loadSessionEvents()
         }
     }
 
@@ -383,6 +387,77 @@ private struct ErrorBanner: View {
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.filial.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+    }
+}
+
+private struct SessionDiagnosticsPanel: View {
+    var events: [MeetingSessionEvent]
+
+    var body: some View {
+        DisclosureGroup("运行轨迹") {
+            VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                ForEach(events.reversed()) { event in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: ParallelMeSpacing.xs) {
+                            Text(label(for: event.kind))
+                                .font(ParallelMeTypography.eyebrow)
+                                .foregroundStyle(color(for: event.kind))
+                            Text(event.message)
+                                .font(ParallelMeTypography.compact)
+                                .foregroundStyle(ParallelMeColor.ink)
+                                .lineLimit(2)
+                        }
+                        if let trace = event.trace.first {
+                            Text(trace)
+                                .font(ParallelMeTypography.compact)
+                                .foregroundStyle(ParallelMeColor.inkMuted)
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.top, ParallelMeSpacing.xs)
+        }
+        .font(ParallelMeTypography.compact)
+        .foregroundStyle(ParallelMeColor.ink)
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift.opacity(0.78))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.line.opacity(0.55), lineWidth: 1)
+        )
+    }
+
+    private func label(for kind: MeetingSessionEventKind) -> String {
+        switch kind {
+        case .started:
+            return "开始"
+        case .providerRequest:
+            return "请求"
+        case .providerResponse:
+            return "响应"
+        case .persisted:
+            return "保存"
+        case .failed:
+            return "失败"
+        }
+    }
+
+    private func color(for kind: MeetingSessionEventKind) -> Color {
+        switch kind {
+        case .started:
+            return ParallelMeColor.rest
+        case .providerRequest:
+            return ParallelMeColor.roam
+        case .providerResponse:
+            return ParallelMeColor.future
+        case .persisted:
+            return ParallelMeColor.money
+        case .failed:
+            return ParallelMeColor.filial
+        }
     }
 }
 

@@ -25,6 +25,7 @@ There is no global question-count cap. The app closes loops through explicit suf
 | `ParallelMeCoreSmokeTests` | Executable tests for flow rules, persona invariants, deduplication, session coordination, and no hard inquiry cap. |
 
 `MeetingSessionCoordinator` is the app-service boundary. It owns the active meeting state, calls an injected `LLMProvider`, applies the `MeetingFlowEngine`, and persists through an injected `MeetingRepository`.
+The default app also wires an in-memory session event sink so the SwiftUI running trace can show provider requests, responses, persistence, and failures while developing or debugging a meeting.
 
 ## Runtime Providers
 
