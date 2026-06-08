@@ -335,6 +335,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(MeetingResumePolicy.candidate(in: [archived]) == nil)
         }
 
+        try runner.run("meeting library groups and sorts local papers") {
+            let engine = MeetingFlowEngine()
+            var oldArchived = try engine.start(rawInput: "旧归档")
+            oldArchived.createdAt = Date(timeIntervalSince1970: 10)
+            oldArchived.stage = .archived
+            oldArchived.heartSettlement = sampleSettlement
+
+            var recentArchived = try engine.start(rawInput: "新归档")
+            recentArchived.createdAt = Date(timeIntervalSince1970: 20)
+            recentArchived.stage = .archived
+
+            var active = try engine.start(rawInput: "最新未完成")
+            active.createdAt = Date(timeIntervalSince1970: 30)
+            active = try engine.receiveIssueProposal(completeProposal, in: active)
+            active = try engine.confirmProposal(in: active)
+            active = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: active)
+            active = try engine.appendRoundtableMove(
+                RoundtableMove(
+                    type: .userToTable,
+                    userText: "继续排代价",
+                    createdAt: Date(timeIntervalSince1970: 120)
+                ),
+                turns: [],
+                in: active
+            )
+
+            let library = MeetingLibrarySnapshot(states: [oldArchived, active, recentArchived], recentLimit: 2)
+
+            try expect(library.totalCount == 3)
+            try expect(library.recent.map(\.id) == [active.id, recentArchived.id])
+            try expect(library.resumable?.id == active.id)
+            try expect(library.unfinished.map(\.id) == [active.id])
+            try expect(library.archived.map(\.id) == [recentArchived.id, oldArchived.id])
+            try expect(library.archivedCount == 2)
+            try expect(library.unfinishedCount == 1)
+            try expect(!library.isEmpty)
+        }
+
         try runner.run("meeting timeline summarizes current paper progress") {
             let engine = MeetingFlowEngine()
             let started = try engine.start(rawInput: "我想辞职又怕没钱")

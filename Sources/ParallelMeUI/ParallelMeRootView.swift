@@ -36,8 +36,8 @@ public struct ParallelMeRootView: View {
                                 )
                             }
                             startCard
-                            RecentMeetingsSection(
-                                meetings: viewModel.recentMeetings,
+                            PaperLibrarySection(
+                                library: viewModel.meetingLibrary,
                                 restore: viewModel.restoreMeeting,
                                 delete: viewModel.deleteMeeting
                             )
@@ -56,7 +56,7 @@ public struct ParallelMeRootView: View {
         .task {
             await viewModel.loadProviderSettings()
             await viewModel.loadProviderContext()
-            await viewModel.loadRecentMeetings()
+            await viewModel.loadMeetingLibrary()
             await viewModel.loadSessionEvents()
         }
     }
@@ -397,53 +397,114 @@ private struct ResumeMeetingCard: View {
     }
 }
 
-private struct RecentMeetingsSection: View {
-    var meetings: [MeetingSummary]
+private struct PaperLibrarySection: View {
+    var library: MeetingLibrarySnapshot
     var restore: (String) -> Void
     var delete: (String) -> Void
 
     var body: some View {
-        if !meetings.isEmpty {
+        if !library.isEmpty {
             VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                Text("最近纸页")
-                    .font(ParallelMeTypography.bodyStrong)
-                    .foregroundStyle(ParallelMeColor.ink)
-                ForEach(meetings) { meeting in
-                    HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
-                        Button {
-                            restore(meeting.id)
-                        } label: {
-                            VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
-                                Text(meeting.title)
-                                    .font(ParallelMeTypography.bodyStrong)
-                                    .foregroundStyle(ParallelMeColor.ink)
-                                    .lineLimit(2)
-                                Text(meeting.subtitle)
-                                    .font(ParallelMeTypography.compact)
-                                    .foregroundStyle(ParallelMeColor.inkMuted)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
+                HStack(alignment: .firstTextBaseline) {
+                    Text("纸页库")
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                    Spacer()
+                    Text("\(library.totalCount) 张 · \(library.archivedCount) 已归档")
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                }
 
-                        Button(role: .destructive) {
-                            delete(meeting.id)
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                    .padding(ParallelMeSpacing.md)
-                    .background(ParallelMeColor.paperLift)
-                    .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: ParallelMeRadius.card)
-                            .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+                if !library.unfinished.isEmpty {
+                    PaperLibraryGroup(
+                        title: "未完成",
+                        meetings: library.unfinished,
+                        tint: ParallelMeColor.future,
+                        restore: restore,
+                        delete: delete
+                    )
+                }
+
+                if !library.archived.isEmpty {
+                    PaperLibraryGroup(
+                        title: "已归档",
+                        meetings: library.archived,
+                        tint: ParallelMeColor.money,
+                        restore: restore,
+                        delete: delete
                     )
                 }
             }
         }
+    }
+}
+
+private struct PaperLibraryGroup: View {
+    var title: String
+    var meetings: [MeetingSummary]
+    var tint: Color
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        DisclosureGroup("\(title) · \(meetings.count)") {
+            VStack(spacing: ParallelMeSpacing.sm) {
+                ForEach(meetings) { meeting in
+                    PaperLibraryRow(
+                        meeting: meeting,
+                        tint: tint,
+                        restore: restore,
+                        delete: delete
+                    )
+                }
+            }
+            .padding(.top, ParallelMeSpacing.xs)
+        }
+        .font(ParallelMeTypography.compact)
+        .foregroundStyle(ParallelMeColor.ink)
+    }
+}
+
+private struct PaperLibraryRow: View {
+    var meeting: MeetingSummary
+    var tint: Color
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+            Button {
+                restore(meeting.id)
+            } label: {
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                    Text(meeting.title)
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                        .lineLimit(2)
+                    Text(meeting.subtitle)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Button(role: .destructive) {
+                delete(meeting.id)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(Text("删除纸页"))
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(tint.opacity(0.35), lineWidth: 1)
+        )
     }
 }
 

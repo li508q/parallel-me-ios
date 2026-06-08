@@ -6,8 +6,8 @@ import ParallelMeCore
 public final class MeetingViewModel: ObservableObject {
     @Published public var petition: String = ""
     @Published public private(set) var state: MeetingFlowState?
-    @Published public private(set) var recentMeetings: [MeetingSummary] = []
     @Published public private(set) var resumableMeeting: MeetingSummary?
+    @Published public private(set) var meetingLibrary = MeetingLibrarySnapshot()
     @Published public private(set) var sessionEvents: [MeetingSessionEvent] = []
     @Published public private(set) var isBusy = false
     @Published public private(set) var errorMessage: String?
@@ -110,13 +110,12 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
-    public func loadRecentMeetings() async {
+    public func loadMeetingLibrary() async {
         do {
             let states = try await meetingRepository.list()
-            recentMeetings = states
-                .prefix(5)
-                .map(MeetingSummary.init(state:))
-            resumableMeeting = MeetingResumePolicy.summary(in: states)
+            let library = MeetingLibrarySnapshot(states: states)
+            meetingLibrary = library
+            resumableMeeting = library.resumable
         } catch {
             errorMessage = Self.userFacingMessage(for: error)
         }
@@ -134,7 +133,7 @@ public final class MeetingViewModel: ObservableObject {
             let started = try await self.coordinator.start(rawInput: input)
             self.state = started
             self.state = try await self.coordinator.requestDefinition()
-            await self.loadRecentMeetings()
+            await self.loadMeetingLibrary()
         }
     }
 
@@ -240,14 +239,14 @@ public final class MeetingViewModel: ObservableObject {
     public func archive() {
         run { [self] in
             self.state = try await self.coordinator.archive()
-            await self.loadRecentMeetings()
+            await self.loadMeetingLibrary()
         }
     }
 
     public func reviseSettlement(_ revisions: [SettlementModuleID: String]) {
         run { [self] in
             self.state = try await self.coordinator.reviseSettlement(revisions)
-            await self.loadRecentMeetings()
+            await self.loadMeetingLibrary()
         }
     }
 
@@ -255,14 +254,14 @@ public final class MeetingViewModel: ObservableObject {
         run { [self] in
             guard let restored = try await self.meetingRepository.load(id: id) else { return }
             self.state = try await self.coordinator.restore(restored)
-            await self.loadRecentMeetings()
+            await self.loadMeetingLibrary()
         }
     }
 
     public func deleteMeeting(id: String) {
         run { [self] in
             try await self.meetingRepository.delete(id: id)
-            await self.loadRecentMeetings()
+            await self.loadMeetingLibrary()
         }
     }
 
@@ -272,7 +271,7 @@ public final class MeetingViewModel: ObservableObject {
         state = nil
         errorMessage = nil
         Task { @MainActor in
-            await self.loadRecentMeetings()
+            await self.loadMeetingLibrary()
             await self.loadSessionEvents()
         }
     }
