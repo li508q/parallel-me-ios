@@ -36,6 +36,43 @@ public struct MeetingTimelineItem: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+public struct MeetingTimelineSnapshot: Codable, Equatable, Sendable {
+    public var items: [MeetingTimelineItem]
+    public var collapsedLimit: Int
+
+    public init(items: [MeetingTimelineItem], collapsedLimit: Int = 5) {
+        self.items = items
+        self.collapsedLimit = max(1, collapsedLimit)
+    }
+
+    public init(state: MeetingFlowState, collapsedLimit: Int = 5) {
+        self.init(items: MeetingTimeline.items(for: state), collapsedLimit: collapsedLimit)
+    }
+
+    public var totalCount: Int {
+        items.count
+    }
+
+    public var hiddenCount: Int {
+        max(0, items.count - collapsedLimit)
+    }
+
+    public var hasHiddenHistory: Bool {
+        hiddenCount > 0
+    }
+
+    public var collapsedItems: [MeetingTimelineItem] {
+        visibleItems(isExpanded: false)
+    }
+
+    public func visibleItems(isExpanded: Bool) -> [MeetingTimelineItem] {
+        if isExpanded || !hasHiddenHistory {
+            return items
+        }
+        return Array(items.suffix(collapsedLimit))
+    }
+}
+
 public enum MeetingTimeline {
     public static func items(for state: MeetingFlowState) -> [MeetingTimelineItem] {
         var items: [MeetingTimelineItem] = [

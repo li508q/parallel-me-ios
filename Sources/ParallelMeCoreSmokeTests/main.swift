@@ -497,6 +497,57 @@ struct ParallelMeCoreSmokeTests {
             try expect(timeline.last?.createdAt == archived.archivedAt)
         }
 
+        try runner.run("meeting timeline snapshot supports recent and full views") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想辞职又怕没钱")
+            let probe = question("timeline_snapshot_probe", "真正怕失去什么？", .coreFears)
+            state = try engine.receiveProbeQuestions([probe], in: state)
+            state = try engine.answerProbe([
+                ScribeAnswer(
+                    questionID: probe.id,
+                    selectedOptionID: "custom",
+                    selectedOptionLabel: "都不准，我自己说",
+                    questionText: probe.text,
+                    freeText: "我怕继续撑下去，身体会先垮。"
+                )
+            ], in: state)
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "你们怎么看身体底线？"),
+                turns: [RoundtableTurn(voiceID: .lay, text: "先承认身体不是无限资源。")],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: "timeline_snapshot_inquiry",
+                    question: "24 小时内能完成的行动是什么？",
+                    selectedOptionID: "custom",
+                    selectedLabel: "都不准，我自己说",
+                    customText: "今晚先约体检。"
+                )
+            ], in: state)
+            state = try engine.settle(sampleSettlement, profile: completeProfile, in: state)
+            state = try engine.archive(state: state)
+
+            let timeline = MeetingTimeline.items(for: state)
+            let snapshot = MeetingTimelineSnapshot(items: timeline, collapsedLimit: 5)
+
+            try expect(snapshot.totalCount == 8)
+            try expect(snapshot.hiddenCount == 3)
+            try expect(snapshot.hasHiddenHistory)
+            try expect(snapshot.collapsedItems.map(\.kind) == [
+                .roundtableOpened,
+                .roundtableMove,
+                .inquiryAnswer,
+                .settlement,
+                .archived
+            ])
+            try expect(snapshot.visibleItems(isExpanded: true) == timeline)
+        }
+
         try runner.run("meeting summaries use settlement and archive timestamps") {
             let engine = MeetingFlowEngine()
             var active = try engine.start(rawInput: "待落定纸页")

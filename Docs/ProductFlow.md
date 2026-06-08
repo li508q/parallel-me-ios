@@ -2,7 +2,7 @@
 
 ParallelMe is not a generic chat app. A meeting has a host, a fixed cast, and a real ending.
 
-During an active meeting, the iOS app keeps a current-paper timeline visible near the stage rail. This gives the user a compact sense of what has already happened without turning the product into a raw chat transcript.
+During an active meeting, the iOS app keeps a current-paper timeline visible near the stage rail. It starts with the most recent steps to preserve focus, but it can expand into the full paper history when the user needs to re-read the path that led here. This gives the user a compact sense of what has already happened without turning the product into a raw chat transcript.
 
 Before a meeting, the user can optionally keep a private personal context: who they are, what long-running situation they are in, and what response style helps them think. This context is local, reusable, and sent to provider tasks only as background calibration; the current petition and later answers remain the source of truth for the meeting. When a meeting starts, the app stores a non-secret runtime snapshot on that paper so restored meetings can show which provider and context were actually used.
 

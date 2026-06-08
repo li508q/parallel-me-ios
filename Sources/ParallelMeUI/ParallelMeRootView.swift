@@ -130,17 +130,25 @@ private struct MeetingPaperContextView: View {
     var state: MeetingFlowState
     var isBusy: Bool
     var close: () -> Void
+    @State private var isTimelineExpanded = false
 
     private var summary: MeetingSummary {
         MeetingSummary(state: state)
     }
 
-    private var timelineItems: [MeetingTimelineItem] {
-        MeetingTimeline.items(for: state)
+    private var timelineSnapshot: MeetingTimelineSnapshot {
+        MeetingTimelineSnapshot(state: state)
     }
 
     private var visibleItems: [MeetingTimelineItem] {
-        Array(timelineItems.suffix(5))
+        timelineSnapshot.visibleItems(isExpanded: isTimelineExpanded)
+    }
+
+    private var timelineTitle: String {
+        if isTimelineExpanded || !timelineSnapshot.hasHiddenHistory {
+            return "完整 \(timelineSnapshot.totalCount) 步"
+        }
+        return "最近 \(visibleItems.count) / 共 \(timelineSnapshot.totalCount) 步"
     }
 
     private var exportDocument: MeetingExportDocument {
@@ -161,7 +169,7 @@ private struct MeetingPaperContextView: View {
                 }
                 Spacer(minLength: ParallelMeSpacing.sm)
                 VStack(alignment: .trailing, spacing: ParallelMeSpacing.xs) {
-                    Text("\(timelineItems.count) 步")
+                    Text("\(timelineSnapshot.totalCount) 步")
                         .font(ParallelMeTypography.eyebrow)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                         .padding(.horizontal, ParallelMeSpacing.sm)
@@ -193,10 +201,23 @@ private struct MeetingPaperContextView: View {
                 RuntimeSnapshotView(snapshot: snapshot)
             }
 
-            DisclosureGroup("纸页脉络") {
+            DisclosureGroup("纸页脉络 · \(timelineTitle)") {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
                     ForEach(visibleItems) { item in
                         TimelineRow(item: item)
+                    }
+                    if timelineSnapshot.hasHiddenHistory {
+                        Button {
+                            isTimelineExpanded.toggle()
+                        } label: {
+                            Label(
+                                isTimelineExpanded ? "收起" : "展开全部",
+                                systemImage: isTimelineExpanded ? "chevron.up.circle" : "list.bullet.rectangle"
+                            )
+                        }
+                        .buttonStyle(.borderless)
+                        .font(ParallelMeTypography.compact.weight(.medium))
+                        .foregroundStyle(ParallelMeColor.ink)
                     }
                 }
                 .padding(.top, ParallelMeSpacing.xs)

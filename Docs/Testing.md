@@ -14,7 +14,7 @@ The first test layer is `ParallelMeCore`.
 - Provider context is normalized, persisted separately from credentials, clearable, and forwarded into provider requests.
 - Runtime snapshots are normalized in the flow engine and persisted by the session coordinator without storing API keys.
 - Restored unfinished papers rebuild the UI runtime before continuing and archived papers can be opened without valid provider credentials.
-- Meeting timeline derives active-paper progress without UI-specific business logic.
+- Meeting timeline derives active-paper progress and recent/full presentation snapshots without UI-specific business logic.
 - Meeting archive snapshot derives archived detail rows from Core state and preserves user settlement revisions.
 - Settlement and archive timestamps drive summary freshness, library ordering, and timeline rows.
 - Meeting export renders archived papers into Markdown using Core state and user settlement revisions.
@@ -32,4 +32,4 @@ swift run ParallelMeCoreSmokeTests
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
 
-Current smoke coverage includes 40 checks across flow rules, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, settlement readiness, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.
+Current smoke coverage includes 41 checks across flow rules, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, settlement readiness, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.

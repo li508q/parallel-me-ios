@@ -44,7 +44,7 @@ This keeps prompt iteration, network transport, and product state transitions in
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
-`MeetingTimeline` derives the active paper's progress markers from the same state, so UI and future debug/export surfaces share one interpretation of the meeting path.
+`MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
 `MeetingLibrarySnapshot` groups and filters saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
@@ -74,7 +74,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 
 - Every model-facing action returns a typed payload.
 - Every user-visible transition is represented by `MeetingStage`.
-- Current-paper timeline items are derived in Core and tested against complete meeting progress.
+- Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Archived-paper detail rows are derived in Core and tested against user settlement revisions.
 - Settlement and archive timestamps are stored in Core state and tested through summaries, library sorting, and timelines.
 - Resume selection is derived in Core and ignores archived papers.
