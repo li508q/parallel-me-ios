@@ -11,9 +11,11 @@
 		9CA866A4F1538BFC4B2646BB /* ParallelMeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9936644F39C5A322452A4E2A /* ParallelMeCore */; };
 		A6C9B91261E0BD7CFA9CDA22 /* ParallelMeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 674FE29FCE0056AFDF285CA8 /* ParallelMeApp.swift */; };
 		E921F9F2AF70B836531C3FB1 /* ParallelMeDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 532E31FA3CCB6C26BA3B8794 /* ParallelMeDesign */; };
+		FD204FD1AAC4FA322D23E295 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 53647241E51950AF6C00DC7B /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		53647241E51950AF6C00DC7B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		674FE29FCE0056AFDF285CA8 /* ParallelMeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelMeApp.swift; sourceTree = "<group>"; };
 		9463348FB709F34D3A6757A9 /* parallel-me-ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "parallel-me-ios"; path = .; sourceTree = SOURCE_ROOT; };
 		AC40066E1D636A253D204101 /* ParallelMe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ParallelMe.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -44,6 +46,7 @@
 		2AEFBE2F96033AB5BE5430D1 /* ParallelMe */ = {
 			isa = PBXGroup;
 			children = (
+				53647241E51950AF6C00DC7B /* Assets.xcassets */,
 				674FE29FCE0056AFDF285CA8 /* ParallelMeApp.swift */,
 			);
 			name = ParallelMe;
@@ -75,6 +78,7 @@
 			buildConfigurationList = 525F69216557BFAA46671F3A /* Build configuration list for PBXNativeTarget "ParallelMe" */;
 			buildPhases = (
 				3FBC1A44FA535D1FF2FFD85C /* Sources */,
+				13CF8471B8F57F76C0379D96 /* Resources */,
 				21849EC876F8C4E7D8F4EDEE /* Frameworks */,
 			);
 			buildRules = (
@@ -123,6 +127,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		13CF8471B8F57F76C0379D96 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD204FD1AAC4FA322D23E295 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3FBC1A44FA535D1FF2FFD85C /* Sources */ = {

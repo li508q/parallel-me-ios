@@ -16,7 +16,10 @@ ParallelMe on iPhone should feel quiet, private, and deliberate: less dashboard,
 - Roundtable actions are explicit tools: continue, ask one voice, ask the table, and pair two voices.
 - Settlement is editable. The user can overwrite the final language.
 
+## App Icon
+
+The app icon lives in `App/ParallelMe/Assets.xcassets/AppIcon.appiconset`. It uses a dark ink field, a warm paper center, and five colored voice points so the installed iOS app carries the same private-paper and fixed-roundtable identity as the in-app design.
+
 ## Token Location
 
 Design primitives live in `Sources/ParallelMeDesign/DesignTokens.swift`.
-
