@@ -34,7 +34,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
 - Optional `ProviderContext` stores the user's durable background and response preferences locally, then passes them through every provider task as calibration rather than as a replacement for the current meeting evidence.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.
-- `MeetingLibrarySnapshot` groups and filters local papers into recent, unfinished, and archived sections for the home library.
+- `MeetingLibrarySnapshot` groups and filters local papers into recent, unfinished, and archived sections using full-paper search text.
 - `MeetingExportDocument` renders a paper into Markdown for iOS sharing and developer-readable inspection.
 
 ## Local Development

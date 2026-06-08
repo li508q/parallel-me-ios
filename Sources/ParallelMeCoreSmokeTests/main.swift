@@ -398,11 +398,48 @@ struct ParallelMeCoreSmokeTests {
             let archived = library.filtered(searchText: "归档")
             let none = library.filtered(searchText: "不存在")
 
-            try expect(money.recent.map(\.id) == ["money"])
-            try expect(money.unfinished.map(\.id) == ["money"])
-            try expect(archived.archived.map(\.id) == ["health"])
-            try expect(none.isEmpty)
+            try expect(money.recent.map(\.id) == ["money"], "Unexpected money recent: \(money.recent.map(\.id))")
+            try expect(money.unfinished.map(\.id) == ["money"], "Unexpected money unfinished: \(money.unfinished.map(\.id))")
+            try expect(archived.archived.map(\.id) == ["health"], "Unexpected archived results: \(archived.archived.map(\.id))")
+            try expect(none.isEmpty, "Unexpected no-match count: \(none.totalCount)")
             try expect(library.filtered(searchText: "   ") == library)
+        }
+
+        try runner.run("meeting library searches full paper content") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想重新安排工作")
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "下一步要看什么？"),
+                turns: [
+                    RoundtableTurn(
+                        voiceID: .future,
+                        text: "未来的我希望你把预约体检这件事排进明天。"
+                    )
+                ],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: "full_text_action",
+                    question: "24 小时内能完成的行动是什么？",
+                    selectedOptionID: "custom",
+                    selectedLabel: "都不准，我自己说",
+                    customText: "明早 10 点前预约体检。"
+                )
+            ], in: state)
+            var settlement = sampleSettlement
+            settlement.revise(moduleID: .minimumAction, text: "明早 10 点前预约体检。")
+            state = try engine.settle(settlement, profile: completeProfile, in: state)
+            state = try engine.archive(state: state)
+
+            let library = MeetingLibrarySnapshot(states: [state])
+
+            try expect(library.filtered(searchText: "预约体检").archived.map(\.id) == [state.id])
+            try expect(library.filtered(searchText: "未来的我").archived.map(\.id) == [state.id])
         }
 
         try runner.run("meeting timeline summarizes current paper progress") {
@@ -1002,9 +1039,14 @@ private struct TestFailure: Error, CustomStringConvertible {
     }
 }
 
-private func expect(_ condition: @autoclosure () -> Bool) throws {
+private func expect(
+    _ condition: @autoclosure () -> Bool,
+    _ message: String = "Expectation failed",
+    file: StaticString = #fileID,
+    line: UInt = #line
+) throws {
     if !condition() {
-        throw TestFailure("Expectation failed")
+        throw TestFailure("\(message) at \(file):\(line)")
     }
 }
 
