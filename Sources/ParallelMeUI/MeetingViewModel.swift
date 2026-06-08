@@ -292,15 +292,21 @@ public final class MeetingViewModel: ObservableObject {
                 provider: provider,
                 repository: meetingRepository,
                 eventSink: sessionEventSink,
-                context: providerContext
+                context: providerContext,
+                runtimeSnapshot: runtimeSnapshot
             )
         } else {
             coordinator = MeetingSessionCoordinator(
                 provider: provider,
                 repository: meetingRepository,
-                context: providerContext
+                context: providerContext,
+                runtimeSnapshot: runtimeSnapshot
             )
         }
+    }
+
+    private var runtimeSnapshot: MeetingRuntimeSnapshot {
+        MeetingRuntimeSnapshot(settings: providerSettings, context: providerContext)
     }
 
     private func applyProviderSettings(_ settings: ProviderRuntimeSettings) {

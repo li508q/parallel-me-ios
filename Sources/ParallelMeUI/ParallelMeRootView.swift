@@ -173,6 +173,10 @@ private struct MeetingPaperContextView: View {
                 }
             }
 
+            if let snapshot = state.runtimeSnapshot {
+                RuntimeSnapshotView(snapshot: snapshot)
+            }
+
             DisclosureGroup("纸页脉络") {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
                     ForEach(visibleItems) { item in
@@ -191,6 +195,64 @@ private struct MeetingPaperContextView: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
         )
+    }
+}
+
+private struct RuntimeSnapshotView: View {
+    var snapshot: MeetingRuntimeSnapshot
+
+    private var context: ProviderContext? {
+        snapshot.context?.normalized
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+            HStack(spacing: ParallelMeSpacing.xs) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(snapshot.providerLabel)
+                    .font(ParallelMeTypography.compact.weight(.medium))
+                if let summary = snapshot.contextSummary {
+                    Text(summary)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                }
+            }
+            .foregroundStyle(ParallelMeColor.ink)
+
+            if let context, !context.isEmpty {
+                DisclosureGroup("会话上下文") {
+                    VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                        if let meCard = context.meCard {
+                            RuntimeSnapshotRow(title: "个人背景", text: meCard)
+                        }
+                        if let tasteProfile = context.tasteProfile {
+                            RuntimeSnapshotRow(title: "回应偏好", text: tasteProfile)
+                        }
+                    }
+                    .padding(.top, ParallelMeSpacing.xs)
+                }
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.ink)
+            }
+        }
+    }
+}
+
+private struct RuntimeSnapshotRow: View {
+    var title: String
+    var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(ParallelMeTypography.eyebrow)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+            Text(text)
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.ink)
+                .lineLimit(3)
+        }
     }
 }
 

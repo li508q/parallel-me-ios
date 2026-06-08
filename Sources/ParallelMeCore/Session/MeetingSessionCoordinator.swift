@@ -16,6 +16,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
     private let deduplicator: ScribeQuestionDeduplicator
     private let readinessEvaluator: SettlementReadinessEvaluator
     private let eventSink: any MeetingSessionEventSink
+    private let runtimeSnapshot: MeetingRuntimeSnapshot?
     private var state: MeetingFlowState?
     private var context: ProviderContext?
 
@@ -26,7 +27,8 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         deduplicator: ScribeQuestionDeduplicator = ScribeQuestionDeduplicator(),
         readinessEvaluator: SettlementReadinessEvaluator = SettlementReadinessEvaluator(),
         eventSink: any MeetingSessionEventSink = NoopMeetingSessionEventSink(),
-        context: ProviderContext? = nil
+        context: ProviderContext? = nil,
+        runtimeSnapshot: MeetingRuntimeSnapshot? = nil
     ) {
         self.provider = provider
         self.repository = repository
@@ -34,8 +36,15 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         self.deduplicator = deduplicator
         self.readinessEvaluator = readinessEvaluator
         self.eventSink = eventSink
-        let normalizedContext = context?.normalized
-        self.context = normalizedContext?.isEmpty == true ? nil : normalizedContext
+        let snapshotContext = runtimeSnapshot?.normalized.context
+        let explicitContext = context?.normalized
+        let effectiveContext = explicitContext?.isEmpty == false ? explicitContext : snapshotContext
+        self.context = effectiveContext?.isEmpty == true ? nil : effectiveContext
+        var snapshot = runtimeSnapshot?.normalized
+        if let context = self.context, snapshot != nil {
+            snapshot?.context = context
+        }
+        self.runtimeSnapshot = snapshot?.normalized
     }
 
     public func currentState() async -> MeetingFlowState? {
@@ -48,7 +57,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
     }
 
     public func start(rawInput: String) async throws -> MeetingFlowState {
-        let started = try engine.start(rawInput: rawInput)
+        let started = try engine.start(rawInput: rawInput, runtimeSnapshot: runtimeSnapshot)
         state = started
         await emit(.started, meetingID: started.id, message: "Meeting started")
         return try await persist(started)

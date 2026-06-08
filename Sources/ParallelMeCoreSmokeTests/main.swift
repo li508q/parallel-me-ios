@@ -196,6 +196,49 @@ struct ParallelMeCoreSmokeTests {
             try expect(readiness.isReady)
         }
 
+        try runner.run("meeting flow stores normalized runtime snapshot") {
+            let engine = MeetingFlowEngine()
+            let state = try engine.start(
+                rawInput: "我想辞职又怕没钱",
+                runtimeSnapshot: MeetingRuntimeSnapshot(
+                    providerMode: .openAICompatible,
+                    providerModel: "  gpt-4.1  ",
+                    providerBaseURLString: " https://api.example.com/v1 ",
+                    context: ProviderContext(
+                        meCard: "  我需要低噪音地想清楚  ",
+                        tasteProfile: "   "
+                    )
+                )
+            )
+
+            try expect(state.runtimeSnapshot?.providerMode == .openAICompatible)
+            try expect(state.runtimeSnapshot?.providerModel == "gpt-4.1")
+            try expect(state.runtimeSnapshot?.providerBaseURLString == "https://api.example.com/v1")
+            try expect(state.runtimeSnapshot?.context?.meCard == "我需要低噪音地想清楚")
+            try expect(state.runtimeSnapshot?.context?.tasteProfile == nil)
+            try expect(state.runtimeSnapshot?.contextSummary == "个人背景")
+        }
+
+        try runner.run("runtime snapshot omits secrets and legacy state decodes") {
+            let encoder = ParallelMeCoding.makeEncoder()
+            let decoder = ParallelMeCoding.makeDecoder()
+            let snapshot = MeetingRuntimeSnapshot(
+                settings: ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "https://api.openai.com/v1",
+                    model: "gpt-4.1",
+                    apiKey: "sk-test-secret"
+                )
+            )
+            let snapshotText = try String(data: encoder.encode(snapshot), encoding: .utf8) ?? ""
+            let legacyStateData = try encoder.encode(try MeetingFlowEngine().start(rawInput: "我想换工作"))
+            let decodedLegacyState = try decoder.decode(MeetingFlowState.self, from: legacyStateData)
+
+            try expect(!snapshotText.contains("sk-test-secret"))
+            try expect(!snapshotText.contains("apiKey"))
+            try expect(decodedLegacyState.runtimeSnapshot == nil)
+        }
+
         try runner.run("provider settings validate demo and openai-compatible modes") {
             try expect(ProviderRuntimeSettings(mode: .demo).isUsable)
             try expect(!ProviderRuntimeSettings(mode: .openAICompatible).isUsable)
@@ -449,6 +492,27 @@ struct ParallelMeCoreSmokeTests {
             try expect(opened.stage == .roundtable)
             try expect(opened.roundtable.openingTurns.map(\.voiceID) == VoiceID.allCases)
             try expect(saved?.roundtable.openingTurns.count == 5)
+        }
+
+        try await runner.runAsync("session coordinator persists runtime snapshot") {
+            let repository = InMemoryMeetingRepository()
+            let snapshot = MeetingRuntimeSnapshot(
+                providerMode: .demo,
+                providerModel: "  Demo  ",
+                context: ProviderContext(tasteProfile: "  先问事实，再给判断  ")
+            )
+            let coordinator = MeetingSessionCoordinator(
+                provider: MockLLMProvider(),
+                repository: repository,
+                runtimeSnapshot: snapshot
+            )
+
+            let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            let saved = try await repository.load(id: started.id)
+
+            try expect(saved?.runtimeSnapshot?.providerLabel == "Demo")
+            try expect(saved?.runtimeSnapshot?.context?.tasteProfile == "先问事实，再给判断")
+            try expect(saved?.runtimeSnapshot?.contextSummary == "回应偏好")
         }
 
         try await runner.runAsync("session coordinator forwards provider context") {

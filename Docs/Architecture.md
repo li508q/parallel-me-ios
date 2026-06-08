@@ -59,6 +59,8 @@ Provider context is stored separately from provider credentials:
 - Empty or whitespace-only fields are dropped before persistence and before provider requests.
 - Tests verify that stored context is normalized, clearable, and actually forwarded by the session coordinator.
 
+Each new meeting also stores a `MeetingRuntimeSnapshot` in `MeetingFlowState`. The snapshot records the provider mode, model, non-sensitive endpoint metadata, and normalized provider context used when the paper started. This gives restored meetings and debugging views one durable source of truth without storing API keys in meeting JSON.
+
 ## Project Generation
 
 `project.yml` is the source of truth for Xcode project shape. `ParallelMe.xcodeproj` is generated with XcodeGen and checked in so iOS developers can open the app directly in Xcode.
@@ -70,6 +72,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Every user-visible transition is represented by `MeetingStage`.
 - Current-paper timeline items are derived in Core and tested against complete meeting progress.
 - Resume selection is derived in Core and ignores archived papers.
+- Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
 - Repeated questions are filtered before they reach UI.
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - The final inquiry loop has no hard cap; tests assert this invariant.

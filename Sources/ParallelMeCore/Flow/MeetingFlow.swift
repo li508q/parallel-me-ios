@@ -28,6 +28,7 @@ public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
     public var createdAt: Date
     public var stage: MeetingStage
     public var rawInput: String
+    public var runtimeSnapshot: MeetingRuntimeSnapshot?
     public var definingSubstage: DefiningSubstage
     public var definingDialogue: [DefiningDialogueEntry]
     public var currentQuestions: [ScribeQuestion]
@@ -43,12 +44,14 @@ public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
     public init(
         id: String = UUID().uuidString,
         createdAt: Date = Date(),
-        rawInput: String
+        rawInput: String,
+        runtimeSnapshot: MeetingRuntimeSnapshot? = nil
     ) {
         self.id = id
         self.createdAt = createdAt
         self.stage = .defining
         self.rawInput = rawInput
+        self.runtimeSnapshot = runtimeSnapshot?.normalized
         self.definingSubstage = .probing
         self.definingDialogue = []
         self.currentQuestions = []
@@ -66,10 +69,13 @@ public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
 public struct MeetingFlowEngine: Sendable {
     public init() {}
 
-    public func start(rawInput: String) throws -> MeetingFlowState {
+    public func start(
+        rawInput: String,
+        runtimeSnapshot: MeetingRuntimeSnapshot? = nil
+    ) throws -> MeetingFlowState {
         let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw MeetingFlowError.emptyPetition }
-        return MeetingFlowState(rawInput: trimmed)
+        return MeetingFlowState(rawInput: trimmed, runtimeSnapshot: runtimeSnapshot)
     }
 
     public func receiveProbeQuestions(
