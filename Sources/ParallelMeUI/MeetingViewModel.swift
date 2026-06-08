@@ -6,6 +6,7 @@ import ParallelMeCore
 public final class MeetingViewModel: ObservableObject {
     @Published public var petition: String = ""
     @Published public private(set) var state: MeetingFlowState?
+    @Published public private(set) var recentMeetings: [MeetingSummary] = []
     @Published public private(set) var isBusy = false
     @Published public private(set) var errorMessage: String?
     @Published public var providerMode: ProviderRuntimeMode = .demo
@@ -14,24 +15,29 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var providerAPIKey: String = ""
 
     private var coordinator: any MeetingCoordinating
+    private let meetingRepository: AnyMeetingRepository
     private let providerSettingsStore: (any ProviderSettingsStoring)?
     private var hasLoadedProviderSettings = false
 
     public init(
         coordinator: any MeetingCoordinating,
+        meetingRepository: any MeetingRepository = InMemoryMeetingRepository(),
         providerSettingsStore: (any ProviderSettingsStoring)? = nil
     ) {
         self.coordinator = coordinator
+        self.meetingRepository = AnyMeetingRepository(meetingRepository)
         self.providerSettingsStore = providerSettingsStore
     }
 
     public static func makeDefault() -> MeetingViewModel {
+        let repository = FileMeetingRepository.defaultRepository()
         let coordinator = MeetingSessionCoordinator(
             provider: DemoLLMProvider(),
-            repository: FileMeetingRepository.defaultRepository()
+            repository: repository
         )
         return MeetingViewModel(
             coordinator: coordinator,
+            meetingRepository: repository,
             providerSettingsStore: ProviderSettingsRepository.defaultRepository()
         )
     }
@@ -71,6 +77,16 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
+    public func loadRecentMeetings() async {
+        do {
+            recentMeetings = try await meetingRepository.list()
+                .prefix(5)
+                .map(MeetingSummary.init(state:))
+        } catch {
+            errorMessage = String(describing: error)
+        }
+    }
+
     public func startMeeting() {
         let input = petition
         run { [self] in
@@ -78,6 +94,7 @@ public final class MeetingViewModel: ObservableObject {
             let started = try await self.coordinator.start(rawInput: input)
             self.state = started
             self.state = try await self.coordinator.requestDefinition()
+            await self.loadRecentMeetings()
         }
     }
 
@@ -133,6 +150,21 @@ public final class MeetingViewModel: ObservableObject {
     public func archive() {
         run { [self] in
             self.state = try await self.coordinator.archive()
+            await self.loadRecentMeetings()
+        }
+    }
+
+    public func restoreMeeting(id: String) {
+        run { [self] in
+            guard let restored = try await self.meetingRepository.load(id: id) else { return }
+            self.state = try await self.coordinator.restore(restored)
+        }
+    }
+
+    public func deleteMeeting(id: String) {
+        run { [self] in
+            try await self.meetingRepository.delete(id: id)
+            await self.loadRecentMeetings()
         }
     }
 
@@ -148,7 +180,7 @@ public final class MeetingViewModel: ObservableObject {
         let provider = try ProviderRuntimeFactory.makeProvider(settings: providerSettings)
         coordinator = MeetingSessionCoordinator(
             provider: provider,
-            repository: FileMeetingRepository.defaultRepository()
+            repository: meetingRepository
         )
     }
 

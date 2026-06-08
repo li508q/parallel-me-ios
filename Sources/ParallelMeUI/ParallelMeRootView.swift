@@ -24,6 +24,11 @@ public struct ParallelMeRootView: View {
                             stageBody(state, viewModel: viewModel)
                         } else {
                             startCard
+                            RecentMeetingsSection(
+                                meetings: viewModel.recentMeetings,
+                                restore: viewModel.restoreMeeting,
+                                delete: viewModel.deleteMeeting
+                            )
                             VoicePrimerGrid()
                         }
                     }
@@ -35,6 +40,7 @@ public struct ParallelMeRootView: View {
         }
         .task {
             await viewModel.loadProviderSettings()
+            await viewModel.loadRecentMeetings()
         }
     }
 
@@ -127,6 +133,56 @@ private struct ProviderSettingsPanel: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line, lineWidth: 1)
         )
+    }
+}
+
+private struct RecentMeetingsSection: View {
+    var meetings: [MeetingSummary]
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        if !meetings.isEmpty {
+            VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                Text("最近纸页")
+                    .font(ParallelMeTypography.bodyStrong)
+                    .foregroundStyle(ParallelMeColor.ink)
+                ForEach(meetings) { meeting in
+                    HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+                        Button {
+                            restore(meeting.id)
+                        } label: {
+                            VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                                Text(meeting.title)
+                                    .font(ParallelMeTypography.bodyStrong)
+                                    .foregroundStyle(ParallelMeColor.ink)
+                                    .lineLimit(2)
+                                Text(meeting.subtitle)
+                                    .font(ParallelMeTypography.compact)
+                                    .foregroundStyle(ParallelMeColor.inkMuted)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(role: .destructive) {
+                            delete(meeting.id)
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14, weight: .medium))
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                    .padding(ParallelMeSpacing.md)
+                    .background(ParallelMeColor.paperLift)
+                    .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                            .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+                    )
+                }
+            }
+        }
     }
 }
 

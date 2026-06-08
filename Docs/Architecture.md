@@ -39,6 +39,7 @@ This keeps prompt iteration, network transport, and product state transitions in
 - `FileMeetingRepository` for local JSON persistence in the app sandbox.
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
+`MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
 
 Provider runtime settings are split deliberately:
 

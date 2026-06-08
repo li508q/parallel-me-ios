@@ -178,6 +178,18 @@ struct ParallelMeCoreSmokeTests {
             }
         }
 
+        try runner.run("meeting summary prefers settlement headline") {
+            var state = try MeetingFlowEngine().start(rawInput: "我想换工作")
+            state = try MeetingFlowEngine().receiveIssueProposal(completeProposal, in: state)
+            state.heartSettlement = sampleSettlement
+            state.stage = .archived
+            let summary = MeetingSummary(state: state)
+
+            try expect(summary.title == sampleSettlement.headline)
+            try expect(summary.subtitle == "已归档")
+            try expect(summary.stage == .archived)
+        }
+
         try await runner.runAsync("provider factory creates demo provider") {
             let provider = try ProviderRuntimeFactory.makeProvider(settings: ProviderRuntimeSettings(mode: .demo))
             let envelope = try await provider.generate(
@@ -283,6 +295,21 @@ struct ParallelMeCoreSmokeTests {
             defer { try? FileManager.default.removeItem(at: directory) }
             let repository = FileMeetingRepository(directoryURL: directory)
             let state = try MeetingFlowEngine().start(rawInput: "我想换工作")
+
+            try await repository.save(state)
+            let loaded = try await repository.load(id: state.id)
+            let listed = try await repository.list()
+            try await repository.delete(id: state.id)
+            let deleted = try await repository.load(id: state.id)
+
+            try expect(loaded?.id == state.id)
+            try expect(listed.map(\.id) == [state.id])
+            try expect(deleted == nil)
+        }
+
+        try await runner.runAsync("any meeting repository delegates storage operations") {
+            let repository = AnyMeetingRepository(InMemoryMeetingRepository())
+            let state = try MeetingFlowEngine().start(rawInput: "我想换城市")
 
             try await repository.save(state)
             let loaded = try await repository.load(id: state.id)

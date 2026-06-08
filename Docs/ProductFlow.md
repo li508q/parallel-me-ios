@@ -53,3 +53,6 @@ The loop is sufficiency-driven, not count-driven.
 
 The final card must be concrete, revisable, and actionable. Authority stays with the user: modules can be accepted or revised, and the minimum action should be small enough to do within 24 hours.
 
+## 8. Archive And Return
+
+After settlement, the user can archive the meeting as a local paper. The home screen surfaces recent papers with a short status line, and the user can restore or delete a record. This keeps ParallelMe from becoming a one-off chat transcript; each meeting becomes part of a private local memory.
