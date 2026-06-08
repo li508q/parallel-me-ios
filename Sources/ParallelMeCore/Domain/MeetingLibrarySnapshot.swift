@@ -19,8 +19,11 @@ public struct MeetingLibrarySnapshot: Codable, Equatable, Sendable {
     }
 
     public init(states: [MeetingFlowState], recentLimit: Int = 5) {
-        let summaries = states
-            .map(MeetingSummary.init(state:))
+        self.init(summaries: states.map(MeetingSummary.init(state:)), recentLimit: recentLimit)
+    }
+
+    public init(summaries: [MeetingSummary], recentLimit: Int = 5) {
+        let sorted = summaries
             .sorted { lhs, rhs in
                 if lhs.updatedAt == rhs.updatedAt {
                     return lhs.createdAt > rhs.createdAt
@@ -29,10 +32,10 @@ public struct MeetingLibrarySnapshot: Codable, Equatable, Sendable {
             }
 
         self.init(
-            recent: Array(summaries.prefix(max(0, recentLimit))),
-            unfinished: summaries.filter { $0.stage != .archived },
-            archived: summaries.filter { $0.stage == .archived },
-            totalCount: summaries.count
+            recent: Array(sorted.prefix(max(0, recentLimit))),
+            unfinished: sorted.filter { $0.stage != .archived },
+            archived: sorted.filter { $0.stage == .archived },
+            totalCount: sorted.count
         )
     }
 
@@ -50,5 +53,18 @@ public struct MeetingLibrarySnapshot: Codable, Equatable, Sendable {
 
     public var isEmpty: Bool {
         totalCount == 0
+    }
+
+    public func filtered(searchText: String, recentLimit: Int = 5) -> MeetingLibrarySnapshot {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return self }
+        return MeetingLibrarySnapshot(
+            summaries: allSummaries.filter { $0.matches(searchText: query) },
+            recentLimit: recentLimit
+        )
+    }
+
+    private var allSummaries: [MeetingSummary] {
+        unfinished + archived
     }
 }

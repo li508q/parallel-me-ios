@@ -373,6 +373,38 @@ struct ParallelMeCoreSmokeTests {
             try expect(!library.isEmpty)
         }
 
+        try runner.run("meeting library filters papers by search text") {
+            let now = Date(timeIntervalSince1970: 100)
+            let summaries = [
+                MeetingSummary(
+                    id: "money",
+                    title: "现金流观察期",
+                    subtitle: "五声圆桌 · 5 个开场",
+                    stage: .roundtable,
+                    createdAt: Date(timeIntervalSince1970: 10),
+                    updatedAt: now
+                ),
+                MeetingSummary(
+                    id: "health",
+                    title: "身体底线",
+                    subtitle: "已归档",
+                    stage: .archived,
+                    createdAt: Date(timeIntervalSince1970: 20),
+                    updatedAt: Date(timeIntervalSince1970: 90)
+                )
+            ]
+            let library = MeetingLibrarySnapshot(summaries: summaries)
+            let money = library.filtered(searchText: "现金 圆桌")
+            let archived = library.filtered(searchText: "归档")
+            let none = library.filtered(searchText: "不存在")
+
+            try expect(money.recent.map(\.id) == ["money"])
+            try expect(money.unfinished.map(\.id) == ["money"])
+            try expect(archived.archived.map(\.id) == ["health"])
+            try expect(none.isEmpty)
+            try expect(library.filtered(searchText: "   ") == library)
+        }
+
         try runner.run("meeting timeline summarizes current paper progress") {
             let engine = MeetingFlowEngine()
             let started = try engine.start(rawInput: "我想辞职又怕没钱")

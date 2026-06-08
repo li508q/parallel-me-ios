@@ -17,6 +17,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var providerAPIKey: String = ""
     @Published public var contextMeCard: String = ""
     @Published public var contextTasteProfile: String = ""
+    @Published public var librarySearchText: String = ""
 
     private var coordinator: any MeetingCoordinating
     private let meetingRepository: AnyMeetingRepository
@@ -84,6 +85,10 @@ public final class MeetingViewModel: ObservableObject {
             tasteProfile: contextTasteProfile
         ).normalized
         return context.isEmpty ? nil : context
+    }
+
+    public var visibleMeetingLibrary: MeetingLibrarySnapshot {
+        meetingLibrary.filtered(searchText: librarySearchText)
     }
 
     public func dismissError() {

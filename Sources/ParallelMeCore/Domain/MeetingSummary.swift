@@ -70,11 +70,33 @@ public struct MeetingSummary: Codable, Equatable, Sendable, Identifiable {
         .compactMap { $0 })
         .max() ?? state.createdAt
     }
+
+    public func matches(searchText: String) -> Bool {
+        let terms = searchText
+            .split(whereSeparator: \.isWhitespace)
+            .map { String($0).foldedSearchText }
+            .filter { !$0.isEmpty }
+        guard !terms.isEmpty else { return true }
+
+        let haystack = [
+            title,
+            subtitle,
+            stage.rawValue
+        ]
+        .joined(separator: " ")
+        .foldedSearchText
+
+        return terms.allSatisfy { haystack.contains($0) }
+    }
 }
 
 private extension String {
     var nonEmptySummaryText: String? {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    var foldedSearchText: String {
+        folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
     }
 }

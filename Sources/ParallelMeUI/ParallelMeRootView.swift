@@ -37,7 +37,9 @@ public struct ParallelMeRootView: View {
                             }
                             startCard
                             PaperLibrarySection(
-                                library: viewModel.meetingLibrary,
+                                library: viewModel.visibleMeetingLibrary,
+                                sourceLibrary: viewModel.meetingLibrary,
+                                searchText: $viewModel.librarySearchText,
                                 restore: viewModel.restoreMeeting,
                                 delete: viewModel.deleteMeeting
                             )
@@ -399,43 +401,92 @@ private struct ResumeMeetingCard: View {
 
 private struct PaperLibrarySection: View {
     var library: MeetingLibrarySnapshot
+    var sourceLibrary: MeetingLibrarySnapshot
+    @Binding var searchText: String
     var restore: (String) -> Void
     var delete: (String) -> Void
 
+    private var hasQuery: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
-        if !library.isEmpty {
+        if !sourceLibrary.isEmpty {
             VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
                 HStack(alignment: .firstTextBaseline) {
                     Text("纸页库")
                         .font(ParallelMeTypography.bodyStrong)
                         .foregroundStyle(ParallelMeColor.ink)
                     Spacer()
-                    Text("\(library.totalCount) 张 · \(library.archivedCount) 已归档")
+                    Text(statusText)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                 }
 
-                if !library.unfinished.isEmpty {
-                    PaperLibraryGroup(
-                        title: "未完成",
-                        meetings: library.unfinished,
-                        tint: ParallelMeColor.future,
-                        restore: restore,
-                        delete: delete
-                    )
+                HStack(spacing: ParallelMeSpacing.xs) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                    TextField("搜索纸页", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(ParallelMeTypography.compact)
+                    if hasQuery {
+                        Button {
+                            searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .accessibilityLabel(Text("清空搜索"))
+                    }
                 }
+                .padding(.horizontal, ParallelMeSpacing.sm)
+                .padding(.vertical, ParallelMeSpacing.xs)
+                .background(ParallelMeColor.paperLift)
+                .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                        .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+                )
 
-                if !library.archived.isEmpty {
-                    PaperLibraryGroup(
-                        title: "已归档",
-                        meetings: library.archived,
-                        tint: ParallelMeColor.money,
-                        restore: restore,
-                        delete: delete
-                    )
+                if library.isEmpty {
+                    Text("没有匹配纸页")
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .padding(ParallelMeSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(ParallelMeColor.paperLift)
+                        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                } else {
+                    if !library.unfinished.isEmpty {
+                        PaperLibraryGroup(
+                            title: "未完成",
+                            meetings: library.unfinished,
+                            tint: ParallelMeColor.future,
+                            restore: restore,
+                            delete: delete
+                        )
+                    }
+
+                    if !library.archived.isEmpty {
+                        PaperLibraryGroup(
+                            title: "已归档",
+                            meetings: library.archived,
+                            tint: ParallelMeColor.money,
+                            restore: restore,
+                            delete: delete
+                        )
+                    }
                 }
             }
         }
+    }
+
+    private var statusText: String {
+        if hasQuery {
+            return "\(library.totalCount) 个匹配"
+        }
+        return "\(sourceLibrary.totalCount) 张 · \(sourceLibrary.archivedCount) 已归档"
     }
 }
 
