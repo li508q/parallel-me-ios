@@ -494,6 +494,58 @@ struct ParallelMeCoreSmokeTests {
             try expect(timeline.last?.stage == .archived)
         }
 
+        try runner.run("meeting archive snapshot renders archived paper detail") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想辞职又怕没钱")
+            let probe = question("archive_probe", "真正怕失去什么？", .coreFears)
+            state = try engine.receiveProbeQuestions([probe], in: state)
+            state = try engine.answerProbe([
+                ScribeAnswer(
+                    questionID: probe.id,
+                    selectedOptionID: "custom",
+                    selectedOptionLabel: "都不准，我自己说",
+                    questionText: probe.text,
+                    freeText: "我怕身体撑不住。"
+                )
+            ], in: state)
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "身体底线在哪里？"),
+                turns: [RoundtableTurn(voiceID: .lay, text: "先把身体当成真实边界。")],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: "archive_action",
+                    question: "24 小时内能完成的行动是什么？",
+                    selectedOptionID: "custom",
+                    selectedLabel: "都不准，我自己说",
+                    customText: "明早预约体检。"
+                )
+            ], in: state)
+            var settlement = sampleSettlement
+            settlement.revise(moduleID: .minimumAction, text: "明早 10 点前预约体检。")
+            settlement.revise(moduleID: .dialecticSynthesis, text: "先承认身体边界，再用观察期换回判断力。")
+            state = try engine.settle(settlement, profile: completeProfile, in: state)
+            state = try engine.archive(state: state)
+
+            let archive = MeetingArchiveSnapshot(state: state)
+
+            try expect(archive.summary.stage == .archived)
+            try expect(archive.summary.title == "先承认身体边界，再用观察期换回判断力。")
+            try expect(archive.hasIssue)
+            try expect(archive.hasSettlement)
+            try expect(archive.issueRows.map(\.title) == ["选择岔路", "现实边界", "隐秘关切", "圆桌任务"])
+            try expect(archive.settlementRows.contains { $0.body == "明早 10 点前预约体检。" })
+            try expect(archive.settlementRows.contains { $0.body == "先承认身体边界，再用观察期换回判断力。" })
+            try expect(archive.timelineItems.map(\.kind).contains(.definingAnswer))
+            try expect(archive.timelineItems.map(\.kind).contains(.roundtableMove))
+            try expect(archive.timelineItems.last?.kind == .archived)
+        }
+
         try runner.run("meeting export document renders archived paper") {
             let engine = MeetingFlowEngine()
             var state = try engine.start(

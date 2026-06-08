@@ -10,7 +10,7 @@ This repository intentionally does not port the web app one file at a time. It k
 2. `Roundtable`: five fixed voices open and continue the discussion.
 3. `Inquiry`: the scribe asks only the remaining high-density questions needed for settlement.
 4. `Settlement`: the user receives and can revise the final Heart Settlement.
-5. `Archive`: the completed meeting is stored locally.
+5. `Archive`: the completed meeting is stored locally, reopenable as a readable paper, and exportable as Markdown.
 
 There is no global question-count cap. The app closes loops through explicit sufficiency checks: proposal completeness, purpose coverage, duplicate filtering, proposal refinement, inquiry readiness, and user confirmation.
 
@@ -35,6 +35,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - Optional `ProviderContext` stores the user's durable background and response preferences locally, then passes them through every provider task as calibration rather than as a replacement for the current meeting evidence.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.
 - `MeetingLibrarySnapshot` groups and filters local papers into recent, unfinished, and archived sections using full-paper search text.
+- `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data for restored papers.
 - `MeetingExportDocument` renders a paper into Markdown for iOS sharing and developer-readable inspection.
 
 ## Local Development

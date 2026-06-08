@@ -47,6 +47,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingTimeline` derives the active paper's progress markers from the same state, so UI and future debug/export surfaces share one interpretation of the meeting path.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
 `MeetingLibrarySnapshot` groups and filters saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
+`MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
 `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 
 Provider runtime settings are split deliberately:
@@ -73,6 +74,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Every model-facing action returns a typed payload.
 - Every user-visible transition is represented by `MeetingStage`.
 - Current-paper timeline items are derived in Core and tested against complete meeting progress.
+- Archived-paper detail rows are derived in Core and tested against user settlement revisions.
 - Resume selection is derived in Core and ignores archived papers.
 - Paper library grouping, ordering, and search filtering are derived in Core and tested without UI.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
