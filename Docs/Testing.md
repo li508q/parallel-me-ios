@@ -9,6 +9,8 @@ The first test layer is `ParallelMeCore`.
 - Stage-one questions are deduplicated by purpose and similar wording.
 - Final inquiry has no global maximum question count.
 - Settlement readiness depends on evidence and profile completeness, not on the number of turns.
+- Session coordination persists each meaningful transition and records debug events.
+- Demo mode can drive a complete local meeting from petition to archive.
 
 ## Running Tests
 
@@ -17,3 +19,5 @@ swift run ParallelMeCoreSmokeTests
 ```
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
+
+Current smoke coverage includes 15 checks across flow rules, deduplication, settlement readiness, repositories, session events, and the demo provider.

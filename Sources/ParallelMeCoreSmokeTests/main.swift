@@ -218,6 +218,83 @@ struct ParallelMeCoreSmokeTests {
             try expect(settled.heartSettlement?.headline == sampleSettlement.headline)
         }
 
+        try await runner.runAsync("file repository saves lists loads and deletes meetings") {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("parallel-me-ios-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let repository = FileMeetingRepository(directoryURL: directory)
+            let state = try MeetingFlowEngine().start(rawInput: "我想换工作")
+
+            try await repository.save(state)
+            let loaded = try await repository.load(id: state.id)
+            let listed = try await repository.list()
+            try await repository.delete(id: state.id)
+            let deleted = try await repository.load(id: state.id)
+
+            try expect(loaded?.id == state.id)
+            try expect(listed.map(\.id) == [state.id])
+            try expect(deleted == nil)
+        }
+
+        try await runner.runAsync("session events record provider and persistence milestones") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            let events = InMemoryMeetingSessionEventSink()
+            await provider.register(
+                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            let coordinator = MeetingSessionCoordinator(
+                provider: provider,
+                repository: repository,
+                eventSink: events
+            )
+
+            _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            _ = try await coordinator.requestDefinition()
+            let kinds = await events.allEvents().map(\.kind)
+
+            try expect(kinds.contains(.started))
+            try expect(kinds.contains(.providerRequest))
+            try expect(kinds.contains(.providerResponse))
+            try expect(kinds.contains(.persisted))
+        }
+
+        try await runner.runAsync("demo provider drives a complete local meeting") {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("parallel-me-ios-demo-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let coordinator = MeetingSessionCoordinator(
+                provider: DemoLLMProvider(),
+                repository: FileMeetingRepository(directoryURL: directory)
+            )
+
+            _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try await coordinator.requestDefinition()
+            let opened = try await coordinator.confirmProposalAndOpenRoundtable()
+            let moved = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
+            let inquiry = try await coordinator.startInquiry()
+            let question = try unwrap(inquiry.inquiryQuestions.first, "Expected demo inquiry question")
+            let option = try unwrap(question.options.first, "Expected demo inquiry option")
+            let ready = try await coordinator.submitInquiryAnswers([
+                ScribeInquiryAnswer(
+                    questionID: question.id,
+                    question: question.question,
+                    selectedOptionID: option.id,
+                    selectedLabel: option.label
+                )
+            ])
+            let settled = try await coordinator.requestSettlement()
+            let archived = try await coordinator.archive()
+
+            try expect(proposed.issueProposal?.isComplete == true)
+            try expect(opened.roundtable.openingTurns.count == 5)
+            try expect(!moved.roundtable.turns.isEmpty)
+            try expect(ready.alignmentProfile != nil)
+            try expect(settled.stage == .settlement)
+            try expect(archived.stage == .archived)
+        }
+
         runner.finish()
     }
 
@@ -345,4 +422,9 @@ private func expect(_ condition: @autoclosure () -> Bool) throws {
     if !condition() {
         throw TestFailure("Expectation failed")
     }
+}
+
+private func unwrap<T>(_ value: T?, _ message: String) throws -> T {
+    guard let value else { throw TestFailure(message) }
+    return value
 }

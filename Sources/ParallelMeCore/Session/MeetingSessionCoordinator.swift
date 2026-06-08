@@ -8,12 +8,13 @@ public enum MeetingSessionError: Error, Equatable, Sendable {
     case settlementNotReady(missing: [SettlementModuleID])
 }
 
-public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: MeetingRepository> {
+public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: MeetingRepository>: MeetingCoordinating {
     private let provider: Provider
     private let repository: Repository
     private let engine: MeetingFlowEngine
     private let deduplicator: ScribeQuestionDeduplicator
     private let readinessEvaluator: SettlementReadinessEvaluator
+    private let eventSink: any MeetingSessionEventSink
     private var state: MeetingFlowState?
     private var context: ProviderContext?
 
@@ -23,6 +24,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         engine: MeetingFlowEngine = MeetingFlowEngine(),
         deduplicator: ScribeQuestionDeduplicator = ScribeQuestionDeduplicator(),
         readinessEvaluator: SettlementReadinessEvaluator = SettlementReadinessEvaluator(),
+        eventSink: any MeetingSessionEventSink = NoopMeetingSessionEventSink(),
         context: ProviderContext? = nil
     ) {
         self.provider = provider
@@ -30,10 +32,11 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         self.engine = engine
         self.deduplicator = deduplicator
         self.readinessEvaluator = readinessEvaluator
+        self.eventSink = eventSink
         self.context = context
     }
 
-    public func currentState() -> MeetingFlowState? {
+    public func currentState() async -> MeetingFlowState? {
         state
     }
 
@@ -45,6 +48,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
     public func start(rawInput: String) async throws -> MeetingFlowState {
         let started = try engine.start(rawInput: rawInput)
         state = started
+        await emit(.started, meetingID: started.id, message: "Meeting started")
         return try await persist(started)
     }
 
@@ -55,10 +59,12 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             dialogue: current.definingDialogue,
             context: context
         )
+        await emit(.providerRequest, meetingID: current.id, message: "Requesting issue definition")
         let envelope = try await provider.generate(
             request: LLMRequest(kind: .defineIssue, payload: input),
             responseType: IssueDefinitionResponse.self
         )
+        await emit(.providerResponse, meetingID: current.id, message: "Received issue definition", trace: envelope.trace)
         return try await applyDefinition(envelope.payload, to: current)
     }
 
@@ -77,10 +83,12 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             userFeedback: feedback,
             context: context
         )
+        await emit(.providerRequest, meetingID: current.id, message: "Refining issue proposal")
         let envelope = try await provider.generate(
             request: LLMRequest(kind: .defineIssue, payload: input),
             responseType: IssueDefinitionResponse.self
         )
+        await emit(.providerResponse, meetingID: current.id, message: "Received refined definition", trace: envelope.trace)
         return try await applyDefinition(envelope.payload, to: current)
     }
 
@@ -89,6 +97,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         guard let taskFrame = confirmed.taskFrame else { throw MeetingSessionError.missingTaskFrame }
         guard let proposal = confirmed.issueProposal else { throw MeetingSessionError.missingProposal }
 
+        await emit(.providerRequest, meetingID: confirmed.id, message: "Requesting roundtable openings")
         let envelope = try await provider.generate(
             request: LLMRequest(
                 kind: .openRoundtable,
@@ -96,6 +105,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             ),
             responseType: RoundtableOpeningResponse.self
         )
+        await emit(.providerResponse, meetingID: confirmed.id, message: "Received roundtable openings", trace: envelope.trace)
         let opened = try engine.receiveOpenings(envelope.payload.openings, in: confirmed)
         state = opened
         return try await persist(opened)
@@ -106,6 +116,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         guard let taskFrame = current.taskFrame else { throw MeetingSessionError.missingTaskFrame }
         guard let proposal = current.issueProposal else { throw MeetingSessionError.missingProposal }
 
+        await emit(.providerRequest, meetingID: current.id, message: "Submitting roundtable move")
         let envelope = try await provider.generate(
             request: LLMRequest(
                 kind: .continueRoundtable,
@@ -119,6 +130,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             ),
             responseType: RoundtableMoveResponse.self
         )
+        await emit(.providerResponse, meetingID: current.id, message: "Received roundtable move", trace: envelope.trace)
 
         var next = try engine.appendRoundtableMove(move, turns: envelope.payload.turns, in: current)
         if let ledger = envelope.payload.ledger {
@@ -145,6 +157,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         guard let taskFrame = current.taskFrame else { throw MeetingSessionError.missingTaskFrame }
         guard let proposal = current.issueProposal else { throw MeetingSessionError.missingProposal }
 
+        await emit(.providerRequest, meetingID: current.id, message: "Requesting alignment inquiry")
         let envelope = try await provider.generate(
             request: LLMRequest(
                 kind: .alignmentInquiry,
@@ -160,6 +173,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             ),
             responseType: AlignmentInquiryResponse.self
         )
+        await emit(.providerResponse, meetingID: current.id, message: "Received alignment inquiry", trace: envelope.trace)
         let response = envelope.payload
         let next = try engine.receiveInquiryQuestions(
             response.questions,
@@ -187,6 +201,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             throw MeetingSessionError.settlementNotReady(missing: readiness.missingModules)
         }
 
+        await emit(.providerRequest, meetingID: current.id, message: "Requesting heart settlement")
         let envelope = try await provider.generate(
             request: LLMRequest(
                 kind: .heartSettlement,
@@ -201,9 +216,16 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             ),
             responseType: HeartSettlementResponse.self
         )
+        await emit(.providerResponse, meetingID: current.id, message: "Received heart settlement", trace: envelope.trace)
         let settled = try engine.settle(envelope.payload.settlement, profile: profile, in: current)
         state = settled
         return try await persist(settled)
+    }
+
+    public func archive() async throws -> MeetingFlowState {
+        let archived = try engine.archive(state: try requireState())
+        state = archived
+        return try await persist(archived)
     }
 
     private func applyDefinition(
@@ -235,7 +257,23 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
 
     private func persist(_ state: MeetingFlowState) async throws -> MeetingFlowState {
         try await repository.save(state)
+        await emit(.persisted, meetingID: state.id, message: "State persisted at \(state.stage.rawValue)")
         return state
     }
-}
 
+    private func emit(
+        _ kind: MeetingSessionEventKind,
+        meetingID: String?,
+        message: String,
+        trace: [String] = []
+    ) async {
+        await eventSink.record(
+            MeetingSessionEvent(
+                meetingID: meetingID,
+                kind: kind,
+                message: message,
+                trace: trace
+            )
+        )
+    }
+}

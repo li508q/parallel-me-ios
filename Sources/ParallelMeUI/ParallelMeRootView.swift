@@ -3,11 +3,11 @@ import ParallelMeDesign
 import SwiftUI
 
 public struct ParallelMeRootView: View {
-    @State private var petition = ""
-    @State private var state: MeetingFlowState?
-    private let engine = MeetingFlowEngine()
+    @StateObject private var viewModel: MeetingViewModel
 
-    public init() {}
+    public init(viewModel: MeetingViewModel? = nil) {
+        _viewModel = StateObject(wrappedValue: viewModel ?? MeetingViewModel.makeDefault())
+    }
 
     public var body: some View {
         NavigationStack {
@@ -16,9 +16,12 @@ public struct ParallelMeRootView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: ParallelMeSpacing.lg) {
                         header
-                        if let state {
+                        if let error = viewModel.errorMessage {
+                            ErrorBanner(message: error, dismiss: viewModel.dismissError)
+                        }
+                        if let state = viewModel.state {
                             MeetingStageRail(stage: state.stage)
-                            stageBody(state)
+                            stageBody(state, viewModel: viewModel)
                         } else {
                             startCard
                             VoicePrimerGrid()
@@ -48,7 +51,7 @@ public struct ParallelMeRootView: View {
 
     private var startCard: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
-            TextEditor(text: $petition)
+            TextEditor(text: $viewModel.petition)
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.ink)
                 .frame(minHeight: 150)
@@ -61,32 +64,31 @@ public struct ParallelMeRootView: View {
                         .stroke(ParallelMeColor.line, lineWidth: 1)
                 )
             Button {
-                state = try? engine.start(rawInput: petition)
+                viewModel.startMeeting()
             } label: {
-                Label("开始五声圆桌", systemImage: "arrow.right.circle.fill")
+                Label(viewModel.isBusy ? "书记员整理中" : "开始五声圆桌", systemImage: "arrow.right.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!viewModel.canStart)
         }
     }
 
     @ViewBuilder
-    private func stageBody(_ state: MeetingFlowState) -> some View {
+    private func stageBody(_ state: MeetingFlowState, viewModel: MeetingViewModel) -> some View {
         switch state.stage {
         case .defining:
-            DefiningPlaceholderView(rawInput: state.rawInput)
+            DefiningView(state: state, viewModel: viewModel)
         case .roundtable:
-            RoundtablePlaceholderView(record: state.roundtable)
+            RoundtableView(state: state, viewModel: viewModel)
         case .inquiry:
-            InquiryPlaceholderView(questions: state.inquiryQuestions)
+            InquiryView(state: state, activeQuestions: viewModel.activeInquiryQuestions, viewModel: viewModel)
         case .settlement:
             if let settlement = state.heartSettlement {
-                SettlementView(settlement: settlement)
+                SettlementView(settlement: settlement, archive: viewModel.archive)
             }
         case .archived:
-            Text("这张纸页已经归档。")
-                .font(ParallelMeTypography.body)
+            ArchivedView(reset: viewModel.reset)
         }
     }
 }
@@ -99,6 +101,28 @@ private extension View {
         #else
         self
         #endif
+    }
+}
+
+private struct ErrorBanner: View {
+    var message: String
+    var dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message)
+                .font(ParallelMeTypography.compact)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.plain)
+        }
+        .foregroundStyle(ParallelMeColor.filial)
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.filial.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
     }
 }
 
@@ -149,16 +173,37 @@ public struct VoicePrimerGrid: View {
     }
 }
 
-private struct DefiningPlaceholderView: View {
-    var rawInput: String
+private struct DefiningView: View {
+    var state: MeetingFlowState
+    @ObservedObject var viewModel: MeetingViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             Text("本次议题")
                 .font(ParallelMeTypography.bodyStrong)
-            Text(rawInput)
+            Text(state.rawInput)
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.inkMuted)
+            if let proposal = state.issueProposal {
+                IssueProposalView(proposal: proposal)
+                Button(action: viewModel.confirmProposal) {
+                    Label("确认议题，进入圆桌", systemImage: "checkmark.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isBusy)
+            } else if state.currentQuestions.isEmpty {
+                ProgressView("书记员正在整理问题")
+                    .font(ParallelMeTypography.compact)
+                    .padding(.top, ParallelMeSpacing.sm)
+            } else {
+                ForEach(state.currentQuestions) { question in
+                    ProbeQuestionView(question: question) { option in
+                        viewModel.answerProbe(question: question, option: option)
+                    }
+                    .disabled(viewModel.isBusy)
+                }
+            }
         }
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
@@ -166,39 +211,174 @@ private struct DefiningPlaceholderView: View {
     }
 }
 
-private struct RoundtablePlaceholderView: View {
-    var record: RoundtableRecord
+private struct IssueProposalView: View {
+    var proposal: IssueProposal
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Text("五声圆桌")
-                .font(ParallelMeTypography.bodyStrong)
-            Text("已收到 \(record.openingTurns.count) 个开场声音。")
-                .font(ParallelMeTypography.body)
+            proposalRow("选择岔路", proposal.surfaceDilemma.content)
+            proposalRow("现实边界", proposal.currentConstraints.content)
+            proposalRow("隐秘关切", proposal.coreFears.content)
+            proposalRow("圆桌任务", proposal.expectedResolution.content)
+        }
+        .padding(.vertical, ParallelMeSpacing.sm)
+    }
+
+    private func proposalRow(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(ParallelMeTypography.eyebrow)
                 .foregroundStyle(ParallelMeColor.inkMuted)
+            Text(body)
+                .font(ParallelMeTypography.body)
+                .foregroundStyle(ParallelMeColor.ink)
         }
     }
 }
 
-private struct InquiryPlaceholderView: View {
-    var questions: [ScribeInquiryQuestion]
+private struct ProbeQuestionView: View {
+    var question: ScribeQuestion
+    var answer: (ScribeProbeOption) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text(question.text)
+                .font(ParallelMeTypography.bodyStrong)
+            ForEach(question.options) { option in
+                Button {
+                    answer(option)
+                } label: {
+                    Text(option.label)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(.top, ParallelMeSpacing.sm)
+    }
+}
+
+private struct RoundtableView: View {
+    var state: MeetingFlowState
+    @ObservedObject var viewModel: MeetingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+            Text("五声圆桌")
+                .font(ParallelMeTypography.bodyStrong)
+            ForEach(state.roundtable.openingTurns) { turn in
+                VoiceTurnView(name: turn.name, voiceID: turn.voiceID, text: turn.payload.thesis, footnote: turn.payload.pull)
+            }
+            ForEach(state.roundtable.turns) { turn in
+                VoiceTurnView(name: turn.name ?? "圆桌", voiceID: turn.voiceID, text: turn.text, footnote: nil)
+            }
+            HStack {
+                Button(action: viewModel.continueRoundtable) {
+                    Label("继续一轮", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .buttonStyle(.bordered)
+                Button(action: viewModel.startInquiry) {
+                    Label("进入问询", systemImage: "arrow.right.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .disabled(viewModel.isBusy)
+        }
+    }
+}
+
+private struct VoiceTurnView: View {
+    var name: String
+    var voiceID: VoiceID?
+    var text: String
+    var footnote: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+            Text(name)
+                .font(ParallelMeTypography.eyebrow)
+                .foregroundStyle(voiceID.map { ParallelMeTheme.voiceColor($0.rawValue) } ?? ParallelMeColor.inkMuted)
+            Text(text)
+                .font(ParallelMeTypography.body)
+                .foregroundStyle(ParallelMeColor.ink)
+            if let footnote {
+                Text(footnote)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+            }
+        }
+        .padding(ParallelMeSpacing.md)
+        .background((voiceID.map { ParallelMeTheme.voiceColor($0.rawValue) } ?? ParallelMeColor.line).opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+    }
+}
+
+private struct InquiryView: View {
+    var state: MeetingFlowState
+    var activeQuestions: [ScribeInquiryQuestion]
+    @ObservedObject var viewModel: MeetingViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             Text("书记员问询")
                 .font(ParallelMeTypography.bodyStrong)
-            Text("等待 \(questions.count) 个最终问题被回答。")
+            if activeQuestions.isEmpty, state.alignmentProfile != nil {
+                Text("书记员已经拿到足够证据，可以生成本心落定。")
+                    .font(ParallelMeTypography.body)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                Button(action: viewModel.requestSettlement) {
+                    Label("生成本心落定", systemImage: "sparkles")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isBusy)
+            } else if activeQuestions.isEmpty {
+                ProgressView("书记员正在校对最后的问题")
+            } else {
+                ForEach(activeQuestions) { question in
+                    VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                        Text(question.question)
+                            .font(ParallelMeTypography.bodyStrong)
+                        ForEach(question.options) { option in
+                            Button {
+                                viewModel.answerInquiry(question: question, option: option)
+                            } label: {
+                                Text(option.label)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    .disabled(viewModel.isBusy)
+                }
+            }
+        }
+    }
+}
+
+private struct ArchivedView: View {
+    var reset: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+            Text("这张纸页已经归档。")
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.inkMuted)
+            Button(action: reset) {
+                Label("开始新的圆桌", systemImage: "plus.circle.fill")
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 }
 
 public struct SettlementView: View {
     public var settlement: HeartSettlement
+    public var archive: () -> Void
 
-    public init(settlement: HeartSettlement) {
+    public init(settlement: HeartSettlement, archive: @escaping () -> Void = {}) {
         self.settlement = settlement
+        self.archive = archive
     }
 
     public var body: some View {
@@ -211,6 +391,11 @@ public struct SettlementView: View {
             module("核心价值主轴", settlement.coreValueAxis.resolvedText)
             module("痛苦接纳契约", settlement.costAcceptanceContract.resolvedText)
             module("最小行动承诺", settlement.minimumViableCommitment.resolvedText)
+            Button(action: archive) {
+                Label("保存纸页", systemImage: "archivebox.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
         }
         .foregroundStyle(ParallelMeColor.ink)
     }

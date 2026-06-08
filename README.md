@@ -20,11 +20,17 @@ There is no global question-count cap. The app closes loops through explicit suf
 | --- | --- |
 | `ParallelMeCore` | Product domain models, five-voice personas, flow engine, scribe deduplication, LLM/provider protocols. |
 | `ParallelMeDesign` | iPhone design tokens: color, spacing, typography, motion intent. |
-| `ParallelMeUI` | SwiftUI surfaces that render core state and dispatch user intent. |
+| `ParallelMeUI` | SwiftUI surfaces plus `MeetingViewModel`, rendering core state and dispatching user intent through the session coordinator. |
 | `App/ParallelMe` | Thin iOS app entry point. |
 | `ParallelMeCoreSmokeTests` | Executable tests for flow rules, persona invariants, deduplication, session coordination, and no hard inquiry cap. |
 
 `MeetingSessionCoordinator` is the app-service boundary. It owns the active meeting state, calls an injected `LLMProvider`, applies the `MeetingFlowEngine`, and persists through an injected `MeetingRepository`.
+
+## Runtime Providers
+
+- `DemoLLMProvider` drives a complete local meeting without network, useful for UI work and smoke tests.
+- `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object` and decodes structured JSON back into typed product payloads.
+- `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
 
 ## Local Development
 

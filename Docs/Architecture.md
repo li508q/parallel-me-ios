@@ -12,7 +12,7 @@ The iOS implementation separates product logic from presentation.
 | Provider | Protocols for model calls and local mocks. |
 | Session | Actor-based application coordinator that turns user intent and provider responses into legal flow transitions. |
 | Storage | Repository protocol and local implementations. |
-| UI | SwiftUI views that render state and emit user intent. |
+| UI | SwiftUI views and `MeetingViewModel`; the UI never calls provider APIs directly. |
 | App | Thin composition root. |
 
 ## Why This Shape
@@ -21,6 +21,25 @@ The web version proves the product but couples state orchestration to page compo
 
 `MeetingSessionCoordinator` sits above the flow engine. It is intentionally an actor: model calls, persistence, and user actions can arrive asynchronously, but state transitions still pass through one serialized coordinator.
 
+## Provider Strategy
+
+The provider boundary is intentionally typed:
+
+- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type.
+- `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key.
+- `MockLLMProvider` is the precise test double used when a test needs one exact payload per task.
+
+This keeps prompt iteration, network transport, and product state transitions independently testable.
+
+## Persistence Strategy
+
+`MeetingRepository` is the only persistence interface known to the session layer. Current implementations are:
+
+- `InMemoryMeetingRepository` for tests.
+- `FileMeetingRepository` for local JSON persistence in the app sandbox.
+
+The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
+
 ## Debugging Strategy
 
 - Every model-facing action returns a typed payload.
@@ -28,3 +47,4 @@ The web version proves the product but couples state orchestration to page compo
 - Repeated questions are filtered before they reach UI.
 - The final inquiry loop has no hard cap; tests assert this invariant.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
+- Session events record provider requests, provider responses, persistence, and failures for future debug surfaces.
