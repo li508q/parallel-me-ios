@@ -380,9 +380,7 @@ private struct ResumeMeetingCard: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                Button(role: .destructive) {
-                    delete(meeting.id)
-                } label: {
+                DeletePaperButton(meeting: meeting, delete: delete) {
                     Image(systemName: "trash")
                         .frame(width: 34, height: 34)
                 }
@@ -540,9 +538,7 @@ private struct PaperLibraryRow: View {
             }
             .buttonStyle(.plain)
 
-            Button(role: .destructive) {
-                delete(meeting.id)
-            } label: {
+            DeletePaperButton(meeting: meeting, delete: delete) {
                 Image(systemName: "trash")
                     .font(.system(size: 14, weight: .medium))
             }
@@ -556,6 +552,33 @@ private struct PaperLibraryRow: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(tint.opacity(0.35), lineWidth: 1)
         )
+    }
+}
+
+private struct DeletePaperButton<Label: View>: View {
+    var meeting: MeetingSummary
+    var delete: (String) -> Void
+    @ViewBuilder var label: () -> Label
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            isConfirmingDelete = true
+        } label: {
+            label()
+        }
+        .confirmationDialog(
+            "删除这张纸页？",
+            isPresented: $isConfirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("删除纸页", role: .destructive) {
+                delete(meeting.id)
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("“\(meeting.title)” 会从这台设备移除。这个操作不能撤销。")
+        }
     }
 }
 
