@@ -111,6 +111,43 @@ struct ParallelMeCoreSmokeTests {
             try expect(normalized.first?.options.contains { $0.id == "custom" } == true)
         }
 
+        try runner.run("custom answers preserve user text") {
+            let probeCustom = ScribeProbeOption(id: "free_text", label: "都不准，我自己说")
+            let inquiryCustom = ScribeInquiryOption(id: "other", label: "都不对，我自己说")
+            try expect(probeCustom.isCustomAnswer)
+            try expect(inquiryCustom.isCustomAnswer)
+
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let probe = question("probe_custom", "这件事最不准的地方是什么？", .coreFears)
+            let probing = try engine.receiveProbeQuestions([probe], in: started)
+            let answeredProbe = try engine.answerProbe([
+                ScribeAnswer(
+                    questionID: probe.id,
+                    selectedOptionID: probeCustom.id,
+                    selectedOptionLabel: probeCustom.label,
+                    questionText: probe.text,
+                    freeText: "我不是怕没钱，我是怕身体撑不住。"
+                )
+            ], in: probing)
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: answeredProbe)
+            let roundtable = try engine.confirmProposal(in: proposed)
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            let inquiry = try engine.startInquiry(in: opened)
+            let answeredInquiry = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: "inquiry_custom",
+                    question: "24 小时内真正能做的行动是什么？",
+                    selectedOptionID: inquiryCustom.id,
+                    selectedLabel: inquiryCustom.label,
+                    customText: "明早先请半天假，去医院做检查。"
+                )
+            ], in: inquiry)
+
+            try expect(answeredProbe.definingDialogue.last?.answer?.freeText == "我不是怕没钱，我是怕身体撑不住。")
+            try expect(answeredInquiry.inquiryAnswers.last?.customText == "明早先请半天假，去医院做检查。")
+        }
+
         try runner.run("many answers do not force settlement") {
             let evaluator = SettlementReadinessEvaluator()
             let answers = (0..<24).map { index in

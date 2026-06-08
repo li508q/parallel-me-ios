@@ -17,6 +17,8 @@ The scribe completes a four-key issue proposal:
 
 The scribe can ask 1-3 questions per turn. There is no total-turn cap. Repetition is prevented by purpose coverage and question-similarity filtering.
 
+Every question must include a free-text escape. If the provided options miss the user's real answer, the user can write their own language and that text becomes part of the meeting evidence.
+
 ## 3. Proposal Confirmation
 
 The user can confirm, edit, or ask the scribe to refine the proposal. The app cannot enter the roundtable until the proposal is complete enough to map into a task frame.

@@ -302,8 +302,8 @@ private struct DefiningView: View {
                     .padding(.top, ParallelMeSpacing.sm)
             } else {
                 ForEach(state.currentQuestions) { question in
-                    ProbeQuestionView(question: question) { option in
-                        viewModel.answerProbe(question: question, option: option)
+                    ProbeQuestionView(question: question) { option, customText in
+                        viewModel.answerProbe(question: question, option: option, customText: customText)
                     }
                     .disabled(viewModel.isBusy)
                 }
@@ -369,23 +369,69 @@ private struct IssueProposalView: View {
 
 private struct ProbeQuestionView: View {
     var question: ScribeQuestion
-    var answer: (ScribeProbeOption) -> Void
+    var answer: (ScribeProbeOption, String?) -> Void
+    @State private var customAnswer = ""
+
+    private var regularOptions: [ScribeProbeOption] {
+        question.options.filter { !$0.isCustomAnswer }
+    }
+
+    private var customOption: ScribeProbeOption? {
+        question.options.first(where: \.isCustomAnswer)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             Text(question.text)
                 .font(ParallelMeTypography.bodyStrong)
-            ForEach(question.options) { option in
+            ForEach(regularOptions) { option in
                 Button {
-                    answer(option)
+                    answer(option, nil)
                 } label: {
                     Text(option.label)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
             }
+            if let customOption {
+                CustomAnswerComposer(
+                    text: $customAnswer,
+                    placeholder: "写下更准确的回答",
+                    title: "用这句回答",
+                    systemImage: "text.bubble.fill"
+                ) {
+                    answer(customOption, customAnswer)
+                }
+            }
         }
         .padding(.top, ParallelMeSpacing.sm)
+    }
+}
+
+private struct CustomAnswerComposer: View {
+    @Binding var text: String
+    var placeholder: String
+    var title: String
+    var systemImage: String
+    var submit: () -> Void
+
+    private var canSubmit: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+            TextField(placeholder, text: $text, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+                .font(ParallelMeTypography.body)
+                .lineLimit(2...4)
+            Button(action: submit) {
+                Label(title, systemImage: systemImage)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(!canSubmit)
+        }
     }
 }
 
@@ -542,20 +588,50 @@ private struct InquiryView: View {
                 ProgressView("书记员正在校对最后的问题")
             } else {
                 ForEach(activeQuestions) { question in
-                    VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                        Text(question.question)
-                            .font(ParallelMeTypography.bodyStrong)
-                        ForEach(question.options) { option in
-                            Button {
-                                viewModel.answerInquiry(question: question, option: option)
-                            } label: {
-                                Text(option.label)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .buttonStyle(.bordered)
-                        }
+                    InquiryQuestionView(question: question) { option, customText in
+                        viewModel.answerInquiry(question: question, option: option, customText: customText)
                     }
                     .disabled(viewModel.isBusy)
+                }
+            }
+        }
+    }
+}
+
+private struct InquiryQuestionView: View {
+    var question: ScribeInquiryQuestion
+    var answer: (ScribeInquiryOption, String?) -> Void
+    @State private var customAnswer = ""
+
+    private var regularOptions: [ScribeInquiryOption] {
+        question.options.filter { !$0.isCustomAnswer }
+    }
+
+    private var customOption: ScribeInquiryOption? {
+        question.options.first(where: \.isCustomAnswer)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text(question.question)
+                .font(ParallelMeTypography.bodyStrong)
+            ForEach(regularOptions) { option in
+                Button {
+                    answer(option, nil)
+                } label: {
+                    Text(option.label)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+            }
+            if let customOption {
+                CustomAnswerComposer(
+                    text: $customAnswer,
+                    placeholder: "写下你的真实答案",
+                    title: "用这句回答",
+                    systemImage: "text.bubble.fill"
+                ) {
+                    answer(customOption, customAnswer)
                 }
             }
         }

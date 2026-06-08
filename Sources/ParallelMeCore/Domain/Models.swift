@@ -1,5 +1,15 @@
 import Foundation
 
+fileprivate func isCustomAnswerOption(id: String, label: String) -> Bool {
+    let normalizedID = id.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if ["custom", "other", "free_text"].contains(normalizedID) { return true }
+
+    let normalizedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
+    return normalizedLabel.hasPrefix("都不准") ||
+        normalizedLabel.hasPrefix("都不对") ||
+        normalizedLabel.contains("自己说")
+}
+
 public struct IssueProposalKey: Codable, Equatable, Sendable {
     public var title: String
     public var content: String
@@ -99,6 +109,10 @@ public struct ScribeProbeOption: Codable, Equatable, Sendable, Identifiable {
     public init(id: String, label: String) {
         self.id = id
         self.label = label
+    }
+
+    public var isCustomAnswer: Bool {
+        isCustomAnswerOption(id: id, label: label)
     }
 }
 
@@ -288,6 +302,10 @@ public struct ScribeInquiryOption: Codable, Equatable, Sendable, Identifiable {
         self.id = id
         self.label = label
         self.meaning = meaning
+    }
+
+    public var isCustomAnswer: Bool {
+        isCustomAnswerOption(id: id, label: label)
     }
 }
 

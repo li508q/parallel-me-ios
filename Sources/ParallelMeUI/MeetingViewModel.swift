@@ -98,13 +98,21 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
-    public func answerProbe(question: ScribeQuestion, option: ScribeProbeOption) {
+    public func answerProbe(
+        question: ScribeQuestion,
+        option: ScribeProbeOption,
+        customText: String? = nil
+    ) {
+        let trimmedCustomText = customText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
+
         run { [self] in
             let answer = ScribeAnswer(
                 questionID: question.id,
                 selectedOptionID: option.id,
                 selectedOptionLabel: option.label,
-                questionText: question.text
+                questionText: question.text,
+                freeText: option.isCustomAnswer ? trimmedCustomText : nil
             )
             self.state = try await self.coordinator.submitProbeAnswers([answer])
         }
@@ -163,13 +171,21 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
-    public func answerInquiry(question: ScribeInquiryQuestion, option: ScribeInquiryOption) {
+    public func answerInquiry(
+        question: ScribeInquiryQuestion,
+        option: ScribeInquiryOption,
+        customText: String? = nil
+    ) {
+        let trimmedCustomText = customText?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
+
         run { [self] in
             let answer = ScribeInquiryAnswer(
                 questionID: question.id,
                 question: question.question,
                 selectedOptionID: option.id,
-                selectedLabel: option.label
+                selectedLabel: option.label,
+                customText: option.isCustomAnswer ? trimmedCustomText : nil
             )
             self.state = try await self.coordinator.submitInquiryAnswers([answer])
         }

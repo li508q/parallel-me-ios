@@ -135,11 +135,7 @@ public struct ScribeQuestionDeduplicator: Sendable {
     }
 
     private func isCustomOption(_ option: ScribeProbeOption) -> Bool {
-        let id = option.id.lowercased()
-        if ["custom", "other", "free_text"].contains(id) { return true }
-        return option.label.hasPrefix("都不准") ||
-            option.label.hasPrefix("都不对") ||
-            option.label.contains("自己说")
+        option.isCustomAnswer
     }
 
     private func detectedPurposes(in text: String) -> Set<ProbePurpose> {
@@ -184,4 +180,3 @@ public struct ScribeQuestionDeduplicator: Sendable {
         return result
     }
 }
-
