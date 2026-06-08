@@ -24,6 +24,13 @@ public struct ParallelMeRootView: View {
                             MeetingPaperContextView(state: state)
                             stageBody(state, viewModel: viewModel)
                         } else {
+                            if let resumable = viewModel.resumableMeeting {
+                                ResumeMeetingCard(
+                                    meeting: resumable,
+                                    restore: viewModel.restoreMeeting,
+                                    delete: viewModel.deleteMeeting
+                                )
+                            }
                             startCard
                             RecentMeetingsSection(
                                 meetings: viewModel.recentMeetings,
@@ -232,6 +239,50 @@ private struct ProviderSettingsPanel: View {
         .overlay(
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line, lineWidth: 1)
+        )
+    }
+}
+
+private struct ResumeMeetingCard: View {
+    var meeting: MeetingSummary
+    var restore: (String) -> Void
+    var delete: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text("继续未完成纸页")
+                .font(ParallelMeTypography.eyebrow)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+            Text(meeting.title)
+                .font(ParallelMeTypography.bodyStrong)
+                .foregroundStyle(ParallelMeColor.ink)
+                .lineLimit(2)
+            Text(meeting.subtitle)
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+            HStack(spacing: ParallelMeSpacing.sm) {
+                Button {
+                    restore(meeting.id)
+                } label: {
+                    Label("继续", systemImage: "arrow.uturn.forward.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                Button(role: .destructive) {
+                    delete(meeting.id)
+                } label: {
+                    Image(systemName: "trash")
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.future.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.future.opacity(0.35), lineWidth: 1)
         )
     }
 }

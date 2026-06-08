@@ -256,6 +256,38 @@ struct ParallelMeCoreSmokeTests {
             try expect(summary.stage == .archived)
         }
 
+        try runner.run("resume policy picks latest unfinished meeting") {
+            let engine = MeetingFlowEngine()
+            var stale = try engine.start(rawInput: "旧纸页")
+            stale.createdAt = Date(timeIntervalSince1970: 10)
+
+            var archived = try engine.start(rawInput: "已经完成的纸页")
+            archived.createdAt = Date(timeIntervalSince1970: 100)
+            archived.stage = .archived
+
+            var active = try engine.start(rawInput: "需要继续的纸页")
+            active.createdAt = Date(timeIntervalSince1970: 20)
+            active = try engine.receiveIssueProposal(completeProposal, in: active)
+            active = try engine.confirmProposal(in: active)
+            active = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: active)
+            active = try engine.appendRoundtableMove(
+                RoundtableMove(
+                    type: .userToTable,
+                    userText: "继续讨论现金流底线",
+                    createdAt: Date(timeIntervalSince1970: 120)
+                ),
+                turns: [],
+                in: active
+            )
+
+            let candidate = MeetingResumePolicy.candidate(in: [stale, archived, active])
+            let summary = MeetingResumePolicy.summary(in: [archived, active])
+
+            try expect(candidate?.id == active.id)
+            try expect(summary?.title == completeProposal.issueSentence)
+            try expect(MeetingResumePolicy.candidate(in: [archived]) == nil)
+        }
+
         try runner.run("meeting timeline summarizes current paper progress") {
             let engine = MeetingFlowEngine()
             let started = try engine.start(rawInput: "我想辞职又怕没钱")

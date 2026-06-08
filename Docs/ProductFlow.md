@@ -63,4 +63,4 @@ The final card must be concrete, revisable, and actionable. Authority stays with
 
 ## 8. Archive And Return
 
-After settlement, the user can archive the meeting as a local paper. The home screen surfaces recent papers with a short status line, and the user can restore or delete a record. This keeps ParallelMe from becoming a one-off chat transcript; each meeting becomes part of a private local memory.
+After settlement, the user can archive the meeting as a local paper. The home screen surfaces recent papers with a short status line, and the user can restore or delete a record. If a paper is still unfinished, the home screen also promotes the latest unfinished paper as the primary resume action. This keeps ParallelMe from becoming a one-off chat transcript; each meeting becomes part of a private local memory.

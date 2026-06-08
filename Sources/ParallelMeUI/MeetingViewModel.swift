@@ -7,6 +7,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var petition: String = ""
     @Published public private(set) var state: MeetingFlowState?
     @Published public private(set) var recentMeetings: [MeetingSummary] = []
+    @Published public private(set) var resumableMeeting: MeetingSummary?
     @Published public private(set) var isBusy = false
     @Published public private(set) var errorMessage: String?
     @Published public var providerMode: ProviderRuntimeMode = .demo
@@ -79,11 +80,13 @@ public final class MeetingViewModel: ObservableObject {
 
     public func loadRecentMeetings() async {
         do {
-            recentMeetings = try await meetingRepository.list()
+            let states = try await meetingRepository.list()
+            recentMeetings = states
                 .prefix(5)
                 .map(MeetingSummary.init(state:))
+            resumableMeeting = MeetingResumePolicy.summary(in: states)
         } catch {
-            errorMessage = String(describing: error)
+            errorMessage = Self.userFacingMessage(for: error)
         }
     }
 
@@ -215,6 +218,7 @@ public final class MeetingViewModel: ObservableObject {
         run { [self] in
             guard let restored = try await self.meetingRepository.load(id: id) else { return }
             self.state = try await self.coordinator.restore(restored)
+            await self.loadRecentMeetings()
         }
     }
 
