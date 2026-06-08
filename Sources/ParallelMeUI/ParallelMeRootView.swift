@@ -141,6 +141,10 @@ private struct MeetingPaperContextView: View {
         Array(timelineItems.suffix(5))
     }
 
+    private var exportDocument: MeetingExportDocument {
+        MeetingExportDocument(state: state)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
@@ -170,6 +174,16 @@ private struct MeetingPaperContextView: View {
                     .buttonStyle(.bordered)
                     .disabled(isBusy)
                     .accessibilityLabel(Text("回到首页，稍后继续这张纸页"))
+                    ShareLink(
+                        item: exportDocument.markdown,
+                        subject: Text(exportDocument.title)
+                    ) {
+                        Label("导出纸页", systemImage: "square.and.arrow.up")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(Text("导出这张纸页"))
                 }
             }
 

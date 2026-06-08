@@ -387,6 +387,59 @@ struct ParallelMeCoreSmokeTests {
             try expect(timeline.last?.stage == .archived)
         }
 
+        try runner.run("meeting export document renders archived paper") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(
+                rawInput: "我想辞职又怕没钱",
+                runtimeSnapshot: MeetingRuntimeSnapshot(
+                    providerMode: .openAICompatible,
+                    providerModel: "gpt-4.1",
+                    providerBaseURLString: "https://api.openai.com/v1",
+                    context: ProviderContext(
+                        meCard: "我最近睡眠很差",
+                        tasteProfile: "先问事实，再给判断"
+                    )
+                )
+            )
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "身体底线在哪里？"),
+                turns: [RoundtableTurn(voiceID: .future, text: "未来的我希望你把体检排进 24 小时内。")],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: "export_action",
+                    question: "24 小时内能完成的行动是什么？",
+                    selectedOptionID: "custom",
+                    selectedLabel: "都不准，我自己说",
+                    customText: "明早预约体检。"
+                )
+            ], in: state)
+            var settlement = sampleSettlement
+            settlement.revise(moduleID: .minimumAction, text: "明早 10 点前预约体检。")
+            state = try engine.settle(settlement, profile: completeProfile, in: state)
+            state = try engine.archive(state: state)
+
+            let document = MeetingExportDocument(
+                state: state,
+                generatedAt: Date(timeIntervalSince1970: 0)
+            )
+
+            try expect(document.title == settlement.headline)
+            try expect(document.fileName.hasSuffix(".md"))
+            try expect(document.markdown.contains("# \(settlement.headline)"))
+            try expect(document.markdown.contains("Provider：gpt-4.1"))
+            try expect(document.markdown.contains("个人背景：我最近睡眠很差"))
+            try expect(document.markdown.contains("明早 10 点前预约体检。"))
+            try expect(document.markdown.contains("纸页脉络"))
+            try expect(!document.markdown.contains("apiKey"))
+            try expect(!document.markdown.contains("Optional"))
+        }
+
         try runner.run("settlement revisions override resolved text and headline") {
             var settlement = sampleSettlement
             settlement.revise(moduleID: .coreValues, text: "我要守住自己写下的主轴。")
