@@ -190,6 +190,15 @@ struct ParallelMeCoreSmokeTests {
             try expect(summary.stage == .archived)
         }
 
+        try runner.run("settlement revisions override resolved text and headline") {
+            var settlement = sampleSettlement
+            settlement.revise(moduleID: .coreValues, text: "我要守住自己写下的主轴。")
+            settlement.revise(moduleID: .dialecticSynthesis, text: "这是我自己认领的正反合。")
+
+            try expect(settlement.resolvedText(for: .coreValues) == "我要守住自己写下的主轴。")
+            try expect(settlement.headline == "这是我自己认领的正反合。")
+        }
+
         try await runner.runAsync("provider factory creates demo provider") {
             let provider = try ProviderRuntimeFactory.makeProvider(settings: ProviderRuntimeSettings(mode: .demo))
             let envelope = try await provider.generate(
@@ -287,6 +296,46 @@ struct ParallelMeCoreSmokeTests {
 
             try expect(settled.stage == .settlement)
             try expect(settled.heartSettlement?.headline == sampleSettlement.headline)
+        }
+
+        try await runner.runAsync("session coordinator persists settlement revisions") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            await provider.register(
+                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            await provider.register(
+                RoundtableOpeningResponse(openings: VoiceID.allCases.map { opening($0) }),
+                for: .openRoundtable
+            )
+            await provider.register(
+                AlignmentInquiryResponse(
+                    readyForSettlement: true,
+                    profile: completeProfile,
+                    ledger: ScribeObservationLedger(moduleSignals: [.minimumAction: ["今晚写预算"]])
+                ),
+                for: .alignmentInquiry
+            )
+            await provider.register(
+                HeartSettlementResponse(settlement: sampleSettlement),
+                for: .heartSettlement
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            _ = try await coordinator.requestDefinition()
+            _ = try await coordinator.confirmProposalAndOpenRoundtable()
+            _ = try await coordinator.startInquiry()
+            _ = try await coordinator.requestSettlement()
+            let revised = try await coordinator.reviseSettlement([
+                .dialecticSynthesis: "我自己的归档句。",
+                .minimumAction: "今晚只做一件最小的事。"
+            ])
+            let saved = try await repository.load(id: started.id)
+
+            try expect(revised.heartSettlement?.headline == "我自己的归档句。")
+            try expect(saved?.heartSettlement?.resolvedText(for: .minimumAction) == "今晚只做一件最小的事。")
         }
 
         try await runner.runAsync("file repository saves lists loads and deletes meetings") {

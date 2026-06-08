@@ -154,6 +154,13 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
+    public func reviseSettlement(_ revisions: [SettlementModuleID: String]) {
+        run { [self] in
+            self.state = try await self.coordinator.reviseSettlement(revisions)
+            await self.loadRecentMeetings()
+        }
+    }
+
     public func restoreMeeting(id: String) {
         run { [self] in
             guard let restored = try await self.meetingRepository.load(id: id) else { return }

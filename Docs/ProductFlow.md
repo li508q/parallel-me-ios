@@ -51,7 +51,7 @@ The loop is sufficiency-driven, not count-driven.
 
 ## 7. Heart Settlement
 
-The final card must be concrete, revisable, and actionable. Authority stays with the user: modules can be accepted or revised, and the minimum action should be small enough to do within 24 hours.
+The final card must be concrete, revisable, and actionable. Authority stays with the user: modules can be accepted or revised, and the minimum action should be small enough to do within 24 hours. If the user rewrites the synthesis or any module, that language becomes the canonical text used by archive summaries.
 
 ## 8. Archive And Return
 

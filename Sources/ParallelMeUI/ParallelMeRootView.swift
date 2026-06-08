@@ -95,7 +95,11 @@ public struct ParallelMeRootView: View {
             InquiryView(state: state, activeQuestions: viewModel.activeInquiryQuestions, viewModel: viewModel)
         case .settlement:
             if let settlement = state.heartSettlement {
-                SettlementView(settlement: settlement, archive: viewModel.archive)
+                SettlementView(
+                    settlement: settlement,
+                    revise: viewModel.reviseSettlement,
+                    archive: viewModel.archive
+                )
             }
         case .archived:
             ArchivedView(reset: viewModel.reset)
@@ -467,10 +471,21 @@ private struct ArchivedView: View {
 
 public struct SettlementView: View {
     public var settlement: HeartSettlement
+    public var revise: ([SettlementModuleID: String]) -> Void
     public var archive: () -> Void
+    @State private var creativeDraft = ""
+    @State private var valueDraft = ""
+    @State private var costDraft = ""
+    @State private var actionDraft = ""
+    @State private var synthesisDraft = ""
 
-    public init(settlement: HeartSettlement, archive: @escaping () -> Void = {}) {
+    public init(
+        settlement: HeartSettlement,
+        revise: @escaping ([SettlementModuleID: String]) -> Void = { _ in },
+        archive: @escaping () -> Void = {}
+    ) {
         self.settlement = settlement
+        self.revise = revise
         self.archive = archive
     }
 
@@ -480,10 +495,24 @@ public struct SettlementView: View {
                 .font(ParallelMeTypography.title)
             Text(settlement.headline)
                 .font(ParallelMeTypography.bodyStrong)
-            module("创造性无望", settlement.creativeHopelessness.resolvedText)
-            module("核心价值主轴", settlement.coreValueAxis.resolvedText)
-            module("痛苦接纳契约", settlement.costAcceptanceContract.resolvedText)
-            module("最小行动承诺", settlement.minimumViableCommitment.resolvedText)
+            SettlementModuleEditor(title: "创造性无望", text: $creativeDraft)
+            SettlementModuleEditor(title: "核心价值主轴", text: $valueDraft)
+            SettlementModuleEditor(title: "痛苦接纳契约", text: $costDraft)
+            SettlementModuleEditor(title: "最小行动承诺", text: $actionDraft)
+            SettlementModuleEditor(title: "正反合", text: $synthesisDraft)
+            Button {
+                revise([
+                    .creativeHopelessness: creativeDraft,
+                    .coreValues: valueDraft,
+                    .costAcceptance: costDraft,
+                    .minimumAction: actionDraft,
+                    .dialecticSynthesis: synthesisDraft
+                ])
+            } label: {
+                Label("应用修订", systemImage: "pencil.and.scribble")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
             Button(action: archive) {
                 Label("保存纸页", systemImage: "archivebox.fill")
                     .frame(maxWidth: .infinity)
@@ -491,15 +520,40 @@ public struct SettlementView: View {
             .buttonStyle(.borderedProminent)
         }
         .foregroundStyle(ParallelMeColor.ink)
+        .onAppear {
+            loadDrafts(from: settlement)
+        }
     }
 
-    private func module(_ title: String, _ body: String) -> some View {
+    private func loadDrafts(from settlement: HeartSettlement) {
+        creativeDraft = settlement.resolvedText(for: .creativeHopelessness)
+        valueDraft = settlement.resolvedText(for: .coreValues)
+        costDraft = settlement.resolvedText(for: .costAcceptance)
+        actionDraft = settlement.resolvedText(for: .minimumAction)
+        synthesisDraft = settlement.resolvedText(for: .dialecticSynthesis)
+    }
+}
+
+private struct SettlementModuleEditor: View {
+    var title: String
+    @Binding var text: String
+
+    var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
             Text(title)
                 .font(ParallelMeTypography.eyebrow)
                 .foregroundStyle(ParallelMeColor.inkMuted)
-            Text(body)
+            TextEditor(text: $text)
                 .font(ParallelMeTypography.body)
+                .frame(minHeight: 88)
+                .scrollContentBackground(.hidden)
+                .padding(ParallelMeSpacing.sm)
+                .background(ParallelMeColor.paperLift)
+                .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                .overlay(
+                    RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                        .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+                )
         }
         .padding(.vertical, ParallelMeSpacing.xs)
     }

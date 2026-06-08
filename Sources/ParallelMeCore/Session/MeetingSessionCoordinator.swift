@@ -228,6 +228,12 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         return try await persist(archived)
     }
 
+    public func reviseSettlement(_ revisions: [SettlementModuleID: String]) async throws -> MeetingFlowState {
+        let revised = try engine.reviseSettlement(revisions, in: try requireState())
+        state = revised
+        return try await persist(revised)
+    }
+
     private func applyDefinition(
         _ response: IssueDefinitionResponse,
         to current: MeetingFlowState

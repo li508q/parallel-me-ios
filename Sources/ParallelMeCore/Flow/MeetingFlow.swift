@@ -20,6 +20,7 @@ public enum MeetingFlowError: Error, Equatable, Sendable {
     case missingTaskFrame
     case missingRoundtableOpenings
     case missingAlignmentProfile
+    case missingHeartSettlement
 }
 
 public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
@@ -226,10 +227,25 @@ public struct MeetingFlowEngine: Sendable {
         return next
     }
 
+    public func reviseSettlement(
+        _ revisions: [SettlementModuleID: String],
+        in state: MeetingFlowState
+    ) throws -> MeetingFlowState {
+        try require(.settlement, state)
+        guard var settlement = state.heartSettlement else {
+            throw MeetingFlowError.missingHeartSettlement
+        }
+        for (moduleID, text) in revisions {
+            settlement.revise(moduleID: moduleID, text: text)
+        }
+        var next = state
+        next.heartSettlement = settlement
+        return next
+    }
+
     private func require(_ expected: MeetingStage, _ state: MeetingFlowState) throws {
         guard state.stage == expected else {
             throw MeetingFlowError.illegalStage(expected: expected, actual: state.stage)
         }
     }
 }
-

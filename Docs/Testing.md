@@ -20,4 +20,4 @@ swift run ParallelMeCoreSmokeTests
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
 
-Current smoke coverage includes 20 checks across flow rules, provider configuration, secure settings persistence, deduplication, settlement readiness, archive summaries, repositories, session events, and the demo provider.
+Current smoke coverage includes 22 checks across flow rules, provider configuration, secure settings persistence, deduplication, settlement readiness, user settlement revisions, archive summaries, repositories, session events, and the demo provider.

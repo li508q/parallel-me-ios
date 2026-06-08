@@ -507,5 +507,43 @@ public struct HeartSettlement: Codable, Equatable, Sendable {
         if !coreValueAxis.resolvedText.isEmpty { return coreValueAxis.resolvedText }
         return creativeHopelessness.resolvedText
     }
+
+    public mutating func revise(moduleID: SettlementModuleID, text: String) {
+        let revision = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stored = revision.isEmpty ? nil : revision
+        switch moduleID {
+        case .creativeHopelessness:
+            creativeHopelessness.userRevision = stored
+        case .coreValues:
+            coreValueAxis.userRevision = stored
+        case .costAcceptance:
+            costAcceptanceContract.userRevision = stored
+        case .minimumAction:
+            minimumViableCommitment.userRevision = stored
+        case .dialecticSynthesis:
+            dialecticSynthesis.userRevision = stored
+        }
+    }
+
+    public func resolvedText(for moduleID: SettlementModuleID) -> String {
+        switch moduleID {
+        case .creativeHopelessness:
+            creativeHopelessness.resolvedText
+        case .coreValues:
+            coreValueAxis.resolvedText
+        case .costAcceptance:
+            costAcceptanceContract.resolvedText
+        case .minimumAction:
+            minimumViableCommitment.resolvedText
+        case .dialecticSynthesis:
+            dialecticSynthesis.userRevision?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmptyText ??
+                dialecticSynthesis.synthesis
+        }
+    }
 }
 
+private extension String {
+    var nonEmptyText: String? {
+        isEmpty ? nil : self
+    }
+}

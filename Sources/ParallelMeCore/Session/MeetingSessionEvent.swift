@@ -69,5 +69,6 @@ public protocol MeetingCoordinating: Sendable {
     func submitInquiryAnswers(_ answers: [ScribeInquiryAnswer]) async throws -> MeetingFlowState
     func requestNextInquiry() async throws -> MeetingFlowState
     func requestSettlement() async throws -> MeetingFlowState
+    func reviseSettlement(_ revisions: [SettlementModuleID: String]) async throws -> MeetingFlowState
     func archive() async throws -> MeetingFlowState
 }
