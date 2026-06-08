@@ -49,4 +49,6 @@ open ParallelMe.xcodeproj
 
 `ParallelMe.xcodeproj` is checked in for convenience and generated from `project.yml`. Regenerate it after project-structure changes.
 
+The app target includes `App/ParallelMe/PrivacyInfo.xcprivacy`, `Assets.xcassets`, a display name, and launch-screen color metadata so Xcode can package the app with install-time identity and privacy declarations.
+
 The current machine has Swift command-line tools available, but `xcodebuild` points at Command Line Tools rather than full Xcode, and this toolchain does not expose `XCTest` or Swift `Testing`. `ParallelMeCoreSmokeTests` is therefore the first executable verification layer. Standard XCTest, UI tests, and simulator verification should be added once full Xcode is installed.

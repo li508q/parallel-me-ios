@@ -55,6 +55,7 @@ Provider runtime settings are split deliberately:
 ## Project Generation
 
 `project.yml` is the source of truth for Xcode project shape. `ParallelMe.xcodeproj` is generated with XcodeGen and checked in so iOS developers can open the app directly in Xcode.
+The app target resources live under `App/ParallelMe`, including `Assets.xcassets` and `PrivacyInfo.xcprivacy`; regenerate the project after adding or moving app resources.
 
 ## Debugging Strategy
 
