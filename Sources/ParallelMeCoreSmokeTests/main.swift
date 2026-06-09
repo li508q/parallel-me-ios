@@ -1684,6 +1684,33 @@ struct ParallelMeCoreSmokeTests {
             try expect(incomplete.messageTone == .warning)
         }
 
+        try runner.run("settlement controls presentation derives action copy") {
+            var draft = SettlementRevisionDraft(settlement: sampleSettlement)
+            let ready = SettlementControlsPresentationSnapshot(
+                availability: SettlementActionAvailabilitySnapshot(draft: draft)
+            )
+
+            try expect(ready.applyRevisionAction.title == "应用修订")
+            try expect(ready.applyRevisionAction.systemImage == "pencil.and.scribble")
+            try expect(!ready.applyRevisionAction.isEnabled)
+            try expect(ready.archiveAction.title == "保存纸页")
+            try expect(ready.archiveAction.systemImage == "archivebox.fill")
+            try expect(ready.archiveAction.isEnabled)
+
+            draft.setText("今晚只写一行预算。", for: .minimumAction)
+            let edited = SettlementControlsPresentationSnapshot(
+                availability: SettlementActionAvailabilitySnapshot(draft: draft)
+            )
+            let busy = SettlementControlsPresentationSnapshot(
+                availability: SettlementActionAvailabilitySnapshot(draft: draft, isBusy: true)
+            )
+
+            try expect(edited.applyRevisionAction.isEnabled)
+            try expect(!edited.archiveAction.isEnabled)
+            try expect(!busy.applyRevisionAction.isEnabled)
+            try expect(!busy.archiveAction.isEnabled)
+        }
+
         try runner.run("settlement stage snapshot exposes missing settlement recovery") {
             let engine = MeetingFlowEngine()
             var state = try engine.start(rawInput: "我想辞职又怕没钱")
@@ -1694,12 +1721,15 @@ struct ParallelMeCoreSmokeTests {
             try expect(!missing.canShowSettlementEditor)
             try expect(missing.title == "本心落定缺失")
             try expect(missing.recoveryActionTitle == "回首页")
+            try expect(missing.recoveryActionSystemImage == "house")
 
             state.heartSettlement = sampleSettlement
             let ready = SettlementStageSnapshot(state: state)
             try expect(ready.hasSettlement)
             try expect(ready.canShowSettlementEditor)
             try expect(ready.title == "本心落定")
+            try expect(ready.recoveryActionTitle == "继续落定")
+            try expect(ready.recoveryActionSystemImage == "checkmark.circle.fill")
         }
 
         try runner.run("archive requires complete heart settlement") {

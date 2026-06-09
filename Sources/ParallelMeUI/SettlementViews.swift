@@ -26,6 +26,10 @@ public struct SettlementView: View {
         SettlementActionAvailabilitySnapshot(draft: draft, isBusy: isBusy)
     }
 
+    private var controlsPresentation: SettlementControlsPresentationSnapshot {
+        SettlementControlsPresentationSnapshot(availability: actionAvailability)
+    }
+
     private var snapshot: HeartSettlementSnapshot {
         HeartSettlementSnapshot(settlement: settlement)
     }
@@ -49,17 +53,23 @@ public struct SettlementView: View {
             Button {
                 revise(draft.revisions)
             } label: {
-                Label("应用修订", systemImage: "pencil.and.scribble")
+                Label(
+                    controlsPresentation.applyRevisionAction.title,
+                    systemImage: controlsPresentation.applyRevisionAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(!actionAvailability.canApplyRevision)
+            .disabled(!controlsPresentation.applyRevisionAction.isEnabled)
             Button(action: archive) {
-                Label("保存纸页", systemImage: "archivebox.fill")
+                Label(
+                    controlsPresentation.archiveAction.title,
+                    systemImage: controlsPresentation.archiveAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!actionAvailability.canArchive)
+            .disabled(!controlsPresentation.archiveAction.isEnabled)
         }
         .foregroundStyle(ParallelMeColor.ink)
         .onAppear {
@@ -145,7 +155,7 @@ struct SettlementUnavailableView: View {
             }
 
             Button(action: reset) {
-                Label(snapshot.recoveryActionTitle, systemImage: "house")
+                Label(snapshot.recoveryActionTitle, systemImage: snapshot.recoveryActionSystemImage)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
