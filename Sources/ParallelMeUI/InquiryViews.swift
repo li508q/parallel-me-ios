@@ -84,22 +84,22 @@ private struct InquiryQuestionBatchView: View {
     var submit: ([ScribeInquiryAnswer]) -> Void
     @State private var draft = ScribeInquiryAnswerBatchDraft()
 
-    private var canSubmit: Bool {
-        draft.canSubmit(questions: questions) && !isBusy
-    }
-
-    private var submittedCount: Int {
-        questions.count - draft.missingQuestionIDs(in: questions).count
+    private var presentation: ScribeAnswerBatchPresentationSnapshot {
+        ScribeAnswerBatchPresentationSnapshot(
+            questions: questions,
+            draft: draft,
+            isBusy: isBusy
+        )
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             HStack(alignment: .firstTextBaseline) {
-                Text("本轮问询")
+                Text(presentation.title)
                     .font(ParallelMeTypography.eyebrow)
                     .foregroundStyle(ParallelMeColor.inkMuted)
                 Spacer()
-                Text("\(submittedCount) / \(questions.count)")
+                Text(presentation.progressText)
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(ParallelMeColor.inkMuted)
             }
@@ -107,6 +107,7 @@ private struct InquiryQuestionBatchView: View {
             ForEach(questions) { question in
                 InquiryQuestionView(
                     question: question,
+                    batchKind: presentation.kind,
                     selection: draft.selection(for: question.id)
                 ) { option, customText in
                     draft.select(question: question, option: option, customText: customText)
@@ -117,11 +118,14 @@ private struct InquiryQuestionBatchView: View {
             Button {
                 submit(draft.answers(for: questions))
             } label: {
-                Label("提交本轮问询", systemImage: "checkmark.circle.fill")
+                Label(
+                    presentation.submitAction.title,
+                    systemImage: presentation.submitAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!canSubmit)
+            .disabled(!presentation.submitAction.isEnabled)
         }
         .onChange(of: questions.map(\.id)) { _, _ in
             draft = ScribeInquiryAnswerBatchDraft()
@@ -131,6 +135,7 @@ private struct InquiryQuestionBatchView: View {
 
 private struct InquiryQuestionView: View {
     var question: ScribeInquiryQuestion
+    var batchKind: ScribeAnswerBatchKind
     var selection: ScribeInquiryAnswerSelection?
     var select: (ScribeInquiryOption, String?) -> Void
     @State private var customAnswer = ""
@@ -141,6 +146,14 @@ private struct InquiryQuestionView: View {
 
     private var customOption: ScribeInquiryOption? {
         question.options.first(where: \.isCustomAnswer)
+    }
+
+    private var customPresentation: ScribeCustomAnswerPresentationSnapshot {
+        ScribeCustomAnswerPresentationSnapshot(
+            kind: batchKind,
+            customText: customAnswer,
+            isSelected: customOption.map(isSelected) == true
+        )
     }
 
     var body: some View {
@@ -163,7 +176,7 @@ private struct InquiryQuestionView: View {
             }
             if let customOption {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
-                    TextField("写下你的真实答案", text: $customAnswer, axis: .vertical)
+                    TextField(customPresentation.prompt, text: $customAnswer, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .font(ParallelMeTypography.body)
                         .lineLimit(2...4)
@@ -171,15 +184,18 @@ private struct InquiryQuestionView: View {
                         select(customOption, customAnswer)
                     } label: {
                         HStack {
-                            Label("选用这句回答", systemImage: "text.bubble.fill")
+                            Label(
+                                customPresentation.action.title,
+                                systemImage: customPresentation.action.systemImage
+                            )
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            if isSelected(customOption) {
+                            if customPresentation.isSelected {
                                 Image(systemName: "checkmark.circle.fill")
                             }
                         }
                     }
                     .buttonStyle(.bordered)
-                    .disabled(customAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!customPresentation.action.isEnabled)
                 }
                 .onChange(of: customAnswer) { _, newValue in
                     if isSelected(customOption) {

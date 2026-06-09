@@ -545,6 +545,72 @@ struct ParallelMeCoreSmokeTests {
             try expect(answered.inquiryAnswers.map(\.questionID) == [action.id, cost.id])
         }
 
+        try runner.run("scribe answer batch presentation derives progress and controls") {
+            let fear = question("presentation_fear", "真正怕失去什么？", .coreFears)
+            let constraint = question("presentation_constraint", "哪个现实边界最硬？", .currentConstraints)
+            var probeDraft = ScribeProbeAnswerBatchDraft()
+            let fearOption = try unwrap(fear.options.first(where: { $0.id == "a" }), "Expected probe option")
+            probeDraft.select(question: fear, option: fearOption)
+
+            let probePresentation = ScribeAnswerBatchPresentationSnapshot(
+                questions: [fear, constraint],
+                draft: probeDraft,
+                isBusy: false
+            )
+            let busyProbePresentation = ScribeAnswerBatchPresentationSnapshot(
+                questions: [fear],
+                draft: probeDraft,
+                isBusy: true
+            )
+            let probeCustom = ScribeCustomAnswerPresentationSnapshot(
+                kind: .definition,
+                customText: "  现金流只能撑三个月。  ",
+                isSelected: true
+            )
+
+            try expect(probePresentation.kind == .definition)
+            try expect(probePresentation.title == "书记员追问")
+            try expect(probePresentation.progressText == "1 / 2")
+            try expect(probePresentation.submitAction.title == "提交本轮回答")
+            try expect(probePresentation.submitAction.systemImage == "checkmark.circle.fill")
+            try expect(!probePresentation.submitAction.isEnabled)
+            try expect(!busyProbePresentation.submitAction.isEnabled)
+            try expect(probeCustom.prompt == "写下更准确的回答")
+            try expect(probeCustom.action.title == "选用这句回答")
+            try expect(probeCustom.action.systemImage == "text.bubble.fill")
+            try expect(probeCustom.action.isEnabled)
+            try expect(probeCustom.isSelected)
+
+            let action = ScribeInquiryQuestion(
+                id: "presentation_action",
+                question: "24 小时内能完成的行动是什么？",
+                options: [ScribeInquiryOption(id: "budget", label: "今晚写预算。")],
+                module: .minimumAction
+            )
+            var inquiryDraft = ScribeInquiryAnswerBatchDraft()
+            let actionOption = try unwrap(action.options.first, "Expected inquiry option")
+            inquiryDraft.select(question: action, option: actionOption)
+            let inquiryPresentation = ScribeAnswerBatchPresentationSnapshot(
+                questions: [action],
+                draft: inquiryDraft,
+                isBusy: false
+            )
+            let emptyInquiryCustom = ScribeCustomAnswerPresentationSnapshot(
+                kind: .inquiry,
+                customText: "   ",
+                isSelected: false
+            )
+
+            try expect(inquiryPresentation.kind == .inquiry)
+            try expect(inquiryPresentation.title == "本轮问询")
+            try expect(inquiryPresentation.progressText == "1 / 1")
+            try expect(inquiryPresentation.submitAction.title == "提交本轮问询")
+            try expect(inquiryPresentation.submitAction.isEnabled)
+            try expect(emptyInquiryCustom.prompt == "写下你的真实答案")
+            try expect(!emptyInquiryCustom.action.isEnabled)
+            try expect(!emptyInquiryCustom.isSelected)
+        }
+
         try runner.run("many answers do not force settlement") {
             let evaluator = SettlementReadinessEvaluator()
             let answers = (0..<24).map { index in

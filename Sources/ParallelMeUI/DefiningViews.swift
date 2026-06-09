@@ -147,22 +147,22 @@ private struct ProbeQuestionBatchView: View {
     var submit: ([ScribeAnswer]) -> Void
     @State private var draft = ScribeProbeAnswerBatchDraft()
 
-    private var canSubmit: Bool {
-        draft.canSubmit(questions: questions) && !isBusy
-    }
-
-    private var submittedCount: Int {
-        questions.count - draft.missingQuestionIDs(in: questions).count
+    private var presentation: ScribeAnswerBatchPresentationSnapshot {
+        ScribeAnswerBatchPresentationSnapshot(
+            questions: questions,
+            draft: draft,
+            isBusy: isBusy
+        )
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             HStack(alignment: .firstTextBaseline) {
-                Text("书记员追问")
+                Text(presentation.title)
                     .font(ParallelMeTypography.eyebrow)
                     .foregroundStyle(ParallelMeColor.inkMuted)
                 Spacer()
-                Text("\(submittedCount) / \(questions.count)")
+                Text(presentation.progressText)
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(ParallelMeColor.inkMuted)
             }
@@ -170,6 +170,7 @@ private struct ProbeQuestionBatchView: View {
             ForEach(questions) { question in
                 ProbeQuestionView(
                     question: question,
+                    batchKind: presentation.kind,
                     selection: draft.selection(for: question.id)
                 ) { option, customText in
                     draft.select(question: question, option: option, customText: customText)
@@ -180,11 +181,14 @@ private struct ProbeQuestionBatchView: View {
             Button {
                 submit(draft.answers(for: questions))
             } label: {
-                Label("提交本轮回答", systemImage: "checkmark.circle.fill")
+                Label(
+                    presentation.submitAction.title,
+                    systemImage: presentation.submitAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!canSubmit)
+            .disabled(!presentation.submitAction.isEnabled)
         }
         .onChange(of: questions.map(\.id)) { _, _ in
             draft = ScribeProbeAnswerBatchDraft()
@@ -194,6 +198,7 @@ private struct ProbeQuestionBatchView: View {
 
 private struct ProbeQuestionView: View {
     var question: ScribeQuestion
+    var batchKind: ScribeAnswerBatchKind
     var selection: ScribeProbeAnswerSelection?
     var select: (ScribeProbeOption, String?) -> Void
     @State private var customAnswer = ""
@@ -204,6 +209,14 @@ private struct ProbeQuestionView: View {
 
     private var customOption: ScribeProbeOption? {
         question.options.first(where: \.isCustomAnswer)
+    }
+
+    private var customPresentation: ScribeCustomAnswerPresentationSnapshot {
+        ScribeCustomAnswerPresentationSnapshot(
+            kind: batchKind,
+            customText: customAnswer,
+            isSelected: customOption.map(isSelected) == true
+        )
     }
 
     var body: some View {
@@ -226,7 +239,7 @@ private struct ProbeQuestionView: View {
             }
             if let customOption {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
-                    TextField("写下更准确的回答", text: $customAnswer, axis: .vertical)
+                    TextField(customPresentation.prompt, text: $customAnswer, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .font(ParallelMeTypography.body)
                         .lineLimit(2...4)
@@ -234,15 +247,18 @@ private struct ProbeQuestionView: View {
                         select(customOption, customAnswer)
                     } label: {
                         HStack {
-                            Label("选用这句回答", systemImage: "text.bubble.fill")
+                            Label(
+                                customPresentation.action.title,
+                                systemImage: customPresentation.action.systemImage
+                            )
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            if isSelected(customOption) {
+                            if customPresentation.isSelected {
                                 Image(systemName: "checkmark.circle.fill")
                             }
                         }
                     }
                     .buttonStyle(.bordered)
-                    .disabled(customAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!customPresentation.action.isEnabled)
                 }
                 .onChange(of: customAnswer) { _, newValue in
                     if isSelected(customOption) {
