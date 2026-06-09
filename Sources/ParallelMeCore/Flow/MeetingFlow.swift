@@ -173,7 +173,8 @@ public struct MeetingFlowEngine: Sendable {
         in state: MeetingFlowState
     ) throws -> MeetingFlowState {
         try require(.roundtable, state)
-        guard !state.roundtable.openingTurns.isEmpty else {
+        let transition = RoundtableTransitionSnapshot(record: state.roundtable)
+        guard transition.hasCompleteOpenings else {
             throw MeetingFlowError.missingRoundtableOpenings
         }
         var next = state

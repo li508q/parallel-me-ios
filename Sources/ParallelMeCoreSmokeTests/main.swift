@@ -141,6 +141,60 @@ struct ParallelMeCoreSmokeTests {
             try expect(ready.statusTitle == "可以进入书记员问询")
         }
 
+        try runner.run("roundtable action availability gates restored roundtable moves") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            var roundtable = try engine.confirmProposal(in: proposed)
+
+            let missingOpenings = RoundtableActionAvailabilitySnapshot(state: roundtable)
+            try expect(!missingOpenings.canContinueRoundtable)
+            try expect(!missingOpenings.canStartInquiry)
+            try expect(missingOpenings.blockers == [.incompleteOpenings])
+            try expect(missingOpenings.statusDetail.contains(VoiceID.lay.displayName))
+
+            roundtable.roundtable.openingTurns = [opening(.future)]
+            do {
+                _ = try engine.appendRoundtableMove(
+                    RoundtableMove(type: .continueAll),
+                    turns: [RoundtableTurn(voiceID: .future, text: "先别急着继续。")],
+                    in: roundtable
+                )
+                throw TestFailure("Expected incomplete openings error")
+            } catch MeetingFlowError.missingRoundtableOpenings {
+                // expected
+            }
+
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: try engine.confirmProposal(in: proposed))
+            let waiting = RoundtableActionAvailabilitySnapshot(state: opened)
+            try expect(waiting.canContinueRoundtable)
+            try expect(waiting.canAskTable)
+            try expect(waiting.canAskVoice)
+            try expect(waiting.canStartDuel)
+            try expect(!waiting.canStartInquiry)
+            try expect(waiting.inquiryActionTitle == "材料还不够")
+
+            var missingTaskFrame = opened
+            missingTaskFrame.taskFrame = nil
+            let legacy = RoundtableActionAvailabilitySnapshot(state: missingTaskFrame)
+            try expect(!legacy.canContinueRoundtable)
+            try expect(!legacy.canStartInquiry)
+            try expect(legacy.blockers == [.missingTaskFrame])
+            try expect(legacy.inquiryActionTitle == "圆桌需修复")
+
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把长期后果说清楚。")],
+                in: opened
+            )
+            try expect(RoundtableActionAvailabilitySnapshot(state: moved).canStartInquiry)
+
+            let busy = RoundtableActionAvailabilitySnapshot(state: moved, isBusy: true)
+            try expect(!busy.canContinueRoundtable)
+            try expect(busy.blockers == [.busy])
+            try expect(busy.statusTitle == "圆桌正在整理")
+        }
+
         try runner.run("scribe drops duplicate purposes") {
             let deduplicator = ScribeQuestionDeduplicator()
             let normalized = deduplicator.normalize([

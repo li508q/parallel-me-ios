@@ -15,8 +15,8 @@ struct RoundtableView: View {
         RoundtableTranscriptSnapshot(record: state.roundtable)
     }
 
-    private var transition: RoundtableTransitionSnapshot {
-        RoundtableTransitionSnapshot(record: state.roundtable)
+    private var actionAvailability: RoundtableActionAvailabilitySnapshot {
+        RoundtableActionAvailabilitySnapshot(state: state, isBusy: viewModel.isBusy)
     }
 
     var body: some View {
@@ -33,15 +33,15 @@ struct RoundtableView: View {
     private var roundtableControls: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
-                Image(systemName: transition.canStartInquiry ? "checkmark.seal.fill" : "hourglass")
-                    .foregroundStyle(transition.canStartInquiry ? ParallelMeColor.rest : ParallelMeColor.inkMuted)
+                Image(systemName: actionAvailability.canStartInquiry ? "checkmark.seal.fill" : "hourglass")
+                    .foregroundStyle(actionAvailability.canStartInquiry ? ParallelMeColor.rest : statusColor)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(transition.statusTitle)
+                    Text(actionAvailability.statusTitle)
                         .font(ParallelMeTypography.bodyStrong)
                         .foregroundStyle(ParallelMeColor.ink)
-                    Text(transition.statusDetail)
+                    Text(actionAvailability.statusDetail)
                         .font(ParallelMeTypography.compact)
-                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .foregroundStyle(statusColor)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -51,11 +51,12 @@ struct RoundtableView: View {
                     Label("继续一轮", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .buttonStyle(.bordered)
+                .disabled(!actionAvailability.canContinueRoundtable)
                 Button(action: viewModel.startInquiry) {
-                    Label(transition.inquiryActionTitle, systemImage: "arrow.right.circle.fill")
+                    Label(actionAvailability.inquiryActionTitle, systemImage: "arrow.right.circle.fill")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!transition.canStartInquiry)
+                .disabled(!actionAvailability.canStartInquiry)
             }
             DisclosureGroup("问全桌") {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
@@ -68,7 +69,7 @@ struct RoundtableView: View {
                         Label("发送给全桌", systemImage: "paperplane.fill")
                     }
                     .buttonStyle(.bordered)
-                    .disabled(tableQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!actionAvailability.canAskTable || tableQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .padding(.top, ParallelMeSpacing.sm)
             }
@@ -88,7 +89,7 @@ struct RoundtableView: View {
                         Label("发送给\(selectedVoice.displayName)", systemImage: "person.wave.2.fill")
                     }
                     .buttonStyle(.bordered)
-                    .disabled(voiceQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!actionAvailability.canAskVoice || voiceQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .padding(.top, ParallelMeSpacing.sm)
             }
@@ -110,7 +111,7 @@ struct RoundtableView: View {
                         Label("开始对话", systemImage: "arrow.left.and.right")
                     }
                     .buttonStyle(.bordered)
-                    .disabled(duelFrom == duelTo)
+                    .disabled(!actionAvailability.canStartDuel || duelFrom == duelTo)
                 }
                 .padding(.top, ParallelMeSpacing.sm)
             }
@@ -123,6 +124,15 @@ struct RoundtableView: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
         )
+    }
+
+    private var statusColor: Color {
+        switch actionAvailability.messageTone {
+        case .muted:
+            return ParallelMeColor.inkMuted
+        case .warning:
+            return ParallelMeColor.filial
+        }
     }
 }
 
