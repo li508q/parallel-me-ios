@@ -60,38 +60,16 @@ public struct MeetingArchiveSnapshot: Codable, Equatable, Sendable {
 
     private static func settlementRows(for state: MeetingFlowState) -> [MeetingArchiveRow] {
         guard let settlement = state.heartSettlement else { return [] }
-        return [
-            MeetingArchiveRow(
-                id: "settlement:creativeHopelessness",
-                title: settlement.creativeHopelessness.title.nonEmptyArchiveText ?? "创造性无望",
-                body: settlement.resolvedText(for: .creativeHopelessness),
-                details: settlement.creativeHopelessness.evidence
-            ),
-            MeetingArchiveRow(
-                id: "settlement:coreValues",
-                title: settlement.coreValueAxis.title.nonEmptyArchiveText ?? "核心价值主轴",
-                body: settlement.resolvedText(for: .coreValues),
-                details: settlement.coreValueAxis.evidence
-            ),
-            MeetingArchiveRow(
-                id: "settlement:costAcceptance",
-                title: settlement.costAcceptanceContract.title.nonEmptyArchiveText ?? "痛苦接纳契约",
-                body: settlement.resolvedText(for: .costAcceptance),
-                details: settlement.costAcceptanceContract.evidence
-            ),
-            MeetingArchiveRow(
-                id: "settlement:minimumAction",
-                title: settlement.minimumViableCommitment.title.nonEmptyArchiveText ?? "最小行动承诺",
-                body: settlement.resolvedText(for: .minimumAction),
-                details: settlement.minimumViableCommitment.evidence
-            ),
-            MeetingArchiveRow(
-                id: "settlement:dialecticSynthesis",
-                title: "正反合",
-                body: settlement.resolvedText(for: .dialecticSynthesis),
-                details: [settlement.dialecticSynthesis.thesis, settlement.dialecticSynthesis.antithesis]
-            )
-        ].filter(\.isMeaningful)
+        return HeartSettlementSnapshot(settlement: settlement).rows
+            .map {
+                MeetingArchiveRow(
+                    id: "settlement:\($0.moduleID.rawValue)",
+                    title: $0.title,
+                    body: $0.body,
+                    details: $0.details
+                )
+            }
+            .filter(\.isMeaningful)
     }
 }
 

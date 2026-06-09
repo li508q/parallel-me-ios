@@ -73,7 +73,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
 `RuntimePreferencesActionAvailabilitySnapshot` blocks invalid OpenAI-compatible settings from being saved and locks provider/context editing while a runtime preference operation is in flight.
 `SettlementRequestAvailabilitySnapshot` derives whether the inquiry stage can request the final Heart Settlement or should continue asking questions, keeping unanswered-question and evidence-readiness gates out of SwiftUI.
-`SettlementStageSnapshot` keeps restored settlement-stage papers from rendering a blank body when the Heart Settlement payload is missing. `SettlementRevisionDraft` owns settlement editing state and validation, and `SettlementActionAvailabilitySnapshot` derives busy-aware apply/archive availability so SwiftUI can render editable modules without deciding which actions are safe.
+`SettlementStageSnapshot` keeps restored settlement-stage papers from rendering a blank body when the Heart Settlement payload is missing. `HeartSettlementSnapshot` derives the fixed five-module display rows from a settlement, so the settlement editor, archived detail, and Markdown export share one canonical module order and title set. `SettlementRevisionDraft` owns settlement editing state and validation, and `SettlementActionAvailabilitySnapshot` derives busy-aware apply/archive availability so SwiftUI can render editable modules without deciding which actions are safe.
 
 Provider runtime settings are split deliberately:
 

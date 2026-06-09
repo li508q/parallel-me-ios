@@ -89,6 +89,21 @@ public struct SettlementRevisionDraft: Codable, Equatable, Sendable {
             dialecticSynthesis
         }
     }
+
+    public mutating func setText(_ text: String, for moduleID: SettlementModuleID) {
+        switch moduleID {
+        case .creativeHopelessness:
+            creativeHopelessness = text
+        case .coreValues:
+            coreValues = text
+        case .costAcceptance:
+            costAcceptance = text
+        case .minimumAction:
+            minimumAction = text
+        case .dialecticSynthesis:
+            dialecticSynthesis = text
+        }
+    }
 }
 
 private extension String {

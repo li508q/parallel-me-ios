@@ -26,17 +26,23 @@ public struct SettlementView: View {
         SettlementActionAvailabilitySnapshot(draft: draft, isBusy: isBusy)
     }
 
+    private var snapshot: HeartSettlementSnapshot {
+        HeartSettlementSnapshot(settlement: settlement)
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
-            Text("本心落定")
+            Text(snapshot.title)
                 .font(ParallelMeTypography.title)
-            Text(settlement.headline)
+            Text(snapshot.headline)
                 .font(ParallelMeTypography.bodyStrong)
-            SettlementModuleEditor(title: "创造性无望", text: $draft.creativeHopelessness, isDisabled: isBusy)
-            SettlementModuleEditor(title: "核心价值主轴", text: $draft.coreValues, isDisabled: isBusy)
-            SettlementModuleEditor(title: "痛苦接纳契约", text: $draft.costAcceptance, isDisabled: isBusy)
-            SettlementModuleEditor(title: "最小行动承诺", text: $draft.minimumAction, isDisabled: isBusy)
-            SettlementModuleEditor(title: "正反合", text: $draft.dialecticSynthesis, isDisabled: isBusy)
+            ForEach(snapshot.rows) { row in
+                SettlementModuleEditor(
+                    title: row.title,
+                    text: binding(for: row.moduleID),
+                    isDisabled: isBusy
+                )
+            }
             Text(actionAvailability.message)
                 .font(ParallelMeTypography.compact)
                 .foregroundStyle(messageColor)
@@ -66,6 +72,17 @@ public struct SettlementView: View {
 
     private func loadDrafts(from settlement: HeartSettlement) {
         draft = SettlementRevisionDraft(settlement: settlement)
+    }
+
+    private func binding(for moduleID: SettlementModuleID) -> Binding<String> {
+        Binding(
+            get: {
+                draft.text(for: moduleID)
+            },
+            set: { newValue in
+                draft.setText(newValue, for: moduleID)
+            }
+        )
     }
 
     private var messageColor: Color {

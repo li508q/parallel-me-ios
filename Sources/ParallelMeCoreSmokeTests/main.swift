@@ -1372,6 +1372,7 @@ struct ParallelMeCoreSmokeTests {
             try expect(archive.hasIssue)
             try expect(archive.hasSettlement)
             try expect(archive.issueRows.map(\.title) == ["选择岔路", "现实边界", "隐秘关切", "圆桌任务"])
+            try expect(archive.settlementRows.map(\.title) == ["创造性无望", "核心价值主轴", "痛苦接纳契约", "最小行动承诺", "正反合"])
             try expect(archive.settlementRows.contains { $0.body == "明早 10 点前预约体检。" })
             try expect(archive.settlementRows.contains { $0.body == "先承认身体边界，再用观察期换回判断力。" })
             try expect(archive.timelineItems.map(\.kind).contains(.definingAnswer))
@@ -1462,6 +1463,8 @@ struct ParallelMeCoreSmokeTests {
             try expect(document.markdown.contains("Provider：gpt-4.1"))
             try expect(document.markdown.contains("个人背景：我最近睡眠很差"))
             try expect(document.markdown.contains("明早 10 点前预约体检。"))
+            try expect(document.markdown.contains("- **创造性无望**"))
+            try expect(!document.markdown.contains("- **无望**"))
             try expect(document.markdown.contains("纸页脉络"))
             try expect(!document.markdown.contains("apiKey"))
             try expect(!document.markdown.contains("Optional"))
@@ -1505,6 +1508,30 @@ struct ParallelMeCoreSmokeTests {
             try expect(settlement.headline == "这是我自己认领的正反合。")
         }
 
+        try runner.run("heart settlement snapshot preserves fixed module display order") {
+            var settlement = sampleSettlement
+            settlement.creativeHopelessness.evidence = ["  已经没有无代价选项  ", ""]
+            settlement.revise(moduleID: .minimumAction, text: "今晚只写一行预算。")
+
+            let snapshot = HeartSettlementSnapshot(settlement: settlement)
+
+            try expect(snapshot.title == "本心落定")
+            try expect(snapshot.headline == sampleSettlement.headline)
+            try expect(snapshot.isComplete)
+            try expect(snapshot.rows.map(\.moduleID) == SettlementModuleID.allCases)
+            try expect(snapshot.rows.map(\.title) == ["创造性无望", "核心价值主轴", "痛苦接纳契约", "最小行动承诺", "正反合"])
+            try expect(snapshot.rows.first?.body == "没有无代价的自由。")
+            try expect(snapshot.rows.first?.details == ["已经没有无代价选项"])
+            try expect(snapshot.rows.first { $0.moduleID == .minimumAction }?.body == "今晚只写一行预算。")
+            try expect(snapshot.rows.first { $0.moduleID == .dialecticSynthesis }?.details == ["我想离开。", "我需要退路。"])
+            try expect(!HeartSettlementSnapshot(title: "本心落定", headline: "缺行", rows: []).isComplete)
+            try expect(!HeartSettlementSnapshot(
+                title: snapshot.title,
+                headline: snapshot.headline,
+                rows: Array(snapshot.rows.reversed())
+            ).isComplete)
+        }
+
         try runner.run("settlement revision draft only emits meaningful changes") {
             var draft = SettlementRevisionDraft(settlement: sampleSettlement)
             try expect(!draft.hasChanges)
@@ -1512,10 +1539,11 @@ struct ParallelMeCoreSmokeTests {
             try expect(!draft.canApply)
             try expect(draft.canArchive)
 
-            draft.minimumAction = "  今晚只写一行预算。  "
+            draft.setText("  今晚只写一行预算。  ", for: .minimumAction)
             draft.coreValues = "\n\(sampleSettlement.resolvedText(for: .coreValues))\n"
 
             try expect(draft.revisions == [.minimumAction: "今晚只写一行预算。"])
+            try expect(draft.text(for: .minimumAction) == "  今晚只写一行预算。  ")
             try expect(draft.hasChanges)
             try expect(draft.hasDraftEdits)
             try expect(draft.canApply)

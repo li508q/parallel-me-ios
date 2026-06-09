@@ -79,12 +79,11 @@ public struct MeetingExportDocument: Equatable, Sendable {
         }
 
         if let settlement = state.heartSettlement {
-            appendHeading("本心落定", to: &lines)
-            appendPair("创造性无望", settlement.resolvedText(for: .creativeHopelessness), to: &lines)
-            appendPair("核心价值主轴", settlement.resolvedText(for: .coreValues), to: &lines)
-            appendPair("痛苦接纳契约", settlement.resolvedText(for: .costAcceptance), to: &lines)
-            appendPair("最小行动承诺", settlement.resolvedText(for: .minimumAction), to: &lines)
-            appendPair("正反合", settlement.resolvedText(for: .dialecticSynthesis), to: &lines)
+            let snapshot = HeartSettlementSnapshot(settlement: settlement)
+            appendHeading(snapshot.title, to: &lines)
+            for row in snapshot.rows where row.isMeaningful {
+                appendPair(row.title, row.body, to: &lines)
+            }
         }
 
         let timeline = MeetingTimeline.items(for: state)
