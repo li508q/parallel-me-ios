@@ -278,20 +278,20 @@ struct PaperLibrarySection: View {
                 }
 
                 HStack(spacing: ParallelMeSpacing.xs) {
-                    Image(systemName: "magnifyingglass")
+                    Image(systemName: presentation.search.systemImage)
                         .foregroundStyle(ParallelMeColor.inkMuted)
-                    TextField("搜索纸页", text: $searchText)
+                    TextField(presentation.search.prompt, text: $searchText)
                         .textFieldStyle(.plain)
                         .font(ParallelMeTypography.compact)
-                    if presentation.hasSearchQuery {
+                    if presentation.search.clearAction.isEnabled {
                         Button {
                             searchText = ""
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
+                            Image(systemName: presentation.search.clearAction.systemImage)
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(ParallelMeColor.inkMuted)
-                        .accessibilityLabel(Text("清空搜索"))
+                        .accessibilityLabel(Text(presentation.search.clearAction.accessibilityLabel))
                     }
                 }
                 .padding(.horizontal, ParallelMeSpacing.sm)
@@ -303,14 +303,14 @@ struct PaperLibrarySection: View {
                         .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
                 )
 
-                Picker("纸页类型", selection: $filter) {
+                Picker(presentation.filterControl.title, selection: $filter) {
                     ForEach(MeetingLibraryFilter.allCases) { libraryFilter in
                         Text(libraryFilter.title).tag(libraryFilter)
                     }
                 }
                 .pickerStyle(.segmented)
                 .font(ParallelMeTypography.compact)
-                .disabled(!presentation.shouldShowLibrary)
+                .disabled(!presentation.filterControl.isEnabled)
 
                 if let emptyStateText = presentation.emptyStateText {
                     Text(emptyStateText)
@@ -323,7 +323,7 @@ struct PaperLibrarySection: View {
                 } else {
                     ForEach(presentation.groups) { group in
                         PaperLibraryGroup(
-                            title: group.title,
+                            title: group.displayTitle,
                             meetings: group.meetings,
                             tint: tint(for: group.kind),
                             availability: availability,
@@ -355,7 +355,7 @@ private struct PaperLibraryGroup: View {
     var delete: (String) -> Void
 
     var body: some View {
-        DisclosureGroup("\(title) · \(meetings.count)") {
+        DisclosureGroup(title) {
             VStack(spacing: ParallelMeSpacing.sm) {
                 ForEach(meetings) { meeting in
                     PaperLibraryRow(

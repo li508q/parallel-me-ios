@@ -115,6 +115,7 @@ public enum MeetingLibraryPresentationGroupKind: String, Codable, Sendable, Iden
 public struct MeetingLibraryPresentationGroup: Codable, Equatable, Sendable, Identifiable {
     public var kind: MeetingLibraryPresentationGroupKind
     public var title: String
+    public var displayTitle: String
     public var meetings: [MeetingSummary]
 
     public var id: MeetingLibraryPresentationGroupKind {
@@ -128,13 +129,43 @@ public struct MeetingLibraryPresentationGroup: Codable, Equatable, Sendable, Ide
     ) {
         self.kind = kind
         self.title = title
+        self.displayTitle = "\(title) · \(meetings.count)"
         self.meetings = meetings
+    }
+}
+
+public struct MeetingLibrarySearchPresentationSnapshot: Codable, Equatable, Sendable {
+    public var prompt: String
+    public var systemImage: String
+    public var clearAction: PaperLibraryActionPresentationSnapshot
+
+    public init(hasSearchQuery: Bool) {
+        self.prompt = "搜索纸页"
+        self.systemImage = "magnifyingglass"
+        self.clearAction = PaperLibraryActionPresentationSnapshot(
+            title: "清空搜索",
+            systemImage: "xmark.circle.fill",
+            isEnabled: hasSearchQuery,
+            accessibilityLabel: "清空搜索"
+        )
+    }
+}
+
+public struct MeetingLibraryFilterPresentationSnapshot: Codable, Equatable, Sendable {
+    public var title: String
+    public var isEnabled: Bool
+
+    public init(isEnabled: Bool) {
+        self.title = "纸页类型"
+        self.isEnabled = isEnabled
     }
 }
 
 public struct MeetingLibraryPresentationSnapshot: Codable, Equatable, Sendable {
     public var title: String
     public var statusText: String
+    public var search: MeetingLibrarySearchPresentationSnapshot
+    public var filterControl: MeetingLibraryFilterPresentationSnapshot
     public var hasSearchQuery: Bool
     public var isFiltering: Bool
     public var shouldShowLibrary: Bool
@@ -147,10 +178,16 @@ public struct MeetingLibraryPresentationSnapshot: Codable, Equatable, Sendable {
         searchText: String,
         filter: MeetingLibraryFilter
     ) {
+        let hasSearchQuery = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let isFiltering = filter != .all
+        let shouldShowLibrary = !sourceLibrary.isEmpty
+
         title = "纸页库"
-        hasSearchQuery = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        isFiltering = filter != .all
-        shouldShowLibrary = !sourceLibrary.isEmpty
+        self.hasSearchQuery = hasSearchQuery
+        self.isFiltering = isFiltering
+        self.shouldShowLibrary = shouldShowLibrary
+        search = MeetingLibrarySearchPresentationSnapshot(hasSearchQuery: hasSearchQuery)
+        filterControl = MeetingLibraryFilterPresentationSnapshot(isEnabled: shouldShowLibrary)
         statusText = if hasSearchQuery || isFiltering {
             "\(library.totalCount) 个匹配"
         } else {

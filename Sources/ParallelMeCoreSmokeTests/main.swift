@@ -1485,6 +1485,58 @@ struct ParallelMeCoreSmokeTests {
             try expect(emptyAll.emptyStateText == "纸页库还是空的")
         }
 
+        try runner.run("meeting library presentation derives search filter and group chrome") {
+            let summaries = [
+                MeetingSummary(
+                    id: "money",
+                    title: "现金流观察期",
+                    subtitle: "五声圆桌 · 5 个开场",
+                    stage: .roundtable,
+                    createdAt: Date(timeIntervalSince1970: 10),
+                    updatedAt: Date(timeIntervalSince1970: 100)
+                ),
+                MeetingSummary(
+                    id: "health",
+                    title: "身体底线",
+                    subtitle: "已归档",
+                    stage: .archived,
+                    createdAt: Date(timeIntervalSince1970: 20),
+                    updatedAt: Date(timeIntervalSince1970: 90)
+                )
+            ]
+            let source = MeetingLibrarySnapshot(summaries: summaries)
+            let all = MeetingLibraryPresentationSnapshot(
+                library: source,
+                sourceLibrary: source,
+                searchText: "",
+                filter: .all
+            )
+            let search = MeetingLibraryPresentationSnapshot(
+                library: source.filtered(searchText: "现金"),
+                sourceLibrary: source,
+                searchText: "  现金  ",
+                filter: .all
+            )
+            let empty = MeetingLibraryPresentationSnapshot(
+                library: MeetingLibrarySnapshot(),
+                sourceLibrary: MeetingLibrarySnapshot(),
+                searchText: "",
+                filter: .all
+            )
+
+            try expect(all.search.prompt == "搜索纸页")
+            try expect(all.search.systemImage == "magnifyingglass")
+            try expect(all.search.clearAction.title == "清空搜索")
+            try expect(all.search.clearAction.systemImage == "xmark.circle.fill")
+            try expect(!all.search.clearAction.isEnabled)
+            try expect(search.search.clearAction.isEnabled)
+            try expect(search.search.clearAction.accessibilityLabel == "清空搜索")
+            try expect(all.filterControl.title == "纸页类型")
+            try expect(all.filterControl.isEnabled)
+            try expect(!empty.filterControl.isEnabled)
+            try expect(all.groups.map(\.displayTitle) == ["未完成 · 1", "已归档 · 1"])
+        }
+
         try runner.run("meeting library searches full paper content") {
             let engine = MeetingFlowEngine()
             var state = try engine.start(rawInput: "我想重新安排工作")
