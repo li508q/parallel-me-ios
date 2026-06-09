@@ -22,7 +22,11 @@ struct InquiryView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isBusy)
             } else if activeQuestions.isEmpty {
-                ProgressView("书记员正在校对最后的问题")
+                if viewModel.isBusy {
+                    ProgressView("书记员正在校对最后的问题")
+                } else {
+                    InquiryRetryView(retry: viewModel.retryInquiry)
+                }
             } else {
                 InquiryQuestionBatchView(
                     questions: activeQuestions,
@@ -32,6 +36,34 @@ struct InquiryView: View {
                 }
             }
         }
+    }
+}
+
+private struct InquiryRetryView: View {
+    var retry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text("书记员这一步没有完成。")
+                .font(ParallelMeTypography.bodyStrong)
+                .foregroundStyle(ParallelMeColor.ink)
+            Text("可以沿用当前圆桌材料，重新整理下一轮问询；这张纸页会保留。")
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: retry) {
+                Label("重新整理问询", systemImage: "arrow.clockwise")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
+        )
     }
 }
 

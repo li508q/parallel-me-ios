@@ -82,6 +82,8 @@ Provider context is stored separately from provider credentials:
 Each new meeting also stores a `MeetingRuntimeSnapshot` in `MeetingFlowState`. The snapshot records the provider mode, model, non-sensitive endpoint metadata, and normalized provider context used when the paper started. Settlement and archive timestamps are stored on the same state, so library sorting and timeline display can reflect real lifecycle events instead of inferring them from earlier answers. This gives restored meetings and debugging views one durable source of truth without storing API keys in meeting JSON.
 When an unfinished paper is restored from the library, `MeetingViewModel` rebuilds the session coordinator before the next model-backed action. The rebuilt runtime uses the current provider credentials and current provider context, falling back to the paper's stored context only when the current context is empty, and writes that effective runtime snapshot back onto the restored state. Archived papers bypass provider rebuilding so they remain readable offline even when credentials are missing or invalid.
 
+If an async operation fails after the coordinator has already persisted a valid intermediate state, `MeetingViewModel` adopts the coordinator's latest state before surfacing the error. This keeps partial transitions such as entering inquiry recoverable from the current paper instead of leaving the UI on stale state.
+
 ## Project Generation
 
 `project.yml` is the source of truth for Xcode project shape. `ParallelMe.xcodeproj` is generated with XcodeGen and checked in so iOS developers can open the app directly in Xcode.
@@ -98,6 +100,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
 - In-flight activity banners are derived in Core and tested so waiting states stay specific to the user's current action.
 - Definition-stage recovery keeps a started paper retryable when the first model-backed definition request fails.
+- Inquiry-stage recovery keeps a paper retryable when the first model-backed inquiry request fails after the inquiry stage has been persisted.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Roundtable transcript grouping is derived in Core and shared by live UI and export.

@@ -56,7 +56,7 @@ The scribe maintains a background ledger. This ledger records evidence for the f
 
 ## 6. Final Inquiry
 
-The inquiry loop asks only questions that can still change the settlement quality. It closes when the five settlement landing zones are sufficiently supported:
+The inquiry loop asks only questions that can still change the settlement quality. If the first inquiry request fails after the paper has entered inquiry, the app keeps the paper in inquiry and offers an explicit retry action that reuses the current roundtable evidence instead of sending the user back to the roundtable. The loop closes when the five settlement landing zones are sufficiently supported:
 
 - creative hopelessness
 - core value axis

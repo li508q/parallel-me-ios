@@ -278,6 +278,14 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
+    public func retryInquiry() {
+        run(activity: .retryingInquiry) { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
+            self.state = try await self.coordinator.requestNextInquiry()
+            await self.loadMeetingLibrary()
+        }
+    }
+
     public func answerInquiry(
         question: ScribeInquiryQuestion,
         option: ScribeInquiryOption,
@@ -439,6 +447,9 @@ public final class MeetingViewModel: ObservableObject {
             do {
                 try await operation()
             } catch {
+                if let latestState = await coordinator.currentState() {
+                    state = latestState
+                }
                 let message = Self.userFacingMessage(for: error)
                 errorMessage = message
                 await sessionEventSink?.record(

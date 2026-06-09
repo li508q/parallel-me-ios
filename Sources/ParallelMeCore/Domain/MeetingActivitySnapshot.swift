@@ -13,6 +13,7 @@ public enum MeetingActivityKind: String, CaseIterable, Codable, Sendable {
     case askingVoice
     case startingDuel
     case startingInquiry
+    case retryingInquiry
     case submittingInquiryAnswers
     case requestingSettlement
     case revisingSettlement
@@ -93,6 +94,11 @@ public struct MeetingActivitySnapshot: Equatable, Identifiable, Sendable {
             title = "书记员正在进入问询"
             detail = "没有固定题数上限，只补齐足够生成落定的证据。"
             systemImage = "questionmark.bubble"
+            usesProvider = true
+        case .retryingInquiry:
+            title = "书记员正在重新整理问询"
+            detail = "会沿用圆桌材料和已有问询回答，再请求一次下一步。"
+            systemImage = "arrow.clockwise"
             usesProvider = true
         case .submittingInquiryAnswers:
             title = "书记员正在校对问询证据"

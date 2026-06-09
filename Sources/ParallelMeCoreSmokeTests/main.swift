@@ -484,16 +484,20 @@ struct ParallelMeCoreSmokeTests {
             let inquiry = MeetingActivitySnapshot(kind: .startingInquiry)
             let localArchive = MeetingActivitySnapshot(kind: .archivingPaper)
             let definition = MeetingActivitySnapshot(kind: .submittingDefinitionAnswers)
+            let retryInquiry = MeetingActivitySnapshot(kind: .retryingInquiry)
 
             try expect(inquiry.title == "书记员正在进入问询")
             try expect(inquiry.detail.contains("没有固定题数上限"))
             try expect(inquiry.usesProvider)
+            try expect(retryInquiry.title == "书记员正在重新整理问询")
+            try expect(retryInquiry.detail.contains("已有问询回答"))
+            try expect(retryInquiry.usesProvider)
             try expect(localArchive.systemImage == "archivebox")
             try expect(!localArchive.usesProvider)
             try expect(definition.detail.contains("一起送回"))
             try expect(MeetingActivitySnapshot(kind: .retryingDefinition).usesProvider)
             try expect(MeetingActivitySnapshot(kind: .retryingDefinition).title.contains("重新整理"))
-            try expect(MeetingActivityKind.allCases.count == 18)
+            try expect(MeetingActivityKind.allCases.count == 19)
         }
 
         try runner.run("provider prompt specs preserve product contracts") {
@@ -1379,6 +1383,83 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.state?.taskFrame?.problemDefinition == completeProposal.issueSentence)
         }
 
+        try await runner.runAsync("meeting view model retries failed inquiry request") {
+            let provider = FlakyInquiryProvider(
+                success: AlignmentInquiryResponse(
+                    questions: [
+                        ScribeInquiryQuestion(
+                            id: "retry_inquiry_action",
+                            question: "24 小时内哪个动作最小但真实？",
+                            options: [
+                                ScribeInquiryOption(id: "rest", label: "先请半天假"),
+                                ScribeInquiryOption(id: "custom", label: "都不准，我自己说")
+                            ],
+                            module: .minimumAction
+                        )
+                    ],
+                    readyForSettlement: false,
+                    profile: nil,
+                    ledger: ScribeObservationLedger(
+                        unansweredQuestions: [
+                            UnansweredRoundtableQuestion(
+                                fromName: "书记员",
+                                question: "24 小时内哪个动作最小但真实？",
+                                whyItMatters: "缺少最小行动证据。"
+                            )
+                        ],
+                        moduleSignals: [.creativeHopelessness: ["已经承认没有无代价选项。"]]
+                    )
+                )
+            )
+            let repository = InMemoryMeetingRepository()
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想辞职又怕没钱")
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时内可做的事落下来。")],
+                in: state
+            )
+            try await repository.save(state)
+
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: provider,
+                    repository: repository
+                ),
+                meetingRepository: repository,
+                providerFactory: { _ in AnyLLMProvider(provider) }
+            )
+
+            viewModel.restoreMeeting(id: state.id)
+            try await waitFor("restored inquiry retry seed") {
+                !viewModel.isBusy && viewModel.state?.id == state.id
+            }
+
+            viewModel.startInquiry()
+            try await waitFor("failed initial inquiry") {
+                !viewModel.isBusy &&
+                viewModel.state?.stage == .inquiry &&
+                viewModel.activeInquiryQuestions.isEmpty &&
+                viewModel.state?.alignmentProfile == nil &&
+                viewModel.errorMessage != nil
+            }
+
+            viewModel.retryInquiry()
+            try await waitFor("retried inquiry questions") {
+                !viewModel.isBusy &&
+                viewModel.state?.id == state.id &&
+                viewModel.activeInquiryQuestions.map(\.id) == ["retry_inquiry_action"] &&
+                viewModel.errorMessage == nil
+            }
+
+            let requestCount = await provider.inquiryRequestCount()
+            try expect(requestCount == 2)
+            try expect(viewModel.activity == nil)
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -2038,6 +2119,40 @@ private actor FlakyDefinitionProvider: LLMProvider {
     ) async throws -> LLMEnvelope<ResponsePayload>
     where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
         guard request.kind == .defineIssue else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        requests += 1
+        if remainingFailures > 0 {
+            remainingFailures -= 1
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        guard let payload = success as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        return LLMEnvelope(payload: payload, trace: ["flaky:\(request.kind.rawValue)"])
+    }
+}
+
+private actor FlakyInquiryProvider: LLMProvider {
+    private let success: AlignmentInquiryResponse
+    private var remainingFailures: Int
+    private var requests = 0
+
+    init(success: AlignmentInquiryResponse, failures: Int = 1) {
+        self.success = success
+        self.remainingFailures = failures
+    }
+
+    func inquiryRequestCount() -> Int {
+        requests
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .alignmentInquiry else {
             throw MockLLMProviderError.missingResponse(kind: request.kind)
         }
         requests += 1
