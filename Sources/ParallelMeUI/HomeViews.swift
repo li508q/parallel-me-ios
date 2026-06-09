@@ -5,6 +5,10 @@ import SwiftUI
 struct ProviderSettingsPanel: View {
     @ObservedObject var viewModel: MeetingViewModel
 
+    private var availability: RuntimePreferencesActionAvailabilitySnapshot {
+        RuntimePreferencesActionAvailabilitySnapshot(isBusy: viewModel.isBusy)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             Picker("Provider", selection: $viewModel.providerMode) {
@@ -13,6 +17,7 @@ struct ProviderSettingsPanel: View {
                 }
             }
             .pickerStyle(.segmented)
+            .disabled(!availability.canEdit)
 
             if viewModel.providerMode == .openAICompatible {
                 VStack(spacing: ParallelMeSpacing.sm) {
@@ -23,6 +28,7 @@ struct ProviderSettingsPanel: View {
                 }
                 .textFieldStyle(.roundedBorder)
                 .font(ParallelMeTypography.compact)
+                .disabled(!availability.canEdit)
             }
             DisclosureGroup("个人上下文") {
                 VStack(spacing: ParallelMeSpacing.sm) {
@@ -37,6 +43,7 @@ struct ProviderSettingsPanel: View {
             }
             .font(ParallelMeTypography.compact)
             .foregroundStyle(ParallelMeColor.ink)
+            .disabled(!availability.canEdit)
 
             HStack(spacing: ParallelMeSpacing.sm) {
                 Button {
@@ -46,7 +53,7 @@ struct ProviderSettingsPanel: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(viewModel.isBusy)
+                .disabled(!availability.canSave)
 
                 Button(role: .destructive) {
                     viewModel.clearRuntimePreferences()
@@ -55,7 +62,14 @@ struct ProviderSettingsPanel: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(viewModel.isBusy)
+                .disabled(!availability.canClear)
+            }
+
+            if let message = availability.message {
+                Text(message)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let message = viewModel.runtimePreferencesMessage {

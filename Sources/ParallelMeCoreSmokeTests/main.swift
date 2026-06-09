@@ -480,6 +480,20 @@ struct ParallelMeCoreSmokeTests {
             try expect(ready.actionTitle == "开始五声圆桌")
         }
 
+        try runner.run("runtime preferences actions lock while busy") {
+            let ready = RuntimePreferencesActionAvailabilitySnapshot()
+            let busy = RuntimePreferencesActionAvailabilitySnapshot(isBusy: true)
+
+            try expect(ready.canEdit)
+            try expect(ready.canSave)
+            try expect(ready.canClear)
+            try expect(ready.message == nil)
+            try expect(!busy.canEdit)
+            try expect(!busy.canSave)
+            try expect(!busy.canClear)
+            try expect(busy.message?.contains("运行配置正在处理") == true)
+        }
+
         try runner.run("meeting activity snapshots explain active work") {
             let inquiry = MeetingActivitySnapshot(kind: .startingInquiry)
             let localArchive = MeetingActivitySnapshot(kind: .archivingPaper)

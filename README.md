@@ -42,6 +42,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - `ScribeInquiryAnswerBatchDraft` keeps multi-question inquiry turns together before the settlement readiness check advances.
 - Optional `ProviderContext` stores the user's durable background and response preferences locally, then passes them through every provider task as calibration rather than as a replacement for the current meeting evidence.
 - Runtime preferences can be explicitly saved or cleared from the home screen before starting a meeting.
+- Runtime preference editing is locked by Core-derived availability while save/clear work is in flight.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.
 - `MeetingActivitySnapshot` gives every in-flight action a tested title, detail, icon, and provider/local classification for the iPhone status banner.
 - `MeetingSessionDiagnosticsSnapshot` summarizes provider requests, responses, persistence, failures, and recent trace events for the in-app debug panel.

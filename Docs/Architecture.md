@@ -63,6 +63,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
 `MeetingExportAvailabilitySnapshot` defines when a paper can be shared from the UI, keeping export entry points aligned with the archive lifecycle. `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
+`RuntimePreferencesActionAvailabilitySnapshot` locks provider and context editing while a runtime preference operation is in flight.
 `SettlementRevisionDraft` owns settlement editing state and validation, and `SettlementActionAvailabilitySnapshot` derives busy-aware apply/archive availability so SwiftUI can render editable modules without deciding which actions are safe.
 
 Provider runtime settings are split deliberately:
@@ -110,6 +111,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Paper library grouping, ordering, status filtering, and search filtering are derived in Core and tested without UI.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
+- Runtime preference fields and actions lock while runtime preference work is in flight.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
 - Export availability is derived in Core, so the UI only prepares Markdown files for archived papers.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
