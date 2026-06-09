@@ -48,6 +48,7 @@ This keeps prompt iteration, network transport, and product state transitions in
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
+`MeetingStageProgressSnapshot` derives the five-step product rail, localized stage titles, current position, and completion state from `MeetingStage`.
 `MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
 `RoundtableTranscriptSnapshot` groups voice openings, user moves, model replies, and legacy ungrouped turns into one tested reading model used by the SwiftUI roundtable and Markdown export.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
@@ -81,6 +82,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 
 - Every model-facing action returns a typed payload.
 - Every user-visible transition is represented by `MeetingStage`.
+- Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
 - Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Roundtable transcript grouping is derived in Core and shared by live UI and export.
 - Archived-paper detail rows are derived in Core and tested against user settlement revisions.

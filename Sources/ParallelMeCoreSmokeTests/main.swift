@@ -46,6 +46,19 @@ struct ParallelMeCoreSmokeTests {
             try expect(roundtable.stage == .roundtable)
         }
 
+        try runner.run("meeting stage progress exposes user-facing steps") {
+            let snapshot = MeetingStageProgressSnapshot(stage: .inquiry)
+
+            try expect(snapshot.totalCount == 5)
+            try expect(snapshot.currentPosition == 3)
+            try expect(snapshot.currentItem.title == "问询")
+            try expect(snapshot.currentItem.detail == "补齐落定证据")
+            try expect(snapshot.items.map(\.stage) == [.defining, .roundtable, .inquiry, .settlement, .archived])
+            try expect(snapshot.items.map(\.title) == ["定义", "圆桌", "问询", "落定", "归档"])
+            try expect(snapshot.items.map(\.isCompleted) == [true, true, false, false, false])
+            try expect(snapshot.items.filter(\.isCurrent).map(\.stage) == [.inquiry])
+        }
+
         try runner.run("roundtable requires openings before inquiry") {
             let engine = MeetingFlowEngine()
             let started = try engine.start(rawInput: "我想辞职又怕没钱")
