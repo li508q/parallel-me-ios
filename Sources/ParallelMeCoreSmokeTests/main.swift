@@ -2162,6 +2162,8 @@ struct ParallelMeCoreSmokeTests {
             let state = try MeetingFlowEngine().start(rawInput: "我想换工作")
 
             try await repository.save(state)
+            try Data("not a meeting".utf8)
+                .write(to: directory.appendingPathComponent("corrupt.json"), options: [.atomic])
             let loaded = try await repository.load(id: state.id)
             let listed = try await repository.list()
             try await repository.delete(id: state.id)

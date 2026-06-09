@@ -56,6 +56,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - Settlement and archive timestamps are stored on the meeting state, so summaries, library ordering, and timelines reflect real lifecycle events.
 - `RoundtableTranscriptSnapshot` groups openings and user-driven moves for live reading and Markdown export.
 - `MeetingLibrarySnapshot` groups, status-filters, and full-text searches local papers across recent, unfinished, and archived sections.
+- File-backed library listing skips unreadable paper JSON so one damaged local file cannot hide the remaining saved papers.
 - `PaperLibraryActionAvailabilitySnapshot` locks restore/delete actions while paper-library work is in flight.
 - `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data for restored papers.
 - Archive is guarded by complete five-module Heart Settlement content before a paper can become finished.

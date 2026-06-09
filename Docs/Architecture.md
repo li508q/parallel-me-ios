@@ -47,6 +47,7 @@ This keeps prompt iteration, network transport, and product state transitions in
 - `FileMeetingRepository` for local JSON persistence in the app sandbox.
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
+`FileMeetingRepository` skips unreadable JSON records when listing the local library, so one damaged or legacy file cannot hide the rest of the user's saved papers.
 `PetitionStarterPrompts` provides the home screen's first-sentence seeds from Core, keeping onboarding copy stable and testable instead of scattered through SwiftUI.
 `MeetingStartReadinessSnapshot` derives home-screen start blockers, button text, input editability, and user-facing guidance from the raw petition and provider settings.
 `ScribeProbeAnswerBatchDraft` keeps a stage-one question turn together until every current question has an answer, preserving multi-question definition rounds.

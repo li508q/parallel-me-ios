@@ -42,11 +42,11 @@ public actor FileMeetingRepository: MeetingRepository {
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         )
-        return try urls
+        return urls
             .filter { $0.pathExtension == "json" }
-            .map { url in
-                let data = try Data(contentsOf: url)
-                return try decoder.decode(MeetingFlowState.self, from: data)
+            .compactMap { url in
+                guard let data = try? Data(contentsOf: url) else { return nil }
+                return try? decoder.decode(MeetingFlowState.self, from: data)
             }
             .sorted { $0.createdAt > $1.createdAt }
     }
@@ -68,4 +68,3 @@ public actor FileMeetingRepository: MeetingRepository {
         directoryURL.appendingPathComponent("\(id).json")
     }
 }
-
