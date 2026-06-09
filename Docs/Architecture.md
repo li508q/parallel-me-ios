@@ -131,7 +131,8 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - Proposal confirmation availability is derived in Core, so restored incomplete proposals cannot expose a misleading roundtable action.
 - The final inquiry loop has no hard cap; tests assert this invariant.
-- Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
+- Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, non-template inquiry rules, and required settlement modules.
+- Inquiry response guarding is tested through the session coordinator so contradictory provider responses cannot swallow follow-up questions.
 - OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
 - Runtime provider settings normalization is tested across validation, persistence, snapshots, and OpenAI-compatible provider factory requests.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.

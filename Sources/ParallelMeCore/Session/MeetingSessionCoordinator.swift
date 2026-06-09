@@ -15,6 +15,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
     private let engine: MeetingFlowEngine
     private let deduplicator: ScribeQuestionDeduplicator
     private let readinessEvaluator: SettlementReadinessEvaluator
+    private let inquiryResponseGuard: AlignmentInquiryResponseGuard
     private let eventSink: any MeetingSessionEventSink
     private let runtimeSnapshot: MeetingRuntimeSnapshot?
     private var state: MeetingFlowState?
@@ -35,6 +36,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         self.engine = engine
         self.deduplicator = deduplicator
         self.readinessEvaluator = readinessEvaluator
+        self.inquiryResponseGuard = AlignmentInquiryResponseGuard(readinessEvaluator: readinessEvaluator)
         self.eventSink = eventSink
         let snapshotContext = runtimeSnapshot?.normalized.context
         let explicitContext = context?.normalized
@@ -203,7 +205,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             responseType: AlignmentInquiryResponse.self
         )
         await emit(.providerResponse, meetingID: current.id, message: "Received alignment inquiry", trace: envelope.trace)
-        let response = envelope.payload
+        let response = inquiryResponseGuard.normalize(envelope.payload, existingAnswers: current.inquiryAnswers)
         let next = try engine.receiveInquiryQuestions(
             response.questions,
             profile: response.profile,

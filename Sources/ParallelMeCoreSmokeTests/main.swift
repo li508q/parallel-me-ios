@@ -698,6 +698,8 @@ struct ParallelMeCoreSmokeTests {
             try expect(definitionPrompt.contains("不得设置总轮数上限"))
             try expect(definitionPrompt.contains("coreFears"))
             try expect(definitionPrompt.contains("expectedResolution"))
+            try expect(definitionPrompt.contains("不要使用固定收尾题"))
+            try expect(definitionPrompt.contains("thinking 必须与 questions"))
             try expect(definitionPrompt.contains("userFeedback"))
             try expect(definitionPrompt.contains("custom"))
 
@@ -711,7 +713,11 @@ struct ParallelMeCoreSmokeTests {
             let inquiryPrompt = ProviderPromptSpec.spec(for: .alignmentInquiry).systemPrompt
             try expect(inquiryPrompt.contains("input.context"))
             try expect(inquiryPrompt.contains("没有总题数上限"))
+            try expect(inquiryPrompt.contains("不要因为轮次"))
+            try expect(inquiryPrompt.contains("缺哪个 settlement module"))
+            try expect(inquiryPrompt.contains("questions、readyForSettlement 与 profile 必须一致"))
             try expect(inquiryPrompt.contains("readyForSettlement=true"))
+            try expect(inquiryPrompt.contains("questions 必须为空"))
             try expect(inquiryPrompt.contains("creativeHopelessness"))
             try expect(inquiryPrompt.contains("dialecticSynthesis"))
             try expect(inquiryPrompt.contains("custom"))
@@ -1924,6 +1930,59 @@ struct ParallelMeCoreSmokeTests {
             try expect(refined.issueProposal?.expectedResolution.details == ["身体底线", "观察期"])
             try expect(refined.definingDialogue.last?.answer?.freeText == feedback)
             try expect(saved?.definingDialogue.last?.answer?.questionID == "proposal_feedback")
+        }
+
+        try await runner.runAsync("session coordinator preserves contradictory inquiry questions") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            await provider.register(
+                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
+                for: .defineIssue
+            )
+            await provider.register(
+                RoundtableOpeningResponse(openings: VoiceID.allCases.map { opening($0) }),
+                for: .openRoundtable
+            )
+            await provider.register(
+                RoundtableMoveResponse(
+                    turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时行动放到桌面上。")],
+                    ledger: ScribeObservationLedger(moduleSignals: [.minimumAction: ["今晚写预算"]])
+                ),
+                for: .continueRoundtable
+            )
+            let followUp = ScribeInquiryQuestion(
+                id: "guard_follow_up",
+                question: "这个 24 小时行动真正守住的是哪条底线？",
+                options: [
+                    ScribeInquiryOption(id: "body", label: "先守住身体底线。"),
+                    ScribeInquiryOption(id: "cash", label: "先守住现金流底线。"),
+                    ScribeInquiryOption(id: "custom", label: "都不准，我自己说")
+                ],
+                module: .minimumAction
+            )
+            await provider.register(
+                AlignmentInquiryResponse(
+                    questions: [followUp],
+                    readyForSettlement: true,
+                    profile: completeProfile,
+                    ledger: ScribeObservationLedger(moduleSignals: [.minimumAction: ["今晚写预算"]])
+                ),
+                for: .alignmentInquiry
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            _ = try await coordinator.requestDefinition()
+            _ = try await coordinator.confirmProposalAndOpenRoundtable()
+            _ = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
+            let inquiry = try await coordinator.startInquiry()
+            let availability = SettlementRequestAvailabilitySnapshot(state: inquiry)
+
+            try expect(inquiry.stage == .inquiry)
+            try expect(inquiry.inquiryQuestions.map(\.id) == [followUp.id])
+            try expect(inquiry.alignmentProfile == completeProfile)
+            try expect(!availability.canRequestSettlement)
+            try expect(availability.blockers.contains(.activeQuestionsUnanswered))
         }
 
         try await runner.runAsync("session coordinator settles only after readiness") {

@@ -43,6 +43,8 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                     "每次最多提出 1-3 个问题，但不得设置总轮数上限。",
                     "问题必须覆盖 surfaceDilemma、currentConstraints、coreFears、expectedResolution 中仍缺证据的部分。",
                     "Key 3 coreFears 与 Key 4 expectedResolution 必须拆开，不要重复追问同一主题。",
+                    "不要使用固定收尾题或模板题；每个问题都必须指向 rawInput、dialogue 或 userFeedback 里尚未被证实的具体缺口。",
+                    "thinking 必须与 questions、readyToPropose 一致；如果 thinking 认为仍缺证据，就必须返回 questions 且 readyToPropose=false。",
                     "每个问题都必须包含一个自由文本选项，id 使用 custom，label 使用“都不准，我自己说”。",
                     "如果 input.userFeedback 存在，优先按这段反馈修订 currentProposal，而不是重新发散。"
                 ],
@@ -108,14 +110,17 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                 constraints: [
                     contextConstraint,
                     "没有总题数上限；是否结束只由证据充足度决定。",
+                    "不要因为轮次、用户已经回答过一次、或想尽快收束而使用固定收尾题；缺哪个 settlement module，就只追问那个 module 的真实缺口。",
                     "不要重复 questions 或 answers 里已经覆盖的问题。",
+                    "每个问题都必须指向 taskFrame、proposal、roundtable、ledger 或 answers 中尚未被证实的具体缺口。",
                     "每次最多问 1-3 个高密度问题。",
                     "每个问题都必须包含一个自由文本选项，id 使用 custom，label 使用“都不准，我自己说”。",
+                    "questions、readyForSettlement 与 profile 必须一致；只要仍有待问问题或证据缺口，就必须 readyForSettlement=false。",
                     "只有 creativeHopelessness、coreValues、costAcceptance、minimumAction、dialecticSynthesis 都有足够证据时，才返回 readyForSettlement=true 和 profile。"
                 ],
                 responseContract: """
-                未准备好时返回 {"questions":[ScribeInquiryQuestion], "readyForSettlement":false, "profile":null, "ledger":ScribeObservationLedger}。
-                准备好时返回 {"questions":[], "readyForSettlement":true, "profile":AlignmentProfile, "ledger":ScribeObservationLedger}。
+                未准备好时返回 {"questions":[ScribeInquiryQuestion], "readyForSettlement":false, "profile":AlignmentProfile|null, "ledger":ScribeObservationLedger}；questions 必须直接补齐缺证据模块，除非 input.questions 中还有未回答问题。
+                准备好时返回 {"questions":[], "readyForSettlement":true, "profile":AlignmentProfile, "ledger":ScribeObservationLedger}；readyForSettlement=true 时 questions 必须为空。
                 """
             )
         case .heartSettlement:
