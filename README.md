@@ -20,7 +20,7 @@ There is no global question-count cap. The app closes loops through explicit suf
 | --- | --- |
 | `ParallelMeCore` | Product domain models, five-voice personas, flow engine, scribe deduplication, LLM/provider protocols. |
 | `ParallelMeDesign` | iPhone design tokens: color, spacing, typography, motion intent. |
-| `ParallelMeUI` | SwiftUI surfaces plus `MeetingViewModel`, split into root composition, home/library, paper context, support, and stage views. |
+| `ParallelMeUI` | SwiftUI surfaces plus `MeetingViewModel`, split into root composition, home/library, paper context, support, and stage-specific view files. |
 | `App/ParallelMe` | Thin iOS app entry point. |
 | `ParallelMeCoreSmokeTests` | Executable tests for flow rules, persona invariants, deduplication, session coordination, and no hard inquiry cap. |
 
