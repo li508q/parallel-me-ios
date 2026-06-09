@@ -71,6 +71,48 @@ public struct MeetingTimelineSnapshot: Codable, Equatable, Sendable {
         }
         return Array(items.suffix(collapsedLimit))
     }
+
+    public func presentation(isExpanded: Bool) -> MeetingTimelinePresentationSnapshot {
+        let visibleItems = visibleItems(isExpanded: isExpanded)
+        let title: String
+        if isExpanded || !hasHiddenHistory {
+            title = "完整 \(totalCount) 步"
+        } else {
+            title = "最近 \(visibleItems.count) / 共 \(totalCount) 步"
+        }
+
+        return MeetingTimelinePresentationSnapshot(
+            title: title,
+            items: visibleItems,
+            expansionControl: hasHiddenHistory ? MeetingTimelineExpansionControl(isExpanded: isExpanded) : nil
+        )
+    }
+}
+
+public struct MeetingTimelinePresentationSnapshot: Codable, Equatable, Sendable {
+    public var title: String
+    public var items: [MeetingTimelineItem]
+    public var expansionControl: MeetingTimelineExpansionControl?
+
+    public init(
+        title: String,
+        items: [MeetingTimelineItem],
+        expansionControl: MeetingTimelineExpansionControl?
+    ) {
+        self.title = title
+        self.items = items
+        self.expansionControl = expansionControl
+    }
+}
+
+public struct MeetingTimelineExpansionControl: Codable, Equatable, Sendable {
+    public var title: String
+    public var systemImage: String
+
+    public init(isExpanded: Bool) {
+        title = isExpanded ? "收起" : "展开全部"
+        systemImage = isExpanded ? "chevron.up.circle" : "list.bullet.rectangle"
+    }
 }
 
 public enum MeetingTimeline {

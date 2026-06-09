@@ -18,15 +18,8 @@ struct MeetingPaperContextView: View {
         MeetingTimelineSnapshot(state: state)
     }
 
-    private var visibleItems: [MeetingTimelineItem] {
-        timelineSnapshot.visibleItems(isExpanded: isTimelineExpanded)
-    }
-
-    private var timelineTitle: String {
-        if isTimelineExpanded || !timelineSnapshot.hasHiddenHistory {
-            return "完整 \(timelineSnapshot.totalCount) 步"
-        }
-        return "最近 \(visibleItems.count) / 共 \(timelineSnapshot.totalCount) 步"
+    private var timelinePresentation: MeetingTimelinePresentationSnapshot {
+        timelineSnapshot.presentation(isExpanded: isTimelineExpanded)
     }
 
     private var exportDocument: MeetingExportDocument {
@@ -86,19 +79,16 @@ struct MeetingPaperContextView: View {
                 RuntimeSnapshotView(snapshot: snapshot)
             }
 
-            DisclosureGroup("纸页脉络 · \(timelineTitle)") {
+            DisclosureGroup("纸页脉络 · \(timelinePresentation.title)") {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                    ForEach(visibleItems) { item in
+                    ForEach(timelinePresentation.items) { item in
                         TimelineRow(item: item)
                     }
-                    if timelineSnapshot.hasHiddenHistory {
+                    if let control = timelinePresentation.expansionControl {
                         Button {
                             isTimelineExpanded.toggle()
                         } label: {
-                            Label(
-                                isTimelineExpanded ? "收起" : "展开全部",
-                                systemImage: isTimelineExpanded ? "chevron.up.circle" : "list.bullet.rectangle"
-                            )
+                            Label(control.title, systemImage: control.systemImage)
                         }
                         .buttonStyle(.borderless)
                         .font(ParallelMeTypography.compact.weight(.medium))

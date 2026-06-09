@@ -37,7 +37,7 @@ The first test layer is `ParallelMeCore`.
 - Restored unfinished papers rebuild the UI runtime before continuing and archived papers can be opened without valid provider credentials.
 - Stage progress exposes fixed, localized product steps and completion state.
 - Roundtable inquiry readiness requires complete fixed-voice openings and at least one substantive roundtable exchange.
-- Meeting timeline derives active-paper progress and recent/full presentation snapshots without UI-specific business logic.
+- Meeting timeline derives active-paper progress plus recent/full presentation titles and expansion controls without UI-specific business logic.
 - Roundtable transcript grouping covers openings, user moves, model replies, and legacy ungrouped turns.
 - Meeting archive snapshot derives archived detail rows from Core state and preserves user settlement revisions.
 - Settlement and archive timestamps drive summary freshness, library ordering, and timeline rows.

@@ -1155,6 +1155,9 @@ struct ParallelMeCoreSmokeTests {
 
             let timeline = MeetingTimeline.items(for: state)
             let snapshot = MeetingTimelineSnapshot(items: timeline, collapsedLimit: 5)
+            let collapsed = snapshot.presentation(isExpanded: false)
+            let expanded = snapshot.presentation(isExpanded: true)
+            let short = MeetingTimelineSnapshot(items: Array(timeline.prefix(2)), collapsedLimit: 5)
 
             try expect(snapshot.totalCount == 8)
             try expect(snapshot.hiddenCount == 3)
@@ -1167,6 +1170,16 @@ struct ParallelMeCoreSmokeTests {
                 .archived
             ])
             try expect(snapshot.visibleItems(isExpanded: true) == timeline)
+            try expect(collapsed.title == "最近 5 / 共 8 步")
+            try expect(collapsed.items == snapshot.collapsedItems)
+            try expect(collapsed.expansionControl?.title == "展开全部")
+            try expect(collapsed.expansionControl?.systemImage == "list.bullet.rectangle")
+            try expect(expanded.title == "完整 8 步")
+            try expect(expanded.items == timeline)
+            try expect(expanded.expansionControl?.title == "收起")
+            try expect(expanded.expansionControl?.systemImage == "chevron.up.circle")
+            try expect(short.presentation(isExpanded: false).title == "完整 2 步")
+            try expect(short.presentation(isExpanded: false).expansionControl == nil)
         }
 
         try runner.run("roundtable transcript groups openings moves and legacy turns") {
