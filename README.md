@@ -45,7 +45,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - Restored unfinished papers rebuild their provider runtime before continuing, so the next model action uses the current credentials and context; archived papers remain readable offline.
 - Settlement and archive timestamps are stored on the meeting state, so summaries, library ordering, and timelines reflect real lifecycle events.
 - `RoundtableTranscriptSnapshot` groups openings and user-driven moves for live reading and Markdown export.
-- `MeetingLibrarySnapshot` groups and filters local papers into recent, unfinished, and archived sections using full-paper search text.
+- `MeetingLibrarySnapshot` groups, status-filters, and full-text searches local papers across recent, unfinished, and archived sections.
 - `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data for restored papers.
 - `MeetingExportDocument` renders a paper into Markdown, and `MeetingExportFileWriter` writes a named `.md` file for iOS sharing and developer-readable inspection.
 - `SettlementRevisionDraft` keeps final-card edits normalized, change-aware, and safe to archive.

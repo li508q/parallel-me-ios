@@ -1,5 +1,35 @@
 import Foundation
 
+public enum MeetingLibraryFilter: String, CaseIterable, Codable, Sendable, Identifiable {
+    case all
+    case unfinished
+    case archived
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .all:
+            return "全部"
+        case .unfinished:
+            return "未完成"
+        case .archived:
+            return "已归档"
+        }
+    }
+
+    fileprivate func includes(_ summary: MeetingSummary) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .unfinished:
+            return summary.stage != .archived
+        case .archived:
+            return summary.stage == .archived
+        }
+    }
+}
+
 public struct MeetingLibrarySnapshot: Codable, Equatable, Sendable {
     public var recent: [MeetingSummary]
     public var unfinished: [MeetingSummary]
@@ -55,11 +85,17 @@ public struct MeetingLibrarySnapshot: Codable, Equatable, Sendable {
         totalCount == 0
     }
 
-    public func filtered(searchText: String, recentLimit: Int = 5) -> MeetingLibrarySnapshot {
+    public func filtered(
+        searchText: String,
+        filter: MeetingLibraryFilter = .all,
+        recentLimit: Int = 5
+    ) -> MeetingLibrarySnapshot {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return self }
+        guard !query.isEmpty || filter != .all else { return self }
         return MeetingLibrarySnapshot(
-            summaries: allSummaries.filter { $0.matches(searchText: query) },
+            summaries: allSummaries.filter { summary in
+                filter.includes(summary) && (query.isEmpty || summary.matches(searchText: query))
+            },
             recentLimit: recentLimit
         )
     }

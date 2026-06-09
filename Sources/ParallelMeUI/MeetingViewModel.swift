@@ -19,6 +19,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var contextMeCard: String = ""
     @Published public var contextTasteProfile: String = ""
     @Published public var librarySearchText: String = ""
+    @Published public var libraryFilter: MeetingLibraryFilter = .all
     @Published public private(set) var runtimePreferencesMessage: String?
 
     private var coordinator: any MeetingCoordinating
@@ -99,7 +100,7 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public var visibleMeetingLibrary: MeetingLibrarySnapshot {
-        meetingLibrary.filtered(searchText: librarySearchText)
+        meetingLibrary.filtered(searchText: librarySearchText, filter: libraryFilter)
     }
 
     public func dismissError() {

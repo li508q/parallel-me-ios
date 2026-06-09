@@ -204,11 +204,16 @@ struct PaperLibrarySection: View {
     var library: MeetingLibrarySnapshot
     var sourceLibrary: MeetingLibrarySnapshot
     @Binding var searchText: String
+    @Binding var filter: MeetingLibraryFilter
     var restore: (String) -> Void
     var delete: (String) -> Void
 
     private var hasQuery: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var isFiltering: Bool {
+        filter != .all
     }
 
     var body: some View {
@@ -250,8 +255,17 @@ struct PaperLibrarySection: View {
                         .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
                 )
 
+                Picker("纸页类型", selection: $filter) {
+                    ForEach(MeetingLibraryFilter.allCases) { libraryFilter in
+                        Text(libraryFilter.title).tag(libraryFilter)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .font(ParallelMeTypography.compact)
+                .disabled(sourceLibrary.totalCount == 0)
+
                 if library.isEmpty {
-                    Text("没有匹配纸页")
+                    Text(emptyStateText)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                         .padding(ParallelMeSpacing.md)
@@ -284,10 +298,23 @@ struct PaperLibrarySection: View {
     }
 
     private var statusText: String {
-        if hasQuery {
+        if hasQuery || isFiltering {
             return "\(library.totalCount) 个匹配"
         }
         return "\(sourceLibrary.totalCount) 张 · \(sourceLibrary.archivedCount) 已归档"
+    }
+
+    private var emptyStateText: String {
+        switch (hasQuery, filter) {
+        case (true, _):
+            return "没有匹配纸页"
+        case (false, .unfinished):
+            return "暂时没有未完成纸页"
+        case (false, .archived):
+            return "暂时没有已归档纸页"
+        case (false, .all):
+            return "纸页库还是空的"
+        }
     }
 }
 

@@ -593,7 +593,7 @@ struct ParallelMeCoreSmokeTests {
             try expect(!library.isEmpty)
         }
 
-        try runner.run("meeting library filters papers by search text") {
+        try runner.run("meeting library filters papers by status and search text") {
             let now = Date(timeIntervalSince1970: 100)
             let summaries = [
                 MeetingSummary(
@@ -616,11 +616,22 @@ struct ParallelMeCoreSmokeTests {
             let library = MeetingLibrarySnapshot(summaries: summaries)
             let money = library.filtered(searchText: "现金 圆桌")
             let archived = library.filtered(searchText: "归档")
+            let unfinishedOnly = library.filtered(searchText: "", filter: .unfinished)
+            let archivedOnly = library.filtered(searchText: "", filter: .archived)
+            let archivedHealth = library.filtered(searchText: "身体", filter: .archived)
+            let archivedMoney = library.filtered(searchText: "现金", filter: .archived)
             let none = library.filtered(searchText: "不存在")
 
+            try expect(MeetingLibraryFilter.allCases.map(\.title) == ["全部", "未完成", "已归档"])
             try expect(money.recent.map(\.id) == ["money"], "Unexpected money recent: \(money.recent.map(\.id))")
             try expect(money.unfinished.map(\.id) == ["money"], "Unexpected money unfinished: \(money.unfinished.map(\.id))")
             try expect(archived.archived.map(\.id) == ["health"], "Unexpected archived results: \(archived.archived.map(\.id))")
+            try expect(unfinishedOnly.unfinished.map(\.id) == ["money"])
+            try expect(unfinishedOnly.archived.isEmpty)
+            try expect(archivedOnly.archived.map(\.id) == ["health"])
+            try expect(archivedOnly.unfinished.isEmpty)
+            try expect(archivedHealth.archived.map(\.id) == ["health"])
+            try expect(archivedMoney.isEmpty)
             try expect(none.isEmpty, "Unexpected no-match count: \(none.totalCount)")
             try expect(library.filtered(searchText: "   ") == library)
         }

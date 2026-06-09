@@ -58,7 +58,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `RoundtableTranscriptSnapshot` groups voice openings, user moves, model replies, and legacy ungrouped turns into one tested reading model used by the SwiftUI roundtable and Markdown export.
 `RoundtableTransitionSnapshot` derives whether the roundtable has complete openings and at least one substantive exchange, so the UI cannot make inquiry available before there is real material.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
-`MeetingLibrarySnapshot` groups and filters saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
+`MeetingLibrarySnapshot` groups, status-filters, and full-text searches saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
 `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
@@ -101,7 +101,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Archived-paper detail rows are derived in Core and tested against user settlement revisions.
 - Settlement and archive timestamps are stored in Core state and tested through summaries, library sorting, and timelines.
 - Resume selection is derived in Core and ignores archived papers.
-- Paper library grouping, ordering, and search filtering are derived in Core and tested without UI.
+- Paper library grouping, ordering, status filtering, and search filtering are derived in Core and tested without UI.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.

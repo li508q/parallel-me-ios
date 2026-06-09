@@ -43,6 +43,7 @@ public struct ParallelMeRootView: View {
                                 library: viewModel.visibleMeetingLibrary,
                                 sourceLibrary: viewModel.meetingLibrary,
                                 searchText: $viewModel.librarySearchText,
+                                filter: $viewModel.libraryFilter,
                                 restore: viewModel.restoreMeeting,
                                 delete: viewModel.deleteMeeting
                             )
