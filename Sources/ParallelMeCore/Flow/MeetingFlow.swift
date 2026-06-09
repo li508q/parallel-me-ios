@@ -25,6 +25,7 @@ public enum MeetingFlowError: Error, Equatable, Sendable {
     case missingRoundtableExchange
     case missingAlignmentProfile
     case missingHeartSettlement
+    case incompleteHeartSettlement(missing: [SettlementModuleID])
 }
 
 public struct MeetingFlowState: Codable, Equatable, Sendable, Identifiable {
@@ -258,6 +259,13 @@ public struct MeetingFlowEngine: Sendable {
 
     public func archive(state: MeetingFlowState) throws -> MeetingFlowState {
         try require(.settlement, state)
+        guard let settlement = state.heartSettlement else {
+            throw MeetingFlowError.missingHeartSettlement
+        }
+        let missingModules = settlement.missingModules
+        guard missingModules.isEmpty else {
+            throw MeetingFlowError.incompleteHeartSettlement(missing: missingModules)
+        }
         var next = state
         next.stage = .archived
         next.archivedAt = Date()

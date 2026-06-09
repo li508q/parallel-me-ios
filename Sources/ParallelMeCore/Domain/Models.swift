@@ -526,6 +526,16 @@ public struct HeartSettlement: Codable, Equatable, Sendable {
         return creativeHopelessness.resolvedText
     }
 
+    public var missingModules: [SettlementModuleID] {
+        SettlementModuleID.allCases.filter {
+            resolvedText(for: $0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    public var isComplete: Bool {
+        missingModules.isEmpty
+    }
+
     public mutating func revise(moduleID: SettlementModuleID, text: String) {
         let revision = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let stored = revision.isEmpty ? nil : revision

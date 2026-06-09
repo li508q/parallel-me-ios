@@ -115,6 +115,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
 - Markdown export file writing is tested with a temporary local directory before the UI shares the file URL.
 - Settlement revision drafts are normalized and tested before UI sends revisions back to the session coordinator.
+- Archive is guarded in Core by complete Heart Settlement content, not only by the current stage.
 - Repeated questions are filtered before they reach UI.
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - The final inquiry loop has no hard cap; tests assert this invariant.

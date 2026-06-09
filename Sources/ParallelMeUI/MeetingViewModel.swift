@@ -489,6 +489,9 @@ public final class MeetingViewModel: ObservableObject {
             return "书记员还没拿到足够证据，先回答最后几个关键问题。"
         case MeetingFlowError.missingHeartSettlement:
             return "还没有可修订的本心落定。"
+        case MeetingFlowError.incompleteHeartSettlement(let missing):
+            let labels = missing.map(\.label).joined(separator: "、")
+            return "本心落定还缺 \(labels)，先补齐再保存纸页。"
         case MeetingFlowError.missingTaskFrame, MeetingSessionError.missingTaskFrame:
             return "这次议题还没形成可讨论的任务框架，请先修订定义。"
         case MeetingSessionError.noActiveMeeting:

@@ -1045,6 +1045,33 @@ struct ParallelMeCoreSmokeTests {
             try expect(!draft.canArchive)
         }
 
+        try runner.run("archive requires complete heart settlement") {
+            let engine = MeetingFlowEngine()
+            var missingSettlement = try engine.start(rawInput: "我想辞职又怕没钱")
+            missingSettlement.stage = .settlement
+
+            do {
+                _ = try engine.archive(state: missingSettlement)
+                throw TestFailure("Expected missing heart settlement error")
+            } catch MeetingFlowError.missingHeartSettlement {
+                // expected
+            }
+
+            var incompleteSettlement = sampleSettlement
+            incompleteSettlement.minimumViableCommitment.report = "   "
+            var incomplete = missingSettlement
+            incomplete.heartSettlement = incompleteSettlement
+
+            try expect(!incompleteSettlement.isComplete)
+            try expect(incompleteSettlement.missingModules == [.minimumAction])
+            do {
+                _ = try engine.archive(state: incomplete)
+                throw TestFailure("Expected incomplete heart settlement error")
+            } catch MeetingFlowError.incompleteHeartSettlement(let missing) {
+                try expect(missing == [.minimumAction])
+            }
+        }
+
         try await runner.runAsync("provider factory creates demo provider") {
             let provider = try ProviderRuntimeFactory.makeProvider(settings: ProviderRuntimeSettings(mode: .demo))
             let envelope = try await provider.generate(
