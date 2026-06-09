@@ -5,39 +5,40 @@ import SwiftUI
 struct ProviderSettingsPanel: View {
     @ObservedObject var viewModel: MeetingViewModel
 
-    private var availability: RuntimePreferencesActionAvailabilitySnapshot {
-        RuntimePreferencesActionAvailabilitySnapshot(
+    private var presentation: RuntimePreferencesPresentationSnapshot {
+        RuntimePreferencesPresentationSnapshot(
             providerSettings: viewModel.providerSettings,
-            isBusy: viewModel.isBusy
+            isBusy: viewModel.isBusy,
+            statusMessage: viewModel.runtimePreferencesMessage
         )
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Picker("Provider", selection: $viewModel.providerMode) {
+            Picker(presentation.providerPickerTitle, selection: $viewModel.providerMode) {
                 ForEach(ProviderRuntimeMode.allCases) { mode in
                     Text(mode.displayName).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
-            .disabled(!availability.canEdit)
+            .disabled(!presentation.canEdit)
 
-            if viewModel.providerMode == .openAICompatible {
+            if presentation.shouldShowOpenAIFields {
                 VStack(spacing: ParallelMeSpacing.sm) {
-                    TextField("Base URL", text: $viewModel.providerBaseURL)
+                    TextField(presentation.baseURLPrompt, text: $viewModel.providerBaseURL)
                         .textContentType(.URL)
-                    TextField("Model", text: $viewModel.providerModel)
-                    SecureField("API Key", text: $viewModel.providerAPIKey)
+                    TextField(presentation.modelPrompt, text: $viewModel.providerModel)
+                    SecureField(presentation.apiKeyPrompt, text: $viewModel.providerAPIKey)
                 }
                 .textFieldStyle(.roundedBorder)
                 .font(ParallelMeTypography.compact)
-                .disabled(!availability.canEdit)
+                .disabled(!presentation.canEdit)
             }
-            DisclosureGroup("个人上下文") {
+            DisclosureGroup(presentation.contextSectionTitle) {
                 VStack(spacing: ParallelMeSpacing.sm) {
-                    TextField("我是谁 / 长期处境", text: $viewModel.contextMeCard, axis: .vertical)
+                    TextField(presentation.meCardPrompt, text: $viewModel.contextMeCard, axis: .vertical)
                         .lineLimit(2...5)
-                    TextField("偏好的语气 / 判断方式", text: $viewModel.contextTasteProfile, axis: .vertical)
+                    TextField(presentation.tasteProfilePrompt, text: $viewModel.contextTasteProfile, axis: .vertical)
                         .lineLimit(2...5)
                 }
                 .textFieldStyle(.roundedBorder)
@@ -46,44 +47,50 @@ struct ProviderSettingsPanel: View {
             }
             .font(ParallelMeTypography.compact)
             .foregroundStyle(ParallelMeColor.ink)
-            .disabled(!availability.canEdit)
+            .disabled(!presentation.canEdit)
 
             HStack(spacing: ParallelMeSpacing.sm) {
                 Button {
                     viewModel.saveRuntimePreferences()
                 } label: {
-                    Label("保存", systemImage: "square.and.arrow.down")
+                    Label(
+                        presentation.saveAction.title,
+                        systemImage: presentation.saveAction.systemImage
+                    )
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!availability.canSave)
+                .disabled(!presentation.saveAction.isEnabled)
 
                 Button(role: .destructive) {
                     viewModel.clearRuntimePreferences()
                 } label: {
-                    Label("清空", systemImage: "trash")
+                    Label(
+                        presentation.clearAction.title,
+                        systemImage: presentation.clearAction.systemImage
+                    )
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(!availability.canClear)
+                .disabled(!presentation.clearAction.isEnabled)
             }
 
-            if let message = availability.message {
+            if let message = presentation.advisoryMessage {
                 Text(message)
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(ParallelMeColor.inkMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let message = viewModel.runtimePreferencesMessage {
+            if let message = presentation.statusMessage {
                 HStack(alignment: .top, spacing: ParallelMeSpacing.xs) {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text(message)
+                    Image(systemName: message.systemImage)
+                    Text(message.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Button {
                         viewModel.dismissRuntimePreferencesMessage()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: message.dismissSystemImage)
                     }
                     .buttonStyle(.plain)
                 }

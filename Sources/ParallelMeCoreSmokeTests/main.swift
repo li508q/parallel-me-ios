@@ -1068,6 +1068,60 @@ struct ParallelMeCoreSmokeTests {
             try expect(busy.message?.contains("运行配置正在处理") == true)
         }
 
+        try runner.run("runtime preferences presentation derives fields actions and status copy") {
+            let demo = RuntimePreferencesPresentationSnapshot(
+                providerSettings: ProviderRuntimeSettings(mode: .demo),
+                statusMessage: "运行配置已保存到本机。"
+            )
+            let invalidOpenAI = RuntimePreferencesPresentationSnapshot(
+                providerSettings: ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "api.openai.com/v1",
+                    model: "",
+                    apiKey: ""
+                )
+            )
+            let busyOpenAI = RuntimePreferencesPresentationSnapshot(
+                providerSettings: ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "https://api.openai.com/v1",
+                    model: "gpt-4o-mini",
+                    apiKey: "sk-test"
+                ),
+                isBusy: true
+            )
+
+            try expect(demo.providerPickerTitle == "Provider")
+            try expect(!demo.shouldShowOpenAIFields)
+            try expect(demo.contextSectionTitle == "个人上下文")
+            try expect(demo.meCardPrompt == "我是谁 / 长期处境")
+            try expect(demo.tasteProfilePrompt == "偏好的语气 / 判断方式")
+            try expect(demo.canEdit)
+            try expect(demo.saveAction.title == "保存")
+            try expect(demo.saveAction.systemImage == "square.and.arrow.down")
+            try expect(demo.saveAction.isEnabled)
+            try expect(demo.clearAction.title == "清空")
+            try expect(demo.clearAction.systemImage == "trash")
+            try expect(demo.clearAction.isEnabled)
+            try expect(demo.statusMessage?.text == "运行配置已保存到本机。")
+            try expect(demo.statusMessage?.systemImage == "checkmark.circle.fill")
+            try expect(demo.statusMessage?.dismissSystemImage == "xmark")
+
+            try expect(invalidOpenAI.shouldShowOpenAIFields)
+            try expect(invalidOpenAI.baseURLPrompt == "Base URL")
+            try expect(invalidOpenAI.modelPrompt == "Model")
+            try expect(invalidOpenAI.apiKeyPrompt == "API Key")
+            try expect(!invalidOpenAI.saveAction.isEnabled)
+            try expect(invalidOpenAI.clearAction.isEnabled)
+            try expect(invalidOpenAI.advisoryMessage?.contains("OpenAI 配置还不完整") == true)
+
+            try expect(busyOpenAI.shouldShowOpenAIFields)
+            try expect(!busyOpenAI.canEdit)
+            try expect(!busyOpenAI.saveAction.isEnabled)
+            try expect(!busyOpenAI.clearAction.isEnabled)
+            try expect(busyOpenAI.advisoryMessage?.contains("运行配置正在处理") == true)
+        }
+
         try runner.run("meeting activity snapshots explain active work") {
             let inquiry = MeetingActivitySnapshot(kind: .startingInquiry)
             let localArchive = MeetingActivitySnapshot(kind: .archivingPaper)
