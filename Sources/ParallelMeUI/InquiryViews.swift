@@ -11,22 +11,12 @@ struct InquiryView: View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             Text("书记员问询")
                 .font(ParallelMeTypography.bodyStrong)
-            if activeQuestions.isEmpty, state.alignmentProfile != nil {
-                Text("书记员已经拿到足够证据，可以生成本心落定。")
-                    .font(ParallelMeTypography.body)
-                    .foregroundStyle(ParallelMeColor.inkMuted)
-                Button(action: viewModel.requestSettlement) {
-                    Label("生成本心落定", systemImage: "sparkles")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isBusy)
-            } else if activeQuestions.isEmpty {
-                if viewModel.isBusy {
-                    ProgressView("书记员正在校对最后的问题")
-                } else {
-                    InquiryRetryView(retry: viewModel.retryInquiry)
-                }
+            if activeQuestions.isEmpty {
+                SettlementRequestView(
+                    snapshot: SettlementRequestAvailabilitySnapshot(state: state, isBusy: viewModel.isBusy),
+                    requestSettlement: viewModel.requestSettlement,
+                    continueInquiry: viewModel.retryInquiry
+                )
             } else {
                 InquiryQuestionBatchView(
                     questions: activeQuestions,
@@ -39,23 +29,35 @@ struct InquiryView: View {
     }
 }
 
-private struct InquiryRetryView: View {
-    var retry: () -> Void
+private struct SettlementRequestView: View {
+    var snapshot: SettlementRequestAvailabilitySnapshot
+    var requestSettlement: () -> Void
+    var continueInquiry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Text("书记员这一步没有完成。")
+            Text(snapshot.title)
                 .font(ParallelMeTypography.bodyStrong)
                 .foregroundStyle(ParallelMeColor.ink)
-            Text("可以沿用当前圆桌材料，重新整理下一轮问询；这张纸页会保留。")
+            Text(snapshot.detail)
                 .font(ParallelMeTypography.compact)
-                .foregroundStyle(ParallelMeColor.inkMuted)
+                .foregroundStyle(messageColor)
                 .fixedSize(horizontal: false, vertical: true)
-            Button(action: retry) {
-                Label("重新整理问询", systemImage: "arrow.clockwise")
+
+            if snapshot.canContinueInquiry {
+                Button(action: continueInquiry) {
+                    Label(snapshot.continueInquiryActionTitle, systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+
+            Button(action: requestSettlement) {
+                Label(snapshot.requestActionTitle, systemImage: "sparkles")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!snapshot.canRequestSettlement)
         }
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
@@ -64,6 +66,15 @@ private struct InquiryRetryView: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
         )
+    }
+
+    private var messageColor: Color {
+        switch snapshot.messageTone {
+        case .muted:
+            return ParallelMeColor.inkMuted
+        case .warning:
+            return ParallelMeColor.filial
+        }
     }
 }
 

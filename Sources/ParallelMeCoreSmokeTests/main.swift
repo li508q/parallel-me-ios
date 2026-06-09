@@ -416,6 +416,78 @@ struct ParallelMeCoreSmokeTests {
             try expect(readiness.isReady)
         }
 
+        try runner.run("settlement request availability gates inquiry completion") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            let roundtable = try engine.confirmProposal(in: proposed)
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时内能做的事落下来。")],
+                in: opened
+            )
+            let inquiry = try engine.startInquiry(in: moved)
+            let actionQuestion = ScribeInquiryQuestion(
+                id: "settlement_request_action",
+                question: "24 小时内能完成的行动是什么？",
+                options: [ScribeInquiryOption(id: "budget", label: "今晚写预算。")],
+                module: .minimumAction
+            )
+
+            let activeQuestionState = try engine.receiveInquiryQuestions(
+                [actionQuestion],
+                profile: nil,
+                ledger: ScribeObservationLedger(),
+                readyForSettlement: false,
+                in: inquiry
+            )
+            let active = SettlementRequestAvailabilitySnapshot(state: activeQuestionState)
+            try expect(!active.canRequestSettlement)
+            try expect(!active.canContinueInquiry)
+            try expect(active.blockers.contains(.activeQuestionsUnanswered))
+
+            let noProfile = SettlementRequestAvailabilitySnapshot(state: inquiry)
+            try expect(!noProfile.canRequestSettlement)
+            try expect(noProfile.canContinueInquiry)
+            try expect(noProfile.blockers == [.missingAlignmentProfile])
+
+            var insufficient = inquiry
+            insufficient.alignmentProfile = AlignmentProfile()
+            let missingEvidence = SettlementRequestAvailabilitySnapshot(state: insufficient)
+            try expect(!missingEvidence.canRequestSettlement)
+            try expect(missingEvidence.canContinueInquiry)
+            try expect(missingEvidence.blockers == [.settlementEvidenceMissing])
+            try expect(missingEvidence.missingSettlementModules.contains(.minimumAction))
+
+            var missingTaskFrame = insufficient
+            missingTaskFrame.taskFrame = nil
+            let legacy = SettlementRequestAvailabilitySnapshot(state: missingTaskFrame)
+            try expect(!legacy.canRequestSettlement)
+            try expect(!legacy.canContinueInquiry)
+            try expect(legacy.blockers.contains(.missingTaskFrame))
+
+            var ready = inquiry
+            ready.alignmentProfile = completeProfile
+            ready.inquiryAnswers = [
+                ScribeInquiryAnswer(
+                    questionID: actionQuestion.id,
+                    question: actionQuestion.question,
+                    selectedOptionID: "budget",
+                    selectedLabel: "今晚写预算和观察期行动。"
+                )
+            ]
+            let requestable = SettlementRequestAvailabilitySnapshot(state: ready)
+            try expect(requestable.canRequestSettlement)
+            try expect(!requestable.canContinueInquiry)
+            try expect(requestable.requestActionTitle == "生成本心落定")
+
+            let busy = SettlementRequestAvailabilitySnapshot(state: ready, isBusy: true)
+            try expect(!busy.canRequestSettlement)
+            try expect(!busy.canContinueInquiry)
+            try expect(busy.blockers == [.busy])
+        }
+
         try runner.run("meeting flow stores normalized runtime snapshot") {
             let engine = MeetingFlowEngine()
             let state = try engine.start(

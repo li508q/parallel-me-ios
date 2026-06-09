@@ -68,6 +68,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingExportAvailabilitySnapshot` defines when a paper can be shared from the UI, keeping export entry points aligned with the archive lifecycle. `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
 `RuntimePreferencesActionAvailabilitySnapshot` locks provider and context editing while a runtime preference operation is in flight.
+`SettlementRequestAvailabilitySnapshot` derives whether the inquiry stage can request the final Heart Settlement or should continue asking questions, keeping unanswered-question and evidence-readiness gates out of SwiftUI.
 `SettlementStageSnapshot` keeps restored settlement-stage papers from rendering a blank body when the Heart Settlement payload is missing. `SettlementRevisionDraft` owns settlement editing state and validation, and `SettlementActionAvailabilitySnapshot` derives busy-aware apply/archive availability so SwiftUI can render editable modules without deciding which actions are safe.
 
 Provider runtime settings are split deliberately:
@@ -108,6 +109,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Inquiry-stage recovery keeps a paper retryable when the first model-backed inquiry request fails after the inquiry stage has been persisted.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Roundtable move actions are derived in Core and require complete fixed-voice openings, confirmed issue context, and task-frame availability.
+- Inquiry-to-settlement availability is derived in Core and requires no active questions, complete issue context, an alignment profile, and evidence for all settlement modules.
 - Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Roundtable transcript grouping is derived in Core and shared by live UI and export.
 - Archived-paper detail rows are derived in Core and tested against user settlement revisions.
