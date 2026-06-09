@@ -18,6 +18,32 @@ struct ParallelMeCoreSmokeTests {
             try expect(Set(VoicePersonas.all.map(\.coreValue)).count == VoicePersonas.all.count)
         }
 
+        try runner.run("voice role contracts are complete and prompt ready") {
+            try expect(VoiceRoleContracts.all.map(\.id) == VoiceID.allCases)
+            try expect(Set(VoiceRoleContracts.all.map(\.productRole)).count == VoiceRoleContracts.all.count)
+            try expect(Set(VoiceRoleContracts.all.map(\.boundary)).count == VoiceRoleContracts.all.count)
+
+            for contract in VoiceRoleContracts.all {
+                let persona = try unwrap(VoicePersonas.byID[contract.id], "Missing persona for \(contract.id.rawValue)")
+                let promptLine = persona.promptContract
+
+                try expect(!contract.productRole.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                try expect(!contract.evidenceFocus.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                try expect(!contract.questionDuty.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                try expect(!contract.boundary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                try expect(promptLine.contains(contract.id.rawValue))
+                try expect(promptLine.contains(persona.name))
+                try expect(promptLine.contains(persona.coreValue))
+                try expect(promptLine.contains(contract.productRole))
+                try expect(promptLine.contains(contract.evidenceFocus))
+                try expect(promptLine.contains(contract.questionDuty))
+                try expect(promptLine.contains(contract.boundary))
+            }
+
+            try expect(VoiceRoleContracts.promptCatalog.contains("固定五声角色契约"))
+            try expect(VoiceRoleContracts.promptCatalog.components(separatedBy: "\n- ").count == VoiceID.allCases.count + 1)
+        }
+
         try runner.run("starter prompts provide distinct petition seeds") {
             let prompts = PetitionStarterPrompts.all
 
@@ -780,6 +806,15 @@ struct ParallelMeCoreSmokeTests {
             }
             try expect(openingPrompt.contains("input.context"))
             try expect(openingPrompt.contains("不得创造临时角色"))
+            try expect(openingPrompt.contains(VoiceRoleContracts.promptCatalog))
+
+            let continuationPrompt = ProviderPromptSpec.spec(for: .continueRoundtable).systemPrompt
+            try expect(continuationPrompt.contains("固定五声角色契约"))
+            for contract in VoiceRoleContracts.all {
+                try expect(continuationPrompt.contains(contract.productRole))
+                try expect(continuationPrompt.contains(contract.evidenceFocus))
+                try expect(continuationPrompt.contains(contract.boundary))
+            }
 
             let inquiryPrompt = ProviderPromptSpec.spec(for: .alignmentInquiry).systemPrompt
             try expect(inquiryPrompt.contains("input.context"))

@@ -43,6 +43,28 @@ public struct VoicePersona: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+public struct VoiceRoleContract: Codable, Equatable, Sendable, Identifiable {
+    public var id: VoiceID
+    public var productRole: String
+    public var evidenceFocus: String
+    public var questionDuty: String
+    public var boundary: String
+
+    public init(
+        id: VoiceID,
+        productRole: String,
+        evidenceFocus: String,
+        questionDuty: String,
+        boundary: String
+    ) {
+        self.id = id
+        self.productRole = productRole
+        self.evidenceFocus = evidenceFocus
+        self.questionDuty = questionDuty
+        self.boundary = boundary
+    }
+}
+
 public enum VoicePersonas {
     public static let all: [VoicePersona] = [
         VoicePersona(
@@ -122,3 +144,79 @@ public enum VoicePersonas {
     }
 }
 
+public enum VoiceRoleContracts {
+    public static let all: [VoiceRoleContract] = [
+        VoiceRoleContract(
+            id: .lay,
+            productRole: "身体余量与低消耗边界保护者",
+            evidenceFocus: "睡眠、精力、身体报警、逃避和恢复的差别，以及继续硬撑会不会让人停摆。",
+            questionDuty: "把宏大决定拉回身体事实，追问用户到底是在恢复、躲避，还是已经被消耗到无法判断。",
+            boundary: "不能把所有停下都包装成自我照顾，也不能用躺平否认必须面对的现实代价。"
+        ),
+        VoiceRoleContract(
+            id: .money,
+            productRole: "现金流与失败缓冲审计者",
+            evidenceFocus: "收入、存款、断供节点、机会成本、失败后的退路和最小防守资金。",
+            questionDuty: "把焦虑翻译成数字，逼近什么条件一变判断就会改变。",
+            boundary: "不能把意义、关系、身体和尊严全部压成 ROI，也不能用冷静羞辱用户。"
+        ),
+        VoiceRoleContract(
+            id: .roam,
+            productRole: "出口、自由与生命力召回者",
+            evidenceFocus: "用户想离开的具体场景、旧轨道的窒息感、可承受的试错成本和真实出口。",
+            questionDuty: "刺穿既要自由又要零风险的幻想，追问哪条退路可以放下，哪条不能。",
+            boundary: "不能把所有痛苦都解释成只要离开就好，也不能怂恿冲动赌上全部。"
+        ),
+        VoiceRoleContract(
+            id: .filial,
+            productRole: "亲密关系与责任后果见证者",
+            evidenceFocus: "父母、伴侣、孩子、同辈比较、亏欠、控制感和关系损耗。",
+            questionDuty: "区分爱、责任、亏欠和控制，追问用户愿意承担哪种关系后果。",
+            boundary: "不能替家人命令用户，也不能把用户自己的愿望直接判成自私。"
+        ),
+        VoiceRoleContract(
+            id: .future,
+            productRole: "时间尺度与未来可认领性校准者",
+            evidenceFocus: "五年后是否还能认领这一步、短痛和长期方向、可回头修正的路径。",
+            questionDuty: "拉远镜头但不抹掉当下痛感，追问哪种失败更可被未来的自己承认。",
+            boundary: "不能用大道理压住当下真实疲惫，也不能假装时间会自动解决选择。"
+        )
+    ]
+
+    public static var byID: [VoiceID: VoiceRoleContract] {
+        Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+    }
+
+    public static var promptCatalog: String {
+        let lines = VoiceID.allCases.compactMap { id -> String? in
+            guard let persona = VoicePersonas.byID[id],
+                  let contract = byID[id] else { return nil }
+            return persona.promptContract(using: contract)
+        }
+        return (["固定五声角色契约："] + lines).joined(separator: "\n")
+    }
+}
+
+public extension VoicePersona {
+    var roleContract: VoiceRoleContract {
+        guard let contract = VoiceRoleContracts.byID[id] else {
+            preconditionFailure("Missing voice role contract for \(id.rawValue)")
+        }
+        return contract
+    }
+
+    var promptContract: String {
+        promptContract(using: roleContract)
+    }
+
+    func promptContract(using contract: VoiceRoleContract) -> String {
+        [
+            "- \(id.rawValue) / \(name)：\(contract.productRole)",
+            "  守护：\(coreValue)",
+            "  最怕：\(fear)",
+            "  看证据：\(contract.evidenceFocus)",
+            "  追问职责：\(contract.questionDuty)",
+            "  禁区：\(contract.boundary)"
+        ].joined(separator: "\n")
+    }
+}

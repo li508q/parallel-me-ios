@@ -46,6 +46,8 @@ The fixed voices are:
 
 They are not agents invented per session. They are stable product personas with durable values and fears. The user can continue the table, ask one voice, ask all voices, or let two voices speak directly.
 
+On iOS, each fixed voice also has a Core role contract: what product function it serves, what kind of evidence it is allowed to emphasize, what it should ask back, and what it must not overclaim. This keeps "role definition" separate from transient prompt wording, so future upgrades can review or replace one voice without rewriting the whole roundtable flow.
+
 The iOS roundtable exposes all four moves explicitly: continue all voices, ask the whole table, ask a selected voice, and start a two-voice dialogue. The visible transcript is grouped by opening and by each user move, so a long meeting still reads like a facilitated roundtable rather than a flat chat log.
 
 The app cannot enter final inquiry from a bare opening. All five fixed voices must have opened, and at least one roundtable move must receive a concrete response before the inquiry action becomes available. This is a minimum evidence guard, not a maximum round cap: the user can continue the table as long as useful, then move to inquiry when there is real material to question.

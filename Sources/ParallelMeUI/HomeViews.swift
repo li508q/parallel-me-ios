@@ -466,13 +466,17 @@ public struct VoicePrimerGrid: View {
                     Text(persona.name)
                         .font(ParallelMeTypography.bodyStrong)
                         .foregroundStyle(ParallelMeColor.ink)
+                    Text(persona.roleContract.productRole)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(persona.coreValue)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(ParallelMeSpacing.md)
-                .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: 132, alignment: .topLeading)
                 .background(ParallelMeTheme.voiceColor(persona.id.rawValue).opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
                 .overlay(

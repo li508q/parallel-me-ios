@@ -62,7 +62,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                     contextConstraint,
                     "只允许 lay、money、roam、filial、future 五个 voiceID，且必须各出现一次。",
                     "不得创造临时角色，不得省略任何固定声音。",
-                    "每个声音必须守住自己的 coreValue、concern 和 pull，不替用户做最终决定。",
+                    "每个声音必须守住固定角色契约，不替用户做最终决定。\n\(fixedVoiceRoleCatalogConstraint)",
                     "开场必须基于 taskFrame 和 proposal，不输出泛泛建议。"
                 ],
                 responseContract: """
@@ -80,6 +80,7 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                     "move.type=user_to_table 时五声都必须回答 userText。",
                     "move.type=user_to_voice 时只让 targetVoiceID 回答 userText。",
                     "move.type=duel 时只让 fromVoiceID 与 toVoiceID 对话。",
+                    "所有发言必须遵守固定五声角色契约，不能滑成通用 AI 助手、心理咨询师或第六声。\n\(fixedVoiceRoleCatalogConstraint)",
                     "发言必须具体回应 taskFrame、proposal、roundtable 历史，不重复空话。",
                     "可以返回 ledger 更新，但 ledger 只能记录有证据的 settlement 信号。"
                 ],
@@ -145,5 +146,9 @@ public struct ProviderPromptSpec: Equatable, Sendable {
 
     private static var contextConstraint: String {
         "如果 input.context 存在，它是用户长期背景和表达偏好；只能用于校准语气、追问角度和证据解释，不得覆盖本轮 rawInput、proposal、move、answers 或 userFeedback。"
+    }
+
+    private static var fixedVoiceRoleCatalogConstraint: String {
+        VoiceRoleContracts.promptCatalog
     }
 }

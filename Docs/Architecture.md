@@ -32,6 +32,7 @@ Stage-one proposal refinement also lives in the coordinator. User feedback is ap
 The provider boundary is intentionally typed:
 
 - `ProviderPromptSpec` defines the role, hard constraints, and JSON response contract for every model-facing task.
+- `VoiceRoleContracts` is the single Core catalog for fixed-voice product roles. Each voice carries a role function, evidence lens, questioning duty, and boundary, and provider prompts, demo openings, and the home primer consume that catalog instead of re-describing the cast in separate places.
 - `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type. Its HTTP transport is injectable, and its response parser extracts the first balanced JSON object so fenced payloads with trailing notes remain testable without live network calls.
 - `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key.
 - `MockLLMProvider` is the precise test double used when a test needs one exact payload per task.
@@ -135,7 +136,8 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - Proposal confirmation availability is derived in Core, so restored incomplete proposals cannot expose a misleading roundtable action.
 - The final inquiry loop has no hard cap; tests assert this invariant.
-- Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, non-template inquiry rules, and required settlement modules.
+- Voice role contracts are tested for complete fixed-voice coverage, distinct boundaries, and prompt-ready text before any provider spec consumes them.
+- Provider prompt specs are tested for product invariants such as fixed voices, shared voice-role contracts, free-text exits, no hard inquiry cap, context boundaries, non-template inquiry rules, and required settlement modules.
 - Definition and inquiry response guarding are tested through the session coordinator so contradictory provider responses cannot swallow follow-up questions.
 - OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
 - Runtime provider settings normalization is tested across validation, persistence, snapshots, and OpenAI-compatible provider factory requests.

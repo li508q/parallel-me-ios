@@ -115,14 +115,15 @@ public actor DemoLLMProvider: LLMProvider {
 
     private static func opening(_ id: VoiceID) -> VoiceOpeningTurn {
         let persona = VoicePersonas.byID[id]
+        let contract = VoiceRoleContracts.byID[id]
         return VoiceOpeningTurn(
             voiceID: id,
             payload: VoiceOpeningPayload(
                 thesis: "我看见这件事卡住你，不是因为你不够努力，而是几个底线在互相拉扯。",
                 protectedValue: persona?.coreValue ?? id.displayName,
-                concern: persona?.cost ?? "这条路有代价。",
+                concern: contract?.boundary ?? persona?.cost ?? "这条路有代价。",
                 taskEvidence: "来自刚刚确认的四 Key 议题。",
-                pull: persona?.chairPrompt ?? "先把真实问题说清楚。"
+                pull: contract?.questionDuty ?? persona?.chairPrompt ?? "先把真实问题说清楚。"
             )
         )
     }
