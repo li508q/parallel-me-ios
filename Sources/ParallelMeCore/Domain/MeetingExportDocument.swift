@@ -52,10 +52,9 @@ public struct MeetingExportDocument: Equatable, Sendable {
 
         if let proposal = state.issueProposal {
             appendHeading("议题提案", to: &lines)
-            appendPair("选择岔路", proposal.surfaceDilemma.content, to: &lines)
-            appendPair("现实边界", proposal.currentConstraints.content, to: &lines)
-            appendPair("隐秘关切", proposal.coreFears.content, to: &lines)
-            appendPair("圆桌任务", proposal.expectedResolution.content, to: &lines)
+            for row in IssueProposalSnapshot(proposal: proposal).rows where row.isMeaningful {
+                appendPair(row.title, row.body, to: &lines)
+            }
         }
 
         let transcript = RoundtableTranscriptSnapshot(record: state.roundtable)

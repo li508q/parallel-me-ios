@@ -110,6 +110,26 @@ struct ParallelMeCoreSmokeTests {
             try expect(roundtable.stage == .roundtable)
         }
 
+        try runner.run("issue proposal snapshot preserves four key display order") {
+            let snapshot = IssueProposalSnapshot(proposal: completeProposal)
+
+            try expect(snapshot.issueSentence == completeProposal.issueSentence)
+            try expect(snapshot.isComplete)
+            try expect(snapshot.rows.map(\.purpose) == ProbePurpose.allCases)
+            try expect(snapshot.rows.map(\.title) == ["选择岔路", "现实边界", "隐秘关切", "圆桌任务"])
+            try expect(snapshot.rows.map(\.body) == [
+                completeProposal.surfaceDilemma.content,
+                completeProposal.currentConstraints.content,
+                completeProposal.coreFears.content,
+                completeProposal.expectedResolution.content
+            ])
+            try expect(!IssueProposalSnapshot(issueSentence: "需要裁剪议题", rows: []).isComplete)
+            try expect(!IssueProposalSnapshot(
+                issueSentence: snapshot.issueSentence,
+                rows: Array(snapshot.rows.reversed())
+            ).isComplete)
+        }
+
         try runner.run("meeting stage progress exposes user-facing steps") {
             let snapshot = MeetingStageProgressSnapshot(stage: .inquiry)
 

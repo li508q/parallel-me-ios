@@ -37,12 +37,16 @@ public struct MeetingArchiveSnapshot: Codable, Equatable, Sendable {
 
     private static func issueRows(for state: MeetingFlowState) -> [MeetingArchiveRow] {
         if let proposal = state.issueProposal {
-            return [
-                MeetingArchiveRow(id: "issue:surfaceDilemma", title: "选择岔路", body: proposal.surfaceDilemma.content, details: proposal.surfaceDilemma.details),
-                MeetingArchiveRow(id: "issue:currentConstraints", title: "现实边界", body: proposal.currentConstraints.content, details: proposal.currentConstraints.details),
-                MeetingArchiveRow(id: "issue:coreFears", title: "隐秘关切", body: proposal.coreFears.content, details: proposal.coreFears.details),
-                MeetingArchiveRow(id: "issue:expectedResolution", title: "圆桌任务", body: proposal.expectedResolution.content, details: proposal.expectedResolution.details)
-            ].filter(\.isMeaningful)
+            return IssueProposalSnapshot(proposal: proposal).rows
+                .map {
+                    MeetingArchiveRow(
+                        id: "issue:\($0.purpose.rawValue)",
+                        title: $0.title,
+                        body: $0.body,
+                        details: $0.details
+                    )
+                }
+                .filter(\.isMeaningful)
         }
 
         guard let taskFrame = state.taskFrame else { return [] }

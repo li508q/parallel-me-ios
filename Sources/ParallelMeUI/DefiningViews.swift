@@ -19,7 +19,7 @@ struct DefiningView: View {
                     state: state,
                     isBusy: viewModel.isBusy
                 )
-                IssueProposalView(proposal: proposal)
+                IssueProposalView(snapshot: IssueProposalSnapshot(proposal: proposal))
                 ProposalRevisionView(
                     feedback: $proposalFeedback,
                     isBusy: viewModel.isBusy
@@ -118,14 +118,13 @@ private struct ProposalRevisionView: View {
 }
 
 private struct IssueProposalView: View {
-    var proposal: IssueProposal
+    var snapshot: IssueProposalSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            proposalRow("选择岔路", proposal.surfaceDilemma.content)
-            proposalRow("现实边界", proposal.currentConstraints.content)
-            proposalRow("隐秘关切", proposal.coreFears.content)
-            proposalRow("圆桌任务", proposal.expectedResolution.content)
+            ForEach(snapshot.rows) { row in
+                proposalRow(row.title, row.body)
+            }
         }
         .padding(.vertical, ParallelMeSpacing.sm)
     }
