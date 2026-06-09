@@ -10,33 +10,33 @@ struct ArchivedView: View {
         MeetingArchiveSnapshot(state: state)
     }
 
+    private var presentation: MeetingArchivePresentationSnapshot {
+        MeetingArchivePresentationSnapshot(snapshot: snapshot)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.lg) {
             VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                Text("归档纸页")
+                Text(presentation.eyebrow)
                     .font(ParallelMeTypography.eyebrow)
                     .foregroundStyle(ParallelMeColor.inkMuted)
-                Text(snapshot.summary.title)
+                Text(presentation.title)
                     .font(ParallelMeTypography.title)
                     .foregroundStyle(ParallelMeColor.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("已保存为本地纸页，可以随时回到首页从纸页库打开。")
+                Text(presentation.detail)
                     .font(ParallelMeTypography.body)
                     .foregroundStyle(ParallelMeColor.inkMuted)
             }
 
-            if snapshot.hasSettlement {
-                ArchiveSection(title: "本心落定", rows: snapshot.settlementRows)
+            ForEach(presentation.sections) { section in
+                ArchiveSection(section: section)
             }
 
-            if snapshot.hasIssue {
-                ArchiveSection(title: "本次议题", rows: snapshot.issueRows)
-            }
-
-            if !snapshot.timelineItems.isEmpty {
-                DisclosureGroup("完整脉络 · \(snapshot.timelineItems.count) 步") {
+            if let timeline = presentation.timeline {
+                DisclosureGroup(timeline.title) {
                     VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                        ForEach(snapshot.timelineItems) { item in
+                        ForEach(timeline.items) { item in
                             TimelineRow(item: item)
                         }
                     }
@@ -54,7 +54,10 @@ struct ArchivedView: View {
             }
 
             Button(action: reset) {
-                Label("开始新的圆桌", systemImage: "plus.circle.fill")
+                Label(
+                    presentation.resetAction.title,
+                    systemImage: presentation.resetAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -63,16 +66,15 @@ struct ArchivedView: View {
 }
 
 private struct ArchiveSection: View {
-    var title: String
-    var rows: [MeetingArchiveRow]
+    var section: MeetingArchiveSectionSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
-            Text(title)
+            Text(section.title)
                 .font(ParallelMeTypography.bodyStrong)
                 .foregroundStyle(ParallelMeColor.ink)
             VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                ForEach(rows) { row in
+                ForEach(section.rows) { row in
                     ArchiveRowView(row: row)
                 }
             }

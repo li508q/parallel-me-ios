@@ -1544,6 +1544,60 @@ struct ParallelMeCoreSmokeTests {
             try expect(archive.timelineItems.last?.kind == .archived)
         }
 
+        try runner.run("meeting archive presentation derives sections timeline and reset action") {
+            let summary = MeetingSummary(
+                id: "archive-presentation",
+                title: "先承认身体边界，再用观察期换回判断力。",
+                subtitle: "已归档",
+                stage: .archived,
+                createdAt: Date(timeIntervalSince1970: 10),
+                updatedAt: Date(timeIntervalSince1970: 20)
+            )
+            let timelineItem = MeetingTimelineItem(
+                id: "archive-presentation:archived",
+                kind: .archived,
+                stage: .archived,
+                title: "纸页归档",
+                detail: "已保存为本地纸页",
+                createdAt: Date(timeIntervalSince1970: 20)
+            )
+            let snapshot = MeetingArchiveSnapshot(
+                summary: summary,
+                issueRows: [
+                    MeetingArchiveRow(
+                        id: "issue:surface",
+                        title: "选择岔路",
+                        body: "留在高压轨道，还是先停下来恢复判断。"
+                    )
+                ],
+                settlementRows: [
+                    MeetingArchiveRow(
+                        id: "settlement:minimumAction",
+                        title: "最小行动承诺",
+                        body: "明早 10 点前预约体检。"
+                    )
+                ],
+                timelineItems: [timelineItem]
+            )
+            let presentation = MeetingArchivePresentationSnapshot(snapshot: snapshot)
+            let emptyPresentation = MeetingArchivePresentationSnapshot(
+                snapshot: MeetingArchiveSnapshot(summary: summary)
+            )
+
+            try expect(presentation.eyebrow == "归档纸页")
+            try expect(presentation.title == summary.title)
+            try expect(presentation.detail.contains("本地纸页"))
+            try expect(presentation.sections.map(\.id) == ["settlement", "issue"])
+            try expect(presentation.sections.map(\.title) == ["本心落定", "本次议题"])
+            try expect(presentation.sections.first?.rows.first?.body == "明早 10 点前预约体检。")
+            try expect(presentation.timeline?.title == "完整脉络 · 1 步")
+            try expect(presentation.timeline?.items == [timelineItem])
+            try expect(presentation.resetAction.title == "开始新的圆桌")
+            try expect(presentation.resetAction.systemImage == "plus.circle.fill")
+            try expect(emptyPresentation.sections.isEmpty)
+            try expect(emptyPresentation.timeline == nil)
+        }
+
         try runner.run("meeting export availability follows archive state") {
             for stage in [MeetingStage.defining, .roundtable, .inquiry, .settlement] {
                 let snapshot = MeetingExportAvailabilitySnapshot(stage: stage)

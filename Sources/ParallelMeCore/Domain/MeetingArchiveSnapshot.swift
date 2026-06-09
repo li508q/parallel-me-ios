@@ -73,6 +73,83 @@ public struct MeetingArchiveSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+public struct MeetingArchiveActionSnapshot: Codable, Equatable, Sendable {
+    public var title: String
+    public var systemImage: String
+
+    public init(title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+}
+
+public struct MeetingArchiveSectionSnapshot: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    public var title: String
+    public var rows: [MeetingArchiveRow]
+
+    public init(id: String, title: String, rows: [MeetingArchiveRow]) {
+        self.id = id
+        self.title = title
+        self.rows = rows
+    }
+
+    public var isVisible: Bool {
+        !rows.isEmpty
+    }
+}
+
+public struct MeetingArchiveTimelinePresentationSnapshot: Codable, Equatable, Sendable {
+    public var title: String
+    public var items: [MeetingTimelineItem]
+
+    public init(items: [MeetingTimelineItem]) {
+        self.items = items
+        self.title = "完整脉络 · \(items.count) 步"
+    }
+
+    public var isVisible: Bool {
+        !items.isEmpty
+    }
+}
+
+public struct MeetingArchivePresentationSnapshot: Codable, Equatable, Sendable {
+    public var eyebrow: String
+    public var title: String
+    public var detail: String
+    public var sections: [MeetingArchiveSectionSnapshot]
+    public var timeline: MeetingArchiveTimelinePresentationSnapshot?
+    public var resetAction: MeetingArchiveActionSnapshot
+
+    public init(snapshot: MeetingArchiveSnapshot) {
+        let settlementSection = MeetingArchiveSectionSnapshot(
+            id: "settlement",
+            title: "本心落定",
+            rows: snapshot.settlementRows
+        )
+        let issueSection = MeetingArchiveSectionSnapshot(
+            id: "issue",
+            title: "本次议题",
+            rows: snapshot.issueRows
+        )
+        let timeline = MeetingArchiveTimelinePresentationSnapshot(items: snapshot.timelineItems)
+
+        self.eyebrow = "归档纸页"
+        self.title = snapshot.summary.title
+        self.detail = "已保存为本地纸页，可以随时回到首页从纸页库打开。"
+        self.sections = [settlementSection, issueSection].filter(\.isVisible)
+        self.timeline = timeline.isVisible ? timeline : nil
+        self.resetAction = MeetingArchiveActionSnapshot(
+            title: "开始新的圆桌",
+            systemImage: "plus.circle.fill"
+        )
+    }
+
+    public init(state: MeetingFlowState) {
+        self.init(snapshot: MeetingArchiveSnapshot(state: state))
+    }
+}
+
 public struct MeetingArchiveRow: Codable, Equatable, Sendable, Identifiable {
     public var id: String
     public var title: String
