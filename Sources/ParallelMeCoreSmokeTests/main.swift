@@ -328,6 +328,53 @@ struct ParallelMeCoreSmokeTests {
             try expect(readyControls.duel.action.isEnabled)
         }
 
+        try runner.run("roundtable stage presentation derives shell status and controls") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            let opened = try engine.receiveOpenings(
+                VoiceID.allCases.map { opening($0) },
+                in: try engine.confirmProposal(in: proposed)
+            )
+            let waiting = RoundtableStagePresentationSnapshot(
+                state: opened,
+                tableQuestion: "  身体底线在哪里？  ",
+                voiceQuestion: "",
+                selectedVoice: .lay,
+                duelFrom: .money,
+                duelTo: .money
+            )
+
+            try expect(waiting.title == "五声圆桌")
+            try expect(waiting.statusSystemImage == "hourglass")
+            try expect(waiting.statusTone == .muted)
+            try expect(waiting.isControlPanelEnabled)
+            try expect(waiting.controls.askTable.action.isEnabled)
+            try expect(!waiting.controls.inquiryAction.isEnabled)
+
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把长期后果说清楚。")],
+                in: opened
+            )
+            let ready = RoundtableStagePresentationSnapshot(state: moved)
+            try expect(ready.statusSystemImage == "checkmark.seal.fill")
+            try expect(ready.statusTone == .success)
+            try expect(ready.controls.inquiryAction.isEnabled)
+
+            let busy = RoundtableStagePresentationSnapshot(state: moved, isBusy: true)
+            try expect(busy.statusTitle == "圆桌正在整理")
+            try expect(busy.statusTone == .muted)
+            try expect(!busy.isControlPanelEnabled)
+            try expect(!busy.controls.continueAction.isEnabled)
+
+            var missingTaskFrame = moved
+            missingTaskFrame.taskFrame = nil
+            let legacy = RoundtableStagePresentationSnapshot(state: missingTaskFrame)
+            try expect(legacy.statusTone == .warning)
+            try expect(legacy.statusDetail.contains("任务框架"))
+        }
+
         try runner.run("scribe drops duplicate purposes") {
             let deduplicator = ScribeQuestionDeduplicator()
             let normalized = deduplicator.normalize([

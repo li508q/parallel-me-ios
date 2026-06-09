@@ -15,13 +15,10 @@ struct RoundtableView: View {
         RoundtableTranscriptSnapshot(record: state.roundtable)
     }
 
-    private var actionAvailability: RoundtableActionAvailabilitySnapshot {
-        RoundtableActionAvailabilitySnapshot(state: state, isBusy: viewModel.isBusy)
-    }
-
-    private var controlsPresentation: RoundtableControlsPresentationSnapshot {
-        RoundtableControlsPresentationSnapshot(
-            availability: actionAvailability,
+    private var presentation: RoundtableStagePresentationSnapshot {
+        RoundtableStagePresentationSnapshot(
+            state: state,
+            isBusy: viewModel.isBusy,
             tableQuestion: tableQuestion,
             voiceQuestion: voiceQuestion,
             selectedVoice: selectedVoice,
@@ -32,7 +29,7 @@ struct RoundtableView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
-            Text("五声圆桌")
+            Text(presentation.title)
                 .font(ParallelMeTypography.bodyStrong)
             ForEach(transcript.sections) { section in
                 RoundtableTranscriptSectionView(section: section)
@@ -42,17 +39,20 @@ struct RoundtableView: View {
     }
 
     private var roundtableControls: some View {
-        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+        let stagePresentation = presentation
+        let controlsPresentation = stagePresentation.controls
+
+        return VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
-                Image(systemName: controlsPresentation.statusSystemImage)
-                    .foregroundStyle(actionAvailability.canStartInquiry ? ParallelMeColor.rest : statusColor)
+                Image(systemName: stagePresentation.statusSystemImage)
+                    .foregroundStyle(statusColor(for: stagePresentation.statusTone))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(actionAvailability.statusTitle)
+                    Text(stagePresentation.statusTitle)
                         .font(ParallelMeTypography.bodyStrong)
                         .foregroundStyle(ParallelMeColor.ink)
-                    Text(actionAvailability.statusDetail)
+                    Text(stagePresentation.statusDetail)
                         .font(ParallelMeTypography.compact)
-                        .foregroundStyle(statusColor)
+                        .foregroundStyle(statusColor(for: stagePresentation.statusTone))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -142,7 +142,7 @@ struct RoundtableView: View {
                 .padding(.top, ParallelMeSpacing.sm)
             }
         }
-        .disabled(viewModel.isBusy)
+        .disabled(!stagePresentation.isControlPanelEnabled)
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
         .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
@@ -152,12 +152,14 @@ struct RoundtableView: View {
         )
     }
 
-    private var statusColor: Color {
-        switch actionAvailability.messageTone {
+    private func statusColor(for tone: RoundtableStageStatusTone) -> Color {
+        switch tone {
         case .muted:
             return ParallelMeColor.inkMuted
         case .warning:
             return ParallelMeColor.filial
+        case .success:
+            return ParallelMeColor.rest
         }
     }
 }
