@@ -63,7 +63,7 @@ The inquiry loop asks only questions that can still change the settlement qualit
 - minimum action
 - dialectic synthesis
 
-The loop is sufficiency-driven, not count-driven.
+The loop is sufficiency-driven, not count-driven. Like stage-one defining, each visible inquiry turn is answered as a batch: if the scribe asks multiple high-density questions together, the app waits until every current question has an answer before sending the turn back.
 
 ## 7. Heart Settlement
 

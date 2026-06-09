@@ -35,6 +35,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - `PetitionStarterPrompts` keeps the home screen's first-sentence seeds in Core so onboarding copy is testable.
 - `MeetingStartReadinessSnapshot` explains empty petitions and incomplete provider settings before the first model-backed step.
 - `ScribeProbeAnswerBatchDraft` keeps multi-question definition turns together so the scribe receives a complete answer batch.
+- `ScribeInquiryAnswerBatchDraft` keeps multi-question inquiry turns together before the settlement readiness check advances.
 - Optional `ProviderContext` stores the user's durable background and response preferences locally, then passes them through every provider task as calibration rather than as a replacement for the current meeting evidence.
 - Runtime preferences can be explicitly saved or cleared from the home screen before starting a meeting.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.

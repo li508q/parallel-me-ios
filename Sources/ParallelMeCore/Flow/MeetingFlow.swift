@@ -18,6 +18,7 @@ public enum MeetingFlowError: Error, Equatable, Sendable {
     case illegalStage(expected: MeetingStage, actual: MeetingStage)
     case incompleteProposal(missing: [ProbePurpose])
     case incompleteProbeAnswers(missingQuestionIDs: [String])
+    case incompleteInquiryAnswers(missingQuestionIDs: [String])
     case missingTaskFrame
     case missingRoundtableOpenings
     case incompleteRoundtableOpenings(missing: [VoiceID])
@@ -227,8 +228,15 @@ public struct MeetingFlowEngine: Sendable {
         in state: MeetingFlowState
     ) throws -> MeetingFlowState {
         try require(.inquiry, state)
-        var next = state
+        let alreadyAnsweredIDs = Set(state.inquiryAnswers.map(\.questionID))
         let incomingIDs = Set(answers.map(\.questionID))
+        let missingQuestionIDs = state.inquiryQuestions
+            .map(\.id)
+            .filter { !alreadyAnsweredIDs.contains($0) && !incomingIDs.contains($0) }
+        guard missingQuestionIDs.isEmpty else {
+            throw MeetingFlowError.incompleteInquiryAnswers(missingQuestionIDs: missingQuestionIDs)
+        }
+        var next = state
         next.inquiryAnswers.removeAll { incomingIDs.contains($0.questionID) }
         next.inquiryAnswers.append(contentsOf: answers)
         return next

@@ -252,6 +252,68 @@ struct ParallelMeCoreSmokeTests {
             try expect(answered.definingDialogue.compactMap(\.answer).map(\.questionID) == [fear.id, constraint.id])
         }
 
+        try runner.run("inquiry answer batch requires every active question") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            let roundtable = try engine.confirmProposal(in: proposed)
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时内能做的事落下来。")],
+                in: opened
+            )
+            var inquiry = try engine.startInquiry(in: moved)
+            let action = ScribeInquiryQuestion(
+                id: "inquiry_action_batch",
+                question: "24 小时内能完成的行动是什么？",
+                options: [
+                    ScribeInquiryOption(id: "budget", label: "今晚写预算。"),
+                    ScribeInquiryOption(id: "custom", label: "都不准，我自己说")
+                ],
+                module: .minimumAction
+            )
+            let cost = ScribeInquiryQuestion(
+                id: "inquiry_cost_batch",
+                question: "你愿意承认哪一种代价？",
+                options: [
+                    ScribeInquiryOption(id: "money", label: "短期收入波动。"),
+                    ScribeInquiryOption(id: "custom", label: "都不准，我自己说")
+                ],
+                module: .costAcceptance
+            )
+            inquiry = try engine.receiveInquiryQuestions(
+                [action, cost],
+                profile: nil,
+                ledger: ScribeObservationLedger(),
+                readyForSettlement: false,
+                in: inquiry
+            )
+
+            var draft = ScribeInquiryAnswerBatchDraft()
+            let actionOption = try unwrap(action.options.first(where: { $0.id == "budget" }), "Expected action option")
+            let customOption = try unwrap(cost.options.first(where: \.isCustomAnswer), "Expected custom option")
+            draft.select(question: action, option: actionOption)
+
+            try expect(!draft.canSubmit(questions: [action, cost]))
+            try expect(draft.missingQuestionIDs(in: [action, cost]) == [cost.id])
+            do {
+                _ = try engine.answerInquiry(draft.answers(for: [action, cost]), in: inquiry)
+                throw TestFailure("Expected incomplete inquiry answers error")
+            } catch MeetingFlowError.incompleteInquiryAnswers(let missingQuestionIDs) {
+                try expect(missingQuestionIDs == [cost.id])
+            }
+
+            draft.select(question: cost, option: customOption, customText: "  我可以接受三个月收入下降。  ")
+            let answers = draft.answers(for: [action, cost])
+            let answered = try engine.answerInquiry(answers, in: inquiry)
+
+            try expect(draft.canSubmit(questions: [action, cost]))
+            try expect(answers.map(\.questionID) == [action.id, cost.id])
+            try expect(answers.last?.customText == "我可以接受三个月收入下降。")
+            try expect(answered.inquiryAnswers.map(\.questionID) == [action.id, cost.id])
+        }
+
         try runner.run("many answers do not force settlement") {
             let evaluator = SettlementReadinessEvaluator()
             let answers = (0..<24).map { index in
