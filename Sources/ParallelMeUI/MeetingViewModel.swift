@@ -92,6 +92,10 @@ public final class MeetingViewModel: ObservableObject {
         return state.inquiryQuestions.filter { !answered.contains($0.id) }
     }
 
+    public var currentPaperHealth: MeetingStateHealthSnapshot? {
+        state.map(MeetingStateHealthSnapshot.init)
+    }
+
     public var providerContext: ProviderContext? {
         let context = ProviderContext(
             meCard: contextMeCard,

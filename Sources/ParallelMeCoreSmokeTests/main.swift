@@ -1969,6 +1969,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(MeetingSessionDiagnosticsSnapshot().isEmpty)
         }
 
+        try runner.run("meeting state health snapshot diagnoses restored paper gaps") {
+            let engine = MeetingFlowEngine()
+            var brokenRoundtable = try engine.start(rawInput: "我想辞职又怕没钱")
+            brokenRoundtable.stage = .roundtable
+
+            let broken = MeetingStateHealthSnapshot(state: brokenRoundtable)
+            try expect(broken.tone == .blocked)
+            try expect(broken.blockedCount == 2)
+            try expect(broken.warningCount == 1)
+            try expect(broken.findings.map(\.id).contains("roundtable.taskFrame"))
+            try expect(broken.findings.map(\.id).contains("roundtable.proposal"))
+
+            var roundtable = try engine.start(rawInput: "我想辞职又怕没钱")
+            roundtable = try engine.receiveIssueProposal(completeProposal, in: roundtable)
+            roundtable = try engine.confirmProposal(in: roundtable)
+            let waitingForOpenings = MeetingStateHealthSnapshot(state: roundtable)
+            try expect(waitingForOpenings.tone == .warning)
+            try expect(waitingForOpenings.findings.map(\.id) == ["roundtable.openings"])
+
+            roundtable = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            roundtable = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把风险写成可验证的事实。")],
+                in: roundtable
+            )
+            try expect(MeetingStateHealthSnapshot(state: roundtable).isHealthy)
+
+            var archived = roundtable
+            archived.stage = .archived
+            let missingSettlement = MeetingStateHealthSnapshot(state: archived)
+            try expect(missingSettlement.tone == .blocked)
+            try expect(missingSettlement.findings.map(\.id).contains("archived.settlement"))
+
+            archived.heartSettlement = sampleSettlement
+            archived.archivedAt = Date(timeIntervalSince1970: 200)
+            try expect(MeetingStateHealthSnapshot(state: archived).isHealthy)
+        }
+
         try await runner.runAsync("demo provider drives a complete local meeting") {
             let directory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("parallel-me-ios-demo-\(UUID().uuidString)", isDirectory: true)

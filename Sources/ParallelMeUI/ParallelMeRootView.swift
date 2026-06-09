@@ -51,8 +51,11 @@ public struct ParallelMeRootView: View {
                             )
                             VoicePrimerGrid()
                         }
-                        if !viewModel.sessionDiagnostics.isEmpty {
-                            SessionDiagnosticsPanel(snapshot: viewModel.sessionDiagnostics)
+                        if !viewModel.sessionDiagnostics.isEmpty || viewModel.currentPaperHealth != nil {
+                            SessionDiagnosticsPanel(
+                                snapshot: viewModel.sessionDiagnostics,
+                                paperHealth: viewModel.currentPaperHealth
+                            )
                         }
                     }
                     .padding(.horizontal, ParallelMeSpacing.md)

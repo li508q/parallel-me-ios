@@ -82,10 +82,15 @@ struct ActivityBanner: View {
 
 struct SessionDiagnosticsPanel: View {
     var snapshot: MeetingSessionDiagnosticsSnapshot
+    var paperHealth: MeetingStateHealthSnapshot?
 
     var body: some View {
         DisclosureGroup {
             VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+                if let paperHealth {
+                    paperHealthView(paperHealth)
+                }
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text(snapshot.detail)
                         .font(ParallelMeTypography.compact)
@@ -122,6 +127,51 @@ struct SessionDiagnosticsPanel: View {
         )
     }
 
+    private func paperHealthView(_ health: MeetingStateHealthSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: ParallelMeSpacing.xs) {
+                Image(systemName: icon(for: health.tone))
+                    .foregroundStyle(color(for: health.tone))
+                Text(health.title)
+                    .font(ParallelMeTypography.compact.weight(.medium))
+                    .foregroundStyle(ParallelMeColor.ink)
+                Spacer()
+                Text(label(for: health.stage))
+                    .font(ParallelMeTypography.eyebrow)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+            }
+            Text(health.detail)
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(health.tone == .blocked ? ParallelMeColor.filial : ParallelMeColor.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(health.findings.prefix(4)) { finding in
+                HStack(alignment: .top, spacing: ParallelMeSpacing.xs) {
+                    Image(systemName: finding.systemImage)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(color(for: finding.tone))
+                        .frame(width: 16)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(finding.title)
+                            .font(ParallelMeTypography.eyebrow)
+                            .foregroundStyle(ParallelMeColor.ink)
+                        Text(finding.detail)
+                            .font(ParallelMeTypography.compact)
+                            .foregroundStyle(ParallelMeColor.inkMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .padding(ParallelMeSpacing.sm)
+        .background(ParallelMeColor.paper.opacity(0.65))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(color(for: health.tone).opacity(0.25), lineWidth: 1)
+        )
+    }
+
     private func eventRow(_ event: MeetingSessionEvent) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: ParallelMeSpacing.xs) {
@@ -153,6 +203,21 @@ struct SessionDiagnosticsPanel: View {
             .clipShape(Capsule())
     }
 
+    private func label(for stage: MeetingStage) -> String {
+        switch stage {
+        case .defining:
+            return "定义"
+        case .roundtable:
+            return "圆桌"
+        case .inquiry:
+            return "问询"
+        case .settlement:
+            return "落定"
+        case .archived:
+            return "归档"
+        }
+    }
+
     private func label(for kind: MeetingSessionEventKind) -> String {
         switch kind {
         case .started:
@@ -165,6 +230,28 @@ struct SessionDiagnosticsPanel: View {
             return "保存"
         case .failed:
             return "失败"
+        }
+    }
+
+    private func icon(for tone: MeetingStateHealthTone) -> String {
+        switch tone {
+        case .ok:
+            return "checkmark.seal.fill"
+        case .warning:
+            return "exclamationmark.circle.fill"
+        case .blocked:
+            return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func color(for tone: MeetingStateHealthTone) -> Color {
+        switch tone {
+        case .ok:
+            return ParallelMeColor.rest
+        case .warning:
+            return ParallelMeColor.money
+        case .blocked:
+            return ParallelMeColor.filial
         }
     }
 
