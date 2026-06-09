@@ -244,14 +244,18 @@ private struct ProbeQuestionView: View {
             Text(question.text)
                 .font(ParallelMeTypography.bodyStrong)
             ForEach(regularOptions) { option in
+                let optionPresentation = ScribeAnswerOptionPresentationSnapshot(
+                    option: option,
+                    selection: selection
+                )
                 Button {
                     select(option, nil)
                 } label: {
                     HStack {
-                        Text(option.label)
+                        Text(optionPresentation.label)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        if isSelected(option) {
-                            Image(systemName: "checkmark.circle.fill")
+                        if let systemImage = optionPresentation.selectedSystemImage {
+                            Image(systemName: systemImage)
                         }
                     }
                 }
@@ -272,8 +276,8 @@ private struct ProbeQuestionView: View {
                                 systemImage: customPresentation.action.systemImage
                             )
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            if customPresentation.isSelected {
-                                Image(systemName: "checkmark.circle.fill")
+                            if let systemImage = customPresentation.selectedSystemImage {
+                                Image(systemName: systemImage)
                             }
                         }
                     }

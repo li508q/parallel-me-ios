@@ -13,7 +13,7 @@ The first test layer is `ParallelMeCore`.
 - Stage-one answer batches must cover every current scribe question before the flow can continue.
 - Inquiry answer batches must cover every current active inquiry question before the flow can continue.
 - Inquiry presentation derives active unanswered questions, settlement-request mode, continue-inquiry action, and request-settlement action from Core.
-- Shared answer-batch presentation derives progress text, submit actions, and custom-answer controls from the same Core draft rules.
+- Shared answer-batch presentation derives progress text, submit actions, selected option chrome, and custom-answer controls from the same Core draft rules.
 - `IssueDefinitionEvidenceEvaluator` guards stage-one proposal readiness with user-answer evidence, not raw petition keyword coverage or provider `readyToPropose` alone.
 - Settlement request availability explains unanswered inquiry questions, missing profiles, missing task context, incomplete settlement evidence, and busy state before generating Heart Settlement.
 - Stage-one questions are deduplicated by purpose and similar wording.

@@ -557,6 +557,14 @@ struct ParallelMeCoreSmokeTests {
                 draft: probeDraft,
                 isBusy: false
             )
+            let selectedProbeOption = ScribeAnswerOptionPresentationSnapshot(
+                option: fearOption,
+                selection: probeDraft.selection(for: fear.id)
+            )
+            let unselectedProbeOption = ScribeAnswerOptionPresentationSnapshot(
+                option: fearOption,
+                selection: nil
+            )
             let busyProbePresentation = ScribeAnswerBatchPresentationSnapshot(
                 questions: [fear],
                 draft: probeDraft,
@@ -575,11 +583,18 @@ struct ParallelMeCoreSmokeTests {
             try expect(probePresentation.submitAction.systemImage == "checkmark.circle.fill")
             try expect(!probePresentation.submitAction.isEnabled)
             try expect(!busyProbePresentation.submitAction.isEnabled)
+            try expect(selectedProbeOption.id == fearOption.id)
+            try expect(selectedProbeOption.label == fearOption.label)
+            try expect(selectedProbeOption.isSelected)
+            try expect(selectedProbeOption.selectedSystemImage == "checkmark.circle.fill")
+            try expect(!unselectedProbeOption.isSelected)
+            try expect(unselectedProbeOption.selectedSystemImage == nil)
             try expect(probeCustom.prompt == "写下更准确的回答")
             try expect(probeCustom.action.title == "选用这句回答")
             try expect(probeCustom.action.systemImage == "text.bubble.fill")
             try expect(probeCustom.action.isEnabled)
             try expect(probeCustom.isSelected)
+            try expect(probeCustom.selectedSystemImage == "checkmark.circle.fill")
 
             let action = ScribeInquiryQuestion(
                 id: "presentation_action",
@@ -595,6 +610,10 @@ struct ParallelMeCoreSmokeTests {
                 draft: inquiryDraft,
                 isBusy: false
             )
+            let inquiryOptionPresentation = ScribeAnswerOptionPresentationSnapshot(
+                option: actionOption,
+                selection: inquiryDraft.selection(for: action.id)
+            )
             let emptyInquiryCustom = ScribeCustomAnswerPresentationSnapshot(
                 kind: .inquiry,
                 customText: "   ",
@@ -606,9 +625,12 @@ struct ParallelMeCoreSmokeTests {
             try expect(inquiryPresentation.progressText == "1 / 1")
             try expect(inquiryPresentation.submitAction.title == "提交本轮问询")
             try expect(inquiryPresentation.submitAction.isEnabled)
+            try expect(inquiryOptionPresentation.isSelected)
+            try expect(inquiryOptionPresentation.selectedSystemImage == "checkmark.circle.fill")
             try expect(emptyInquiryCustom.prompt == "写下你的真实答案")
             try expect(!emptyInquiryCustom.action.isEnabled)
             try expect(!emptyInquiryCustom.isSelected)
+            try expect(emptyInquiryCustom.selectedSystemImage == nil)
         }
 
         try runner.run("many answers do not force settlement") {

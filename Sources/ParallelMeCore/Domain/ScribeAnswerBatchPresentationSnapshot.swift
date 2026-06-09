@@ -17,14 +17,46 @@ public struct ScribeAnswerBatchActionSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+public struct ScribeAnswerOptionPresentationSnapshot: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    public var label: String
+    public var isSelected: Bool
+    public var selectedSystemImage: String?
+
+    public init(id: String, label: String, isSelected: Bool) {
+        self.id = id
+        self.label = label
+        self.isSelected = isSelected
+        self.selectedSystemImage = isSelected ? "checkmark.circle.fill" : nil
+    }
+
+    public init(option: ScribeProbeOption, selection: ScribeProbeAnswerSelection?) {
+        self.init(
+            id: option.id,
+            label: option.label,
+            isSelected: selection?.selectedOptionID == option.id
+        )
+    }
+
+    public init(option: ScribeInquiryOption, selection: ScribeInquiryAnswerSelection?) {
+        self.init(
+            id: option.id,
+            label: option.label,
+            isSelected: selection?.selectedOptionID == option.id
+        )
+    }
+}
+
 public struct ScribeCustomAnswerPresentationSnapshot: Codable, Equatable, Sendable {
     public var prompt: String
     public var isSelected: Bool
+    public var selectedSystemImage: String?
     public var action: ScribeAnswerBatchActionSnapshot
 
     public init(kind: ScribeAnswerBatchKind, customText: String, isSelected: Bool) {
         prompt = kind.customAnswerPrompt
         self.isSelected = isSelected
+        selectedSystemImage = isSelected ? "checkmark.circle.fill" : nil
         action = ScribeAnswerBatchActionSnapshot(
             title: "选用这句回答",
             systemImage: "text.bubble.fill",

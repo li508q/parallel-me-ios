@@ -54,7 +54,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `HomeStartPresentationSnapshot` combines starter prompts and start readiness into the home entry surface, deriving the header copy, starter-card visibility and accessibility, petition editor lock, and start action chrome.
 `IssueDefinitionStagePresentationSnapshot` derives stage-one visible mode, loading copy, retry recovery, and proposal-revision controls, so SwiftUI does not decide when a defining paper should show questions, recovery, loading, or proposal confirmation.
 `ScribeProbeAnswerBatchDraft` keeps a stage-one question turn together until every current question has an answer, preserving multi-question definition rounds.
-`ScribeAnswerBatchPresentationSnapshot` derives shared progress text, submit actions, and custom-answer control copy for definition and inquiry batches, keeping multi-question UI state aligned with the Core draft rules.
+`ScribeAnswerBatchPresentationSnapshot` derives shared progress text, submit actions, option selected chrome, and custom-answer control copy for definition and inquiry batches, keeping multi-question UI state aligned with the Core draft rules.
 `IssueDefinitionEvidenceEvaluator` owns the stage-one evidence guard: raw petition keywords are stored as signals, but proposal readiness requires user-answer coverage for all four purposes plus minimum exploration, articulation, and boundary evidence. `ScribeQuestionDeduplicator` uses the evaluator when it needs recovery questions, and `MeetingSessionCoordinator` applies the same evaluator-backed guard after provider responses, so a model cannot move the paper into proposal confirmation just by returning `readyToPropose=true`.
 `ScribeInquiryAnswerBatchDraft` keeps final inquiry turns together under the same rule, so evidence-gathering cannot skip a visible question.
 `InquiryStagePresentationSnapshot` derives the inquiry page mode, active unanswered questions, and settlement-request controls, so SwiftUI does not decide when to show question batches versus final settlement actions.
@@ -110,8 +110,8 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Starter petition prompts are defined in Core and tested for uniqueness and usable seed text before SwiftUI renders them.
 - Home-screen start readiness is derived in Core and tested for empty petitions, incomplete provider settings, and busy input locking.
 - Home-screen entry presentation derives header copy, starter prompt visibility and accessibility, petition editability, and start action controls in Core.
-- Stage-one answer batches are derived in Core and the flow engine rejects partial answers for the current question turn.
-- Final inquiry answer batches are derived in Core and the flow engine rejects partial answers for the current active inquiry turn.
+- Stage-one answer batches are derived in Core, including selected option chrome, and the flow engine rejects partial answers for the current question turn.
+- Final inquiry answer batches are derived in Core, including selected option chrome, and the flow engine rejects partial answers for the current active inquiry turn.
 - Every user-visible transition is represented by `MeetingStage`.
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
 - In-flight activity banners are derived in Core and tested so waiting states stay specific to the user's current action.
