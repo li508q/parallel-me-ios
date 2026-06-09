@@ -153,6 +153,17 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public func saveRuntimePreferences() {
+        let availability = RuntimePreferencesActionAvailabilitySnapshot(
+            providerSettings: providerSettings,
+            isBusy: isBusy
+        )
+        guard availability.canSave else {
+            if !isBusy {
+                runtimePreferencesMessage = nil
+                errorMessage = availability.message
+            }
+            return
+        }
         run(activity: .savingRuntimePreferences) { [self] in
             try await self.persistRuntimePreferences()
             self.runtimePreferencesMessage = "运行配置已保存到本机。"

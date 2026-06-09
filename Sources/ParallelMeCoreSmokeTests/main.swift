@@ -656,14 +656,26 @@ struct ParallelMeCoreSmokeTests {
             try expect(busy.actionTitle == "书记员整理中")
         }
 
-        try runner.run("runtime preferences actions lock while busy") {
+        try runner.run("runtime preferences actions gate invalid OpenAI settings and busy state") {
             let ready = RuntimePreferencesActionAvailabilitySnapshot()
+            let invalidOpenAI = RuntimePreferencesActionAvailabilitySnapshot(
+                providerSettings: ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "api.openai.com/v1",
+                    model: "",
+                    apiKey: ""
+                )
+            )
             let busy = RuntimePreferencesActionAvailabilitySnapshot(isBusy: true)
 
             try expect(ready.canEdit)
             try expect(ready.canSave)
             try expect(ready.canClear)
             try expect(ready.message == nil)
+            try expect(invalidOpenAI.canEdit)
+            try expect(!invalidOpenAI.canSave)
+            try expect(invalidOpenAI.canClear)
+            try expect(invalidOpenAI.message?.contains("OpenAI 配置还不完整") == true)
             try expect(!busy.canEdit)
             try expect(!busy.canSave)
             try expect(!busy.canClear)
@@ -1620,6 +1632,32 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.providerAPIKey.isEmpty)
             try expect(viewModel.contextMeCard.isEmpty)
             try expect(viewModel.contextTasteProfile.isEmpty)
+        }
+
+        try await runner.runAsync("meeting view model blocks invalid runtime preference saves") {
+            let settingsStore = ProviderSettingsRepository(
+                metadataStore: InMemoryProviderRuntimeMetadataStore(),
+                secretStore: InMemorySecretStore()
+            )
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: DemoLLMProvider(),
+                    repository: InMemoryMeetingRepository()
+                ),
+                providerSettingsStore: settingsStore
+            )
+            viewModel.providerMode = .openAICompatible
+            viewModel.providerBaseURL = "api.openai.com/v1"
+            viewModel.providerModel = ""
+            viewModel.providerAPIKey = ""
+
+            viewModel.saveRuntimePreferences()
+
+            try expect(!viewModel.isBusy)
+            try expect(viewModel.runtimePreferencesMessage == nil)
+            try expect(viewModel.errorMessage?.contains("OpenAI 配置还不完整") == true)
+            let savedSettings = try await settingsStore.loadSettings()
+            try expect(savedSettings == ProviderRuntimeSettings())
         }
 
         try await runner.runAsync("meeting view model reports friendly provider settings load errors") {

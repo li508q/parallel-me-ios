@@ -6,7 +6,10 @@ struct ProviderSettingsPanel: View {
     @ObservedObject var viewModel: MeetingViewModel
 
     private var availability: RuntimePreferencesActionAvailabilitySnapshot {
-        RuntimePreferencesActionAvailabilitySnapshot(isBusy: viewModel.isBusy)
+        RuntimePreferencesActionAvailabilitySnapshot(
+            providerSettings: viewModel.providerSettings,
+            isBusy: viewModel.isBusy
+        )
     }
 
     var body: some View {
