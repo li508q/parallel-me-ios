@@ -188,6 +188,14 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public func startMeeting() {
+        let readiness = startReadiness
+        guard readiness.canStart else {
+            if !isBusy {
+                runtimePreferencesMessage = nil
+                errorMessage = readiness.detail
+            }
+            return
+        }
         let input = petition
         run(activity: .startingMeeting) { [self] in
             try await self.rebuildCoordinatorIfNeeded()

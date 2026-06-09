@@ -1675,6 +1675,34 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.startReadiness.canStart)
         }
 
+        try await runner.runAsync("meeting view model blocks unavailable starts without saving runtime") {
+            let settingsStore = ProviderSettingsRepository(
+                metadataStore: InMemoryProviderRuntimeMetadataStore(),
+                secretStore: InMemorySecretStore()
+            )
+            let storedContext = ProviderContext(meCard: "原先保存的上下文")
+            let contextStore = InMemoryProviderContextStore(context: storedContext)
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: DemoLLMProvider(),
+                    repository: InMemoryMeetingRepository()
+                ),
+                providerSettingsStore: settingsStore,
+                providerContextStore: contextStore
+            )
+            viewModel.contextMeCard = "不应该保存的新上下文"
+
+            viewModel.startMeeting()
+
+            let savedSettings = try await settingsStore.loadSettings()
+            let savedContext = try await contextStore.loadContext()
+            try expect(!viewModel.isBusy)
+            try expect(viewModel.state == nil)
+            try expect(viewModel.errorMessage == "可以从上面的起点卡片开始，也可以直接写自己的第一句话。")
+            try expect(savedSettings == ProviderRuntimeSettings())
+            try expect(savedContext == storedContext)
+        }
+
         try await runner.runAsync("meeting view model saves and clears runtime preferences") {
             let metadataStore = InMemoryProviderRuntimeMetadataStore()
             let secretStore = InMemorySecretStore()
