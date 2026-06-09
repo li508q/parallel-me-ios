@@ -1932,6 +1932,32 @@ struct ParallelMeCoreSmokeTests {
             try expect(saved?.definingDialogue.last?.answer?.questionID == "proposal_feedback")
         }
 
+        try await runner.runAsync("session coordinator preserves contradictory definition questions") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            let followUp = question("definition_guard", "这件事真正怕失去什么？", .coreFears)
+            await provider.register(
+                IssueDefinitionResponse(
+                    questions: [followUp],
+                    proposal: completeProposal,
+                    readyToPropose: true,
+                    thinking: "仍然需要确认 coreFears。"
+                ),
+                for: .defineIssue
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
+            let probing = try await coordinator.requestDefinition()
+            let saved = try await repository.load(id: probing.id)
+
+            try expect(probing.stage == .defining)
+            try expect(probing.definingSubstage == .probing)
+            try expect(probing.currentQuestions.map(\.id) == [followUp.id])
+            try expect(probing.issueProposal == nil)
+            try expect(saved?.currentQuestions.map(\.id) == [followUp.id])
+        }
+
         try await runner.runAsync("session coordinator preserves contradictory inquiry questions") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()

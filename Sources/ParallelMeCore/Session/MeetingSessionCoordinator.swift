@@ -14,6 +14,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
     private let repository: Repository
     private let engine: MeetingFlowEngine
     private let deduplicator: ScribeQuestionDeduplicator
+    private let definitionResponseGuard: IssueDefinitionResponseGuard
     private let readinessEvaluator: SettlementReadinessEvaluator
     private let inquiryResponseGuard: AlignmentInquiryResponseGuard
     private let eventSink: any MeetingSessionEventSink
@@ -35,6 +36,7 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         self.repository = repository
         self.engine = engine
         self.deduplicator = deduplicator
+        self.definitionResponseGuard = IssueDefinitionResponseGuard()
         self.readinessEvaluator = readinessEvaluator
         self.inquiryResponseGuard = AlignmentInquiryResponseGuard(readinessEvaluator: readinessEvaluator)
         self.eventSink = eventSink
@@ -269,7 +271,8 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         _ response: IssueDefinitionResponse,
         to current: MeetingFlowState
     ) async throws -> MeetingFlowState {
-        if let proposal = response.proposal, proposal.isComplete {
+        let response = definitionResponseGuard.normalize(response)
+        if response.readyToPropose, let proposal = response.proposal, proposal.isComplete {
             let proposed = try engine.receiveIssueProposal(proposal, in: current)
             state = proposed
             return try await persist(proposed)
