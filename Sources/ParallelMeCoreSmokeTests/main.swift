@@ -548,6 +548,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(snapshot.visibleItems(isExpanded: true) == timeline)
         }
 
+        try runner.run("roundtable transcript groups openings moves and legacy turns") {
+            let firstMove = RoundtableMove(
+                id: "move_table",
+                type: .userToTable,
+                userText: "你们怎么看身体底线？",
+                createdAt: Date(timeIntervalSince1970: 20)
+            )
+            let secondMove = RoundtableMove(
+                id: "move_duel",
+                type: .duel,
+                fromVoiceID: .money,
+                toVoiceID: .lay,
+                createdAt: Date(timeIntervalSince1970: 30)
+            )
+            let record = RoundtableRecord(
+                openingTurns: VoiceID.allCases.map { opening($0) },
+                turns: [
+                    RoundtableTurn(moveID: firstMove.id, voiceID: .lay, text: "身体不是无限资源。"),
+                    RoundtableTurn(moveID: firstMove.id, voiceID: .future, text: "先把体检排进明天。"),
+                    RoundtableTurn(moveID: secondMove.id, voiceID: .money, text: "预算要先看清。"),
+                    RoundtableTurn(voiceID: .roam, text: "这是旧纸页里未绑定动作的发言。")
+                ],
+                moves: [firstMove, secondMove]
+            )
+
+            let transcript = RoundtableTranscriptSnapshot(record: record)
+
+            try expect(transcript.sections.map(\.kind) == [.opening, .move, .move, .ungrouped])
+            try expect(transcript.sections.first?.openingTurns.map(\.voiceID) == VoiceID.allCases)
+            try expect(transcript.sections[1].title == "追问全桌")
+            try expect(transcript.sections[1].detail == "你们怎么看身体底线？")
+            try expect(transcript.sections[1].turns.map(\.voiceID) == [.lay, .future])
+            try expect(transcript.sections[2].detail == "搞钱的我 向 躺平的我 发问")
+            try expect(transcript.sections[3].title == "圆桌补充")
+            try expect(transcript.sections[3].turns.map(\.voiceID) == [.roam])
+            try expect(!RoundtableTranscriptSnapshot(record: RoundtableRecord(moves: [firstMove])).isEmpty)
+        }
+
         try runner.run("meeting summaries use settlement and archive timestamps") {
             let engine = MeetingFlowEngine()
             var active = try engine.start(rawInput: "待落定纸页")

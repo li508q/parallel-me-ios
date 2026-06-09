@@ -58,13 +58,17 @@ public struct MeetingExportDocument: Equatable, Sendable {
             appendPair("圆桌任务", proposal.expectedResolution.content, to: &lines)
         }
 
-        if !state.roundtable.openingTurns.isEmpty || !state.roundtable.turns.isEmpty {
+        let transcript = RoundtableTranscriptSnapshot(record: state.roundtable)
+        if !transcript.isEmpty {
             appendHeading("五声圆桌", to: &lines)
-            for opening in state.roundtable.openingTurns {
-                appendPair(opening.name, opening.payload.thesis, to: &lines)
-            }
-            for turn in state.roundtable.turns {
-                appendPair(turn.name ?? "圆桌", turn.text, to: &lines)
+            for section in transcript.sections {
+                appendPair(section.title, section.detail, to: &lines)
+                for opening in section.openingTurns {
+                    appendPair(opening.name, opening.payload.thesis, to: &lines)
+                }
+                for turn in section.turns {
+                    appendPair(turn.name ?? "圆桌", turn.text, to: &lines)
+                }
             }
         }
 

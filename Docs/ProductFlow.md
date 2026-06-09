@@ -41,7 +41,7 @@ The fixed voices are:
 
 They are not agents invented per session. They are stable product personas with durable values and fears. The user can continue the table, ask one voice, ask all voices, or let two voices speak directly.
 
-The iOS roundtable exposes all four moves explicitly: continue all voices, ask the whole table, ask a selected voice, and start a two-voice dialogue.
+The iOS roundtable exposes all four moves explicitly: continue all voices, ask the whole table, ask a selected voice, and start a two-voice dialogue. The visible transcript is grouped by opening and by each user move, so a long meeting still reads like a facilitated roundtable rather than a flat chat log.
 
 ## 5. Invisible Scribe Observation
 
