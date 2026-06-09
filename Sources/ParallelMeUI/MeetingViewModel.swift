@@ -351,7 +351,11 @@ public final class MeetingViewModel: ObservableObject {
 
     public func restoreMeeting(id: String) {
         run(activity: .restoringPaper) { [self] in
-            guard let restored = try await self.meetingRepository.load(id: id) else { return }
+            guard let restored = try await self.meetingRepository.load(id: id) else {
+                self.errorMessage = "这张纸页已经不在本机纸页库里。"
+                await self.loadMeetingLibrary()
+                return
+            }
             if restored.stage == .archived {
                 self.state = try await self.coordinator.restore(restored)
             } else {

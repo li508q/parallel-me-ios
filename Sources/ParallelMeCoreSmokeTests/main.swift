@@ -1981,6 +1981,24 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.errorMessage == nil)
         }
 
+        try await runner.runAsync("meeting view model reports missing restored paper") {
+            let repository = InMemoryMeetingRepository()
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(provider: DemoLLMProvider(), repository: repository),
+                meetingRepository: repository
+            )
+
+            viewModel.restoreMeeting(id: "missing-paper")
+            try await waitFor("missing paper restore") {
+                !viewModel.isBusy && viewModel.errorMessage != nil
+            }
+
+            try expect(viewModel.state == nil)
+            try expect(viewModel.errorMessage == "这张纸页已经不在本机纸页库里。")
+            try expect(viewModel.meetingLibrary.isEmpty)
+            try expect(viewModel.resumableMeeting == nil)
+        }
+
         try await runner.runAsync("session coordinator refines proposal from user feedback") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
