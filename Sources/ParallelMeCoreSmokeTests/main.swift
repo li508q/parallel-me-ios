@@ -70,6 +70,14 @@ struct ParallelMeCoreSmokeTests {
             } catch MeetingFlowError.missingRoundtableOpenings {
                 // expected
             }
+
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            do {
+                _ = try engine.startInquiry(in: opened)
+                throw TestFailure("Expected missing roundtable exchange error")
+            } catch MeetingFlowError.missingRoundtableExchange {
+                // expected
+            }
         }
 
         try runner.run("openings normalize to fixed order") {
@@ -86,6 +94,40 @@ struct ParallelMeCoreSmokeTests {
             ]
             let next = try engine.receiveOpenings(openings, in: roundtable)
             try expect(next.roundtable.openingTurns.map(\.voiceID) == VoiceID.allCases)
+        }
+
+        try runner.run("roundtable transition requires a substantive exchange") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            let roundtable = try engine.confirmProposal(in: proposed)
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            let waiting = RoundtableTransitionSnapshot(record: opened.roundtable)
+
+            try expect(waiting.hasCompleteOpenings)
+            try expect(!waiting.hasSubstantiveExchange)
+            try expect(!waiting.canStartInquiry)
+            try expect(waiting.inquiryActionTitle == "材料还不够")
+
+            let duplicatedOpenings = RoundtableRecord(
+                openingTurns: Array(repeating: opening(.future), count: VoiceID.allCases.count)
+            )
+            let incomplete = RoundtableTransitionSnapshot(record: duplicatedOpenings)
+
+            try expect(!incomplete.hasCompleteOpenings)
+            try expect(incomplete.missingOpeningIDs.contains(.lay))
+
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(id: "move_transition", type: .continueAll),
+                turns: [RoundtableTurn(moveID: "move_transition", voiceID: .future, text: "先把长期后果说清楚。")],
+                in: opened
+            )
+            let ready = RoundtableTransitionSnapshot(record: moved.roundtable)
+
+            try expect(ready.moveCount == 1)
+            try expect(ready.answeredMoveCount == 1)
+            try expect(ready.canStartInquiry)
+            try expect(ready.statusTitle == "可以进入书记员问询")
         }
 
         try runner.run("scribe drops duplicate purposes") {
@@ -147,7 +189,12 @@ struct ParallelMeCoreSmokeTests {
             let proposed = try engine.receiveIssueProposal(completeProposal, in: answeredProbe)
             let roundtable = try engine.confirmProposal(in: proposed)
             let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
-            let inquiry = try engine.startInquiry(in: opened)
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时内能做的事落下来。")],
+                in: opened
+            )
+            let inquiry = try engine.startInquiry(in: moved)
             let answeredInquiry = try engine.answerInquiry([
                 ScribeInquiryAnswer(
                     questionID: "inquiry_custom",
@@ -1072,6 +1119,13 @@ struct ParallelMeCoreSmokeTests {
                 for: .openRoundtable
             )
             await provider.register(
+                RoundtableMoveResponse(
+                    turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时行动放到桌面上。")],
+                    ledger: ScribeObservationLedger(moduleSignals: [.minimumAction: ["今晚写预算"]])
+                ),
+                for: .continueRoundtable
+            )
+            await provider.register(
                 AlignmentInquiryResponse(
                     readyForSettlement: true,
                     profile: completeProfile,
@@ -1088,6 +1142,7 @@ struct ParallelMeCoreSmokeTests {
             _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
             _ = try await coordinator.requestDefinition()
             _ = try await coordinator.confirmProposalAndOpenRoundtable()
+            _ = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
             _ = try await coordinator.startInquiry()
             let settled = try await coordinator.requestSettlement()
 
@@ -1107,6 +1162,13 @@ struct ParallelMeCoreSmokeTests {
                 for: .openRoundtable
             )
             await provider.register(
+                RoundtableMoveResponse(
+                    turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时行动放到桌面上。")],
+                    ledger: ScribeObservationLedger(moduleSignals: [.minimumAction: ["今晚写预算"]])
+                ),
+                for: .continueRoundtable
+            )
+            await provider.register(
                 AlignmentInquiryResponse(
                     readyForSettlement: true,
                     profile: completeProfile,
@@ -1123,6 +1185,7 @@ struct ParallelMeCoreSmokeTests {
             let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
             _ = try await coordinator.requestDefinition()
             _ = try await coordinator.confirmProposalAndOpenRoundtable()
+            _ = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
             _ = try await coordinator.startInquiry()
             _ = try await coordinator.requestSettlement()
             let revised = try await coordinator.reviseSettlement([

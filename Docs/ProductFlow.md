@@ -43,6 +43,8 @@ They are not agents invented per session. They are stable product personas with 
 
 The iOS roundtable exposes all four moves explicitly: continue all voices, ask the whole table, ask a selected voice, and start a two-voice dialogue. The visible transcript is grouped by opening and by each user move, so a long meeting still reads like a facilitated roundtable rather than a flat chat log.
 
+The app cannot enter final inquiry from a bare opening. All five fixed voices must have opened, and at least one roundtable move must receive a concrete response before the inquiry action becomes available. This is a minimum evidence guard, not a maximum round cap: the user can continue the table as long as useful, then move to inquiry when there is real material to question.
+
 ## 5. Invisible Scribe Observation
 
 The scribe maintains a background ledger. This ledger records evidence for the final settlement modules but does not interrupt the roundtable or appear as a user-facing diagnosis.

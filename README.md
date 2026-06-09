@@ -36,6 +36,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - Runtime preferences can be explicitly saved or cleared from the home screen before starting a meeting.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.
 - `MeetingStageProgressSnapshot` drives the five-step iPhone stage rail from Core state.
+- `RoundtableTransitionSnapshot` keeps final inquiry gated on complete fixed-voice openings and at least one real roundtable exchange, without adding a maximum round cap.
 - Restored unfinished papers rebuild their provider runtime before continuing, so the next model action uses the current credentials and context; archived papers remain readable offline.
 - Settlement and archive timestamps are stored on the meeting state, so summaries, library ordering, and timelines reflect real lifecycle events.
 - `RoundtableTranscriptSnapshot` groups openings and user-driven moves for live reading and Markdown export.

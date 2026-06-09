@@ -19,6 +19,8 @@ public enum MeetingFlowError: Error, Equatable, Sendable {
     case incompleteProposal(missing: [ProbePurpose])
     case missingTaskFrame
     case missingRoundtableOpenings
+    case incompleteRoundtableOpenings(missing: [VoiceID])
+    case missingRoundtableExchange
     case missingAlignmentProfile
     case missingHeartSettlement
 }
@@ -143,6 +145,11 @@ public struct MeetingFlowEngine: Sendable {
         in state: MeetingFlowState
     ) throws -> MeetingFlowState {
         try require(.roundtable, state)
+        let receivedIDs = Set(openings.map(\.voiceID))
+        let missingIDs = VoiceID.allCases.filter { !receivedIDs.contains($0) }
+        guard missingIDs.isEmpty else {
+            throw MeetingFlowError.incompleteRoundtableOpenings(missing: missingIDs)
+        }
         var next = state
         next.roundtable.openingTurns = VoiceID.allCases.compactMap { id in
             openings.first(where: { $0.voiceID == id })
@@ -171,9 +178,11 @@ public struct MeetingFlowEngine: Sendable {
 
     public func startInquiry(in state: MeetingFlowState) throws -> MeetingFlowState {
         try require(.roundtable, state)
-        guard !state.roundtable.openingTurns.isEmpty else {
+        let transition = RoundtableTransitionSnapshot(record: state.roundtable)
+        guard transition.hasCompleteOpenings else {
             throw MeetingFlowError.missingRoundtableOpenings
         }
+        guard transition.hasSubstantiveExchange else { throw MeetingFlowError.missingRoundtableExchange }
         var next = state
         next.stage = .inquiry
         next.inquiryQuestions = []

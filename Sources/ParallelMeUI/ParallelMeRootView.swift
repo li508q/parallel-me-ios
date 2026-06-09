@@ -304,6 +304,10 @@ private struct RoundtableView: View {
         RoundtableTranscriptSnapshot(record: state.roundtable)
     }
 
+    private var transition: RoundtableTransitionSnapshot {
+        RoundtableTransitionSnapshot(record: state.roundtable)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             Text("五声圆桌")
@@ -317,15 +321,30 @@ private struct RoundtableView: View {
 
     private var roundtableControls: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+            HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+                Image(systemName: transition.canStartInquiry ? "checkmark.seal.fill" : "hourglass")
+                    .foregroundStyle(transition.canStartInquiry ? ParallelMeColor.rest : ParallelMeColor.inkMuted)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(transition.statusTitle)
+                        .font(ParallelMeTypography.bodyStrong)
+                        .foregroundStyle(ParallelMeColor.ink)
+                    Text(transition.statusDetail)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             HStack {
                 Button(action: viewModel.continueRoundtable) {
                     Label("继续一轮", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .buttonStyle(.bordered)
                 Button(action: viewModel.startInquiry) {
-                    Label("进入问询", systemImage: "arrow.right.circle.fill")
+                    Label(transition.inquiryActionTitle, systemImage: "arrow.right.circle.fill")
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(!transition.canStartInquiry)
             }
             DisclosureGroup("问全桌") {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {

@@ -51,6 +51,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingStageProgressSnapshot` derives the five-step product rail, localized stage titles, current position, and completion state from `MeetingStage`.
 `MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
 `RoundtableTranscriptSnapshot` groups voice openings, user moves, model replies, and legacy ungrouped turns into one tested reading model used by the SwiftUI roundtable and Markdown export.
+`RoundtableTransitionSnapshot` derives whether the roundtable has complete openings and at least one substantive exchange, so the UI cannot make inquiry available before there is real material.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
 `MeetingLibrarySnapshot` groups and filters saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
@@ -83,6 +84,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Every model-facing action returns a typed payload.
 - Every user-visible transition is represented by `MeetingStage`.
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
+- Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Roundtable transcript grouping is derived in Core and shared by live UI and export.
 - Archived-paper detail rows are derived in Core and tested against user settlement revisions.

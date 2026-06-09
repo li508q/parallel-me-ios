@@ -414,6 +414,11 @@ public final class MeetingViewModel: ObservableObject {
             return "这版议题还差 \(labels)，先别急着进圆桌。"
         case MeetingFlowError.missingRoundtableOpenings:
             return "五声还没有完成开场，等它们先把位置坐稳。"
+        case MeetingFlowError.incompleteRoundtableOpenings(let missing):
+            let labels = missing.map(\.displayName).joined(separator: "、")
+            return "五声开场还缺 \(labels)，不能带着空位进入问询。"
+        case MeetingFlowError.missingRoundtableExchange:
+            return "先让圆桌至少完成一轮具体交换，再进入书记员问询。"
         case MeetingFlowError.missingAlignmentProfile:
             return "书记员还没拿到足够证据，先回答最后几个关键问题。"
         case MeetingFlowError.missingHeartSettlement:
