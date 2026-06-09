@@ -490,6 +490,46 @@ struct ParallelMeCoreSmokeTests {
             try expect(busy.actionTitle == "书记员整理中")
         }
 
+        try runner.run("proposal confirmation availability explains blocked confirmations") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+
+            let missing = ProposalConfirmationAvailabilitySnapshot(state: started)
+            try expect(!missing.canConfirm)
+            try expect(missing.blockers == [.missingProposal, .missingTaskFrame])
+            try expect(missing.actionTitle == "还不能进入圆桌")
+            try expect(missing.message.contains("还没有可确认"))
+
+            var incompleteState = started
+            var incompleteProposal = completeProposal
+            incompleteProposal.coreFears.content = "   "
+            incompleteState.issueProposal = incompleteProposal
+            let incomplete = ProposalConfirmationAvailabilitySnapshot(state: incompleteState)
+            try expect(!incomplete.canConfirm)
+            try expect(incomplete.blockers == [.incompleteProposal, .missingTaskFrame])
+            try expect(incomplete.missingPurposes == [.coreFears])
+            try expect(incomplete.message.contains(ProbePurpose.coreFears.label))
+
+            var missingTaskFrame = started
+            missingTaskFrame.issueProposal = completeProposal
+            let legacy = ProposalConfirmationAvailabilitySnapshot(state: missingTaskFrame)
+            try expect(!legacy.canConfirm)
+            try expect(legacy.blockers == [.missingTaskFrame])
+            try expect(legacy.actionTitle == "需要重新整理议题")
+            try expect(legacy.message.contains("任务框架"))
+
+            let readyState = try engine.receiveIssueProposal(completeProposal, in: started)
+            let ready = ProposalConfirmationAvailabilitySnapshot(state: readyState)
+            try expect(ready.canConfirm)
+            try expect(ready.actionTitle == "确认议题，进入圆桌")
+            try expect(ready.messageTone == .muted)
+
+            let busy = ProposalConfirmationAvailabilitySnapshot(state: readyState, isBusy: true)
+            try expect(!busy.canConfirm)
+            try expect(busy.blockers == [.busy])
+            try expect(busy.actionTitle == "书记员整理中")
+        }
+
         try runner.run("runtime preferences actions lock while busy") {
             let ready = RuntimePreferencesActionAvailabilitySnapshot()
             let busy = RuntimePreferencesActionAvailabilitySnapshot(isBusy: true)

@@ -48,6 +48,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - `MeetingSessionDiagnosticsSnapshot` summarizes provider requests, responses, persistence, failures, and recent trace events for the in-app debug panel.
 - `MeetingStateHealthSnapshot` diagnoses the current paper's structural gaps, so restored or legacy states explain why a stage cannot continue, save, or export.
 - `MeetingStageProgressSnapshot` drives the five-step iPhone stage rail from Core state.
+- `ProposalConfirmationAvailabilitySnapshot` keeps the defining-to-roundtable confirmation button aligned with proposal completeness, task-frame availability, and busy state.
 - `RoundtableTransitionSnapshot` keeps final inquiry gated on complete fixed-voice openings and at least one real roundtable exchange, without adding a maximum round cap.
 - Restored unfinished papers rebuild their provider runtime before continuing, so the next model action uses the current credentials and context; archived papers remain readable offline.
 - Settlement and archive timestamps are stored on the meeting state, so summaries, library ordering, and timelines reflect real lifecycle events.

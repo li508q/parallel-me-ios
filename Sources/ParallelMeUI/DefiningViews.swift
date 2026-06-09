@@ -15,6 +15,10 @@ struct DefiningView: View {
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.inkMuted)
             if let proposal = state.issueProposal {
+                let confirmation = ProposalConfirmationAvailabilitySnapshot(
+                    state: state,
+                    isBusy: viewModel.isBusy
+                )
                 IssueProposalView(proposal: proposal)
                 ProposalRevisionView(
                     feedback: $proposalFeedback,
@@ -23,11 +27,15 @@ struct DefiningView: View {
                     viewModel.refineProposal(proposalFeedback)
                 }
                 Button(action: viewModel.confirmProposal) {
-                    Label("确认议题，进入圆桌", systemImage: "checkmark.circle.fill")
+                    Label(confirmation.actionTitle, systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isBusy)
+                .disabled(!confirmation.canConfirm)
+                Text(confirmation.message)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(messageColor(for: confirmation.messageTone))
+                    .fixedSize(horizontal: false, vertical: true)
             } else if state.currentQuestions.isEmpty {
                 if viewModel.isBusy {
                     ProgressView("书记员正在整理问题")
@@ -48,6 +56,15 @@ struct DefiningView: View {
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
         .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+    }
+
+    private func messageColor(for tone: ProposalConfirmationMessageTone) -> Color {
+        switch tone {
+        case .muted:
+            return ParallelMeColor.inkMuted
+        case .warning:
+            return ParallelMeColor.filial
+        }
     }
 }
 

@@ -57,6 +57,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingSessionDiagnosticsSnapshot` derives recent trace rows, event counts, pending provider responses, and latest failure copy from raw session events so the debug panel stays useful without becoming another source of product logic.
 `MeetingStateHealthSnapshot` diagnoses the active paper's structural readiness, including missing issue context, incomplete roundtable evidence, incomplete settlement payloads, and legacy archived-paper gaps, so the debug panel can explain restored states without parsing JSON.
 `MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
+`ProposalConfirmationAvailabilitySnapshot` derives whether the confirmed issue proposal can safely enter the roundtable, including restored states that have proposal text but no task frame.
 `RoundtableTranscriptSnapshot` groups voice openings, user moves, model replies, and legacy ungrouped turns into one tested reading model used by the SwiftUI roundtable and Markdown export.
 `RoundtableTransitionSnapshot` derives whether the roundtable has complete openings and at least one substantive exchange, so the UI cannot make inquiry available before there is real material.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
@@ -124,6 +125,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Settlement apply/archive buttons are derived from Core action availability and lock while an async operation is in flight.
 - Repeated questions are filtered before they reach UI.
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
+- Proposal confirmation availability is derived in Core, so restored incomplete proposals cannot expose a misleading roundtable action.
 - The final inquiry loop has no hard cap; tests assert this invariant.
 - Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
 - OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
