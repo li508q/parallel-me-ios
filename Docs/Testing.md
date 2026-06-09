@@ -33,6 +33,7 @@ The first test layer is `ParallelMeCore`.
 - Resume policy selects the latest unfinished paper and ignores archived papers.
 - Settlement readiness depends on evidence and profile completeness, not on the number of turns.
 - Session coordination persists each meaningful transition and records debug events.
+- Session diagnostics summarize recent events, failures, pending provider responses, and event counts in Core.
 - Demo mode can drive a complete local meeting from petition to archive.
 
 ## Running Tests
@@ -43,4 +44,4 @@ swift run ParallelMeCoreSmokeTests
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
 
-Current smoke coverage includes 56 checks across flow rules, starter prompts, start readiness, in-flight activity snapshots, stage-one answer batching, inquiry answer batching, stage progress, roundtable inquiry readiness, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping, status filtering, and full-paper search, archived detail snapshots, Markdown export, export file writing, provider prompt contracts, provider configuration, OpenAI-compatible transport, secure settings persistence, provider context persistence, runtime preference actions, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.
+Current smoke coverage includes 57 checks across flow rules, starter prompts, start readiness, in-flight activity snapshots, stage-one answer batching, inquiry answer batching, stage progress, roundtable inquiry readiness, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping, status filtering, and full-paper search, archived detail snapshots, Markdown export, export file writing, provider prompt contracts, provider configuration, OpenAI-compatible transport, secure settings persistence, provider context persistence, runtime preference actions, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, session diagnostics, and all demo roundtable move types.

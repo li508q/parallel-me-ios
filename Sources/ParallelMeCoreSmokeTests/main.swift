@@ -1582,6 +1582,67 @@ struct ParallelMeCoreSmokeTests {
             try expect(kinds.contains(.persisted))
         }
 
+        try runner.run("session diagnostics snapshot summarizes recent failures") {
+            let events = [
+                MeetingSessionEvent(
+                    id: "started",
+                    kind: .started,
+                    message: "started",
+                    createdAt: Date(timeIntervalSince1970: 1)
+                ),
+                MeetingSessionEvent(
+                    id: "request-1",
+                    kind: .providerRequest,
+                    message: "request definition",
+                    createdAt: Date(timeIntervalSince1970: 2)
+                ),
+                MeetingSessionEvent(
+                    id: "response-1",
+                    kind: .providerResponse,
+                    message: "response definition",
+                    trace: ["mock:defineIssue"],
+                    createdAt: Date(timeIntervalSince1970: 3)
+                ),
+                MeetingSessionEvent(
+                    id: "persisted",
+                    kind: .persisted,
+                    message: "persisted",
+                    createdAt: Date(timeIntervalSince1970: 4)
+                ),
+                MeetingSessionEvent(
+                    id: "request-2",
+                    kind: .providerRequest,
+                    message: "request settlement",
+                    createdAt: Date(timeIntervalSince1970: 5)
+                ),
+                MeetingSessionEvent(
+                    id: "failed",
+                    kind: .failed,
+                    message: "模型服务返回 429",
+                    trace: ["rate limited"],
+                    createdAt: Date(timeIntervalSince1970: 6)
+                )
+            ]
+
+            let snapshot = MeetingSessionDiagnosticsSnapshot(events: events, limit: 3)
+            let pending = MeetingSessionDiagnosticsSnapshot(events: Array(events.prefix(5)), limit: 12)
+
+            try expect(snapshot.totalCount == 6)
+            try expect(snapshot.displayedCount == 3)
+            try expect(snapshot.recentEvents.map(\.id) == ["persisted", "request-2", "failed"])
+            try expect(snapshot.providerRequestCount == 2)
+            try expect(snapshot.providerResponseCount == 1)
+            try expect(snapshot.persistedCount == 1)
+            try expect(snapshot.failureCount == 1)
+            try expect(snapshot.latestFailure?.id == "failed")
+            try expect(snapshot.pendingProviderResponseCount == 1)
+            try expect(snapshot.title == "运行轨迹 · 1 次失败")
+            try expect(snapshot.detail == "模型服务返回 429")
+            try expect(pending.title == "运行轨迹 · 等待模型响应")
+            try expect(pending.detail == "还有 1 个模型请求没有对应响应。")
+            try expect(MeetingSessionDiagnosticsSnapshot().isEmpty)
+        }
+
         try await runner.runAsync("demo provider drives a complete local meeting") {
             let directory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("parallel-me-ios-demo-\(UUID().uuidString)", isDirectory: true)

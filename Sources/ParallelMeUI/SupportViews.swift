@@ -81,33 +81,35 @@ struct ActivityBanner: View {
 }
 
 struct SessionDiagnosticsPanel: View {
-    var events: [MeetingSessionEvent]
+    var snapshot: MeetingSessionDiagnosticsSnapshot
 
     var body: some View {
-        DisclosureGroup("运行轨迹") {
-            VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                ForEach(events.reversed()) { event in
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: ParallelMeSpacing.xs) {
-                            Text(label(for: event.kind))
-                                .font(ParallelMeTypography.eyebrow)
-                                .foregroundStyle(color(for: event.kind))
-                            Text(event.message)
-                                .font(ParallelMeTypography.compact)
-                                .foregroundStyle(ParallelMeColor.ink)
-                                .lineLimit(2)
-                        }
-                        if let trace = event.trace.first {
-                            Text(trace)
-                                .font(ParallelMeTypography.compact)
-                                .foregroundStyle(ParallelMeColor.inkMuted)
-                                .lineLimit(1)
-                        }
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(snapshot.detail)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(snapshot.hasFailures ? ParallelMeColor.filial : ParallelMeColor.inkMuted)
+                    HStack(spacing: ParallelMeSpacing.xs) {
+                        diagnosticsPill("请求", snapshot.providerRequestCount, color: ParallelMeColor.roam)
+                        diagnosticsPill("响应", snapshot.providerResponseCount, color: ParallelMeColor.future)
+                        diagnosticsPill("保存", snapshot.persistedCount, color: ParallelMeColor.money)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+                    ForEach(snapshot.recentEvents.reversed()) { event in
+                        eventRow(event)
+                    }
                 }
             }
             .padding(.top, ParallelMeSpacing.xs)
+        } label: {
+            HStack(spacing: ParallelMeSpacing.xs) {
+                Image(systemName: snapshot.hasFailures ? "exclamationmark.triangle.fill" : "waveform.path.ecg")
+                    .foregroundStyle(snapshot.hasFailures ? ParallelMeColor.filial : ParallelMeColor.inkMuted)
+                Text(snapshot.title)
+            }
         }
         .font(ParallelMeTypography.compact)
         .foregroundStyle(ParallelMeColor.ink)
@@ -118,6 +120,37 @@ struct SessionDiagnosticsPanel: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line.opacity(0.55), lineWidth: 1)
         )
+    }
+
+    private func eventRow(_ event: MeetingSessionEvent) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: ParallelMeSpacing.xs) {
+                Text(label(for: event.kind))
+                    .font(ParallelMeTypography.eyebrow)
+                    .foregroundStyle(color(for: event.kind))
+                Text(event.message)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.ink)
+                    .lineLimit(2)
+            }
+            if let trace = event.trace.first {
+                Text(trace)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func diagnosticsPill(_ title: String, _ count: Int, color: Color) -> some View {
+        Text("\(title) \(count)")
+            .font(ParallelMeTypography.eyebrow)
+            .foregroundStyle(color)
+            .padding(.horizontal, ParallelMeSpacing.xs)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.10))
+            .clipShape(Capsule())
     }
 
     private func label(for kind: MeetingSessionEventKind) -> String {

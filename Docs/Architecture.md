@@ -54,6 +54,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
 `MeetingStageProgressSnapshot` derives the five-step product rail, localized stage titles, current position, and completion state from `MeetingStage`.
 `MeetingActivitySnapshot` derives tested in-flight action copy, icon intent, and provider-versus-local classification so SwiftUI can explain waiting states without embedding product logic in view files.
+`MeetingSessionDiagnosticsSnapshot` derives recent trace rows, event counts, pending provider responses, and latest failure copy from raw session events so the debug panel stays useful without becoming another source of product logic.
 `MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
 `RoundtableTranscriptSnapshot` groups voice openings, user moves, model replies, and legacy ungrouped turns into one tested reading model used by the SwiftUI roundtable and Markdown export.
 `RoundtableTransitionSnapshot` derives whether the roundtable has complete openings and at least one substantive exchange, so the UI cannot make inquiry available before there is real material.
@@ -114,4 +115,4 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
 - OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
-- Session events record provider requests, provider responses, persistence, and failures; the default app keeps the latest events in memory and exposes them through the collapsible running trace panel.
+- Session events record provider requests, provider responses, persistence, and failures; Core derives the diagnostics snapshot, and the default app exposes it through the collapsible running trace panel.

@@ -9,6 +9,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public private(set) var resumableMeeting: MeetingSummary?
     @Published public private(set) var meetingLibrary = MeetingLibrarySnapshot()
     @Published public private(set) var sessionEvents: [MeetingSessionEvent] = []
+    @Published public private(set) var sessionDiagnostics = MeetingSessionDiagnosticsSnapshot()
     @Published public private(set) var isBusy = false
     @Published public private(set) var activity: MeetingActivitySnapshot?
     @Published public private(set) var errorMessage: String?
@@ -166,7 +167,9 @@ public final class MeetingViewModel: ObservableObject {
 
     public func loadSessionEvents() async {
         guard let sessionEventSink else { return }
-        sessionEvents = Array(await sessionEventSink.allEvents().suffix(12))
+        let snapshot = MeetingSessionDiagnosticsSnapshot(events: await sessionEventSink.allEvents())
+        sessionDiagnostics = snapshot
+        sessionEvents = snapshot.recentEvents
     }
 
     public func startMeeting() {

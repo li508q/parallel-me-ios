@@ -33,6 +33,72 @@ public struct MeetingSessionEvent: Codable, Equatable, Sendable, Identifiable {
     }
 }
 
+public struct MeetingSessionDiagnosticsSnapshot: Equatable, Sendable {
+    public var recentEvents: [MeetingSessionEvent]
+    public var totalCount: Int
+    public var providerRequestCount: Int
+    public var providerResponseCount: Int
+    public var persistedCount: Int
+    public var failureCount: Int
+    public var latestFailure: MeetingSessionEvent?
+
+    public init(events: [MeetingSessionEvent] = [], limit: Int = 12) {
+        let ordered = events.sorted { lhs, rhs in
+            if lhs.createdAt == rhs.createdAt {
+                return lhs.id < rhs.id
+            }
+            return lhs.createdAt < rhs.createdAt
+        }
+        let visibleLimit = max(0, limit)
+        self.recentEvents = Array(ordered.suffix(visibleLimit))
+        self.totalCount = ordered.count
+        self.providerRequestCount = ordered.filter { $0.kind == .providerRequest }.count
+        self.providerResponseCount = ordered.filter { $0.kind == .providerResponse }.count
+        self.persistedCount = ordered.filter { $0.kind == .persisted }.count
+        self.failureCount = ordered.filter { $0.kind == .failed }.count
+        self.latestFailure = ordered.last { $0.kind == .failed }
+    }
+
+    public var isEmpty: Bool {
+        totalCount == 0
+    }
+
+    public var displayedCount: Int {
+        recentEvents.count
+    }
+
+    public var hasFailures: Bool {
+        failureCount > 0
+    }
+
+    public var pendingProviderResponseCount: Int {
+        max(0, providerRequestCount - providerResponseCount)
+    }
+
+    public var title: String {
+        if failureCount > 0 {
+            return "运行轨迹 · \(failureCount) 次失败"
+        }
+        if pendingProviderResponseCount > 0 {
+            return "运行轨迹 · 等待模型响应"
+        }
+        return "运行轨迹 · \(totalCount) 条事件"
+    }
+
+    public var detail: String {
+        if let latestFailure {
+            return latestFailure.message
+        }
+        if pendingProviderResponseCount > 0 {
+            return "还有 \(pendingProviderResponseCount) 个模型请求没有对应响应。"
+        }
+        if totalCount > displayedCount {
+            return "显示最近 \(displayedCount) 条，共 \(totalCount) 条。"
+        }
+        return "请求 \(providerRequestCount) · 响应 \(providerResponseCount) · 保存 \(persistedCount)"
+    }
+}
+
 public protocol MeetingSessionEventSink: Sendable {
     func record(_ event: MeetingSessionEvent) async
 }

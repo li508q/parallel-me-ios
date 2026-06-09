@@ -26,6 +26,7 @@ There is no global question-count cap. The app closes loops through explicit suf
 
 `MeetingSessionCoordinator` is the app-service boundary. It owns the active meeting state, calls an injected `LLMProvider`, applies the `MeetingFlowEngine`, and persists through an injected `MeetingRepository`.
 The default app also wires an in-memory session event sink so the SwiftUI running trace can show provider requests, responses, persistence, and failures while developing or debugging a meeting.
+The running trace is summarized by Core before SwiftUI renders it, so failure counts and pending provider requests are testable outside the interface.
 
 ## Runtime Providers
 
@@ -40,6 +41,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - Runtime preferences can be explicitly saved or cleared from the home screen before starting a meeting.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.
 - `MeetingActivitySnapshot` gives every in-flight action a tested title, detail, icon, and provider/local classification for the iPhone status banner.
+- `MeetingSessionDiagnosticsSnapshot` summarizes provider requests, responses, persistence, failures, and recent trace events for the in-app debug panel.
 - `MeetingStageProgressSnapshot` drives the five-step iPhone stage rail from Core state.
 - `RoundtableTransitionSnapshot` keeps final inquiry gated on complete fixed-voice openings and at least one real roundtable exchange, without adding a maximum round cap.
 - Restored unfinished papers rebuild their provider runtime before continuing, so the next model action uses the current credentials and context; archived papers remain readable offline.
