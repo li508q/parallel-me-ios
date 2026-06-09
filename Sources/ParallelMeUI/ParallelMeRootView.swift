@@ -19,6 +19,9 @@ public struct ParallelMeRootView: View {
                         if let error = viewModel.errorMessage {
                             ErrorBanner(message: error, dismiss: viewModel.dismissError)
                         }
+                        if let activity = viewModel.activity {
+                            ActivityBanner(activity: activity)
+                        }
                         if let state = viewModel.state {
                             MeetingStageRail(stage: state.stage)
                             MeetingPaperContextView(

@@ -10,6 +10,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public private(set) var meetingLibrary = MeetingLibrarySnapshot()
     @Published public private(set) var sessionEvents: [MeetingSessionEvent] = []
     @Published public private(set) var isBusy = false
+    @Published public private(set) var activity: MeetingActivitySnapshot?
     @Published public private(set) var errorMessage: String?
     @Published public var providerMode: ProviderRuntimeMode = .demo
     @Published public var providerBaseURL: String = "https://api.openai.com/v1"
@@ -146,14 +147,14 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public func saveRuntimePreferences() {
-        run { [self] in
+        run(activity: .savingRuntimePreferences) { [self] in
             try await self.persistRuntimePreferences()
             self.runtimePreferencesMessage = "运行配置已保存到本机。"
         }
     }
 
     public func clearRuntimePreferences() {
-        run { [self] in
+        run(activity: .clearingRuntimePreferences) { [self] in
             try await self.providerSettingsStore?.clearSettings()
             try await self.providerContextStore?.clearContext()
             self.applyProviderSettings(ProviderRuntimeSettings())
@@ -169,7 +170,7 @@ public final class MeetingViewModel: ObservableObject {
 
     public func startMeeting() {
         let input = petition
-        run { [self] in
+        run(activity: .startingMeeting) { [self] in
             try await self.rebuildCoordinatorIfNeeded()
             let started = try await self.coordinator.start(rawInput: input)
             self.state = started
@@ -186,7 +187,7 @@ public final class MeetingViewModel: ObservableObject {
         let trimmedCustomText = customText?.trimmingCharacters(in: .whitespacesAndNewlines)
         if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
 
-        run { [self] in
+        run(activity: .submittingDefinitionAnswers) { [self] in
             let answer = ScribeAnswer(
                 questionID: question.id,
                 selectedOptionID: option.id,
@@ -200,13 +201,13 @@ public final class MeetingViewModel: ObservableObject {
 
     public func submitProbeAnswers(_ answers: [ScribeAnswer]) {
         guard !answers.isEmpty else { return }
-        run { [self] in
+        run(activity: .submittingDefinitionAnswers) { [self] in
             self.state = try await self.submitProbeAnswersToCoordinator(answers)
         }
     }
 
     public func confirmProposal() {
-        run { [self] in
+        run(activity: .confirmingProposal) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.confirmProposalAndOpenRoundtable()
         }
@@ -215,14 +216,14 @@ public final class MeetingViewModel: ObservableObject {
     public func refineProposal(_ feedback: String) {
         let trimmed = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        run { [self] in
+        run(activity: .refiningProposal) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.refineProposal(feedback: trimmed)
         }
     }
 
     public func continueRoundtable() {
-        run { [self] in
+        run(activity: .continuingRoundtable) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .continueAll)
             self.state = try await self.coordinator.submitRoundtableMove(move)
@@ -232,7 +233,7 @@ public final class MeetingViewModel: ObservableObject {
     public func askTable(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        run { [self] in
+        run(activity: .askingTable) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .userToTable, userText: trimmed)
             self.state = try await self.coordinator.submitRoundtableMove(move)
@@ -242,7 +243,7 @@ public final class MeetingViewModel: ObservableObject {
     public func askVoice(_ voiceID: VoiceID, text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        run { [self] in
+        run(activity: .askingVoice) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .userToVoice, targetVoiceID: voiceID, userText: trimmed)
             self.state = try await self.coordinator.submitRoundtableMove(move)
@@ -251,7 +252,7 @@ public final class MeetingViewModel: ObservableObject {
 
     public func startDuel(from fromVoiceID: VoiceID, to toVoiceID: VoiceID) {
         guard fromVoiceID != toVoiceID else { return }
-        run { [self] in
+        run(activity: .startingDuel) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let move = RoundtableMove(type: .duel, fromVoiceID: fromVoiceID, toVoiceID: toVoiceID)
             self.state = try await self.coordinator.submitRoundtableMove(move)
@@ -259,7 +260,7 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public func startInquiry() {
-        run { [self] in
+        run(activity: .startingInquiry) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.startInquiry()
         }
@@ -273,7 +274,7 @@ public final class MeetingViewModel: ObservableObject {
         let trimmedCustomText = customText?.trimmingCharacters(in: .whitespacesAndNewlines)
         if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
 
-        run { [self] in
+        run(activity: .submittingInquiryAnswers) { [self] in
             let answer = ScribeInquiryAnswer(
                 questionID: question.id,
                 question: question.question,
@@ -287,34 +288,34 @@ public final class MeetingViewModel: ObservableObject {
 
     public func submitInquiryAnswers(_ answers: [ScribeInquiryAnswer]) {
         guard !answers.isEmpty else { return }
-        run { [self] in
+        run(activity: .submittingInquiryAnswers) { [self] in
             self.state = try await self.submitInquiryAnswersToCoordinator(answers)
         }
     }
 
     public func requestSettlement() {
-        run { [self] in
+        run(activity: .requestingSettlement) { [self] in
             _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             self.state = try await self.coordinator.requestSettlement()
         }
     }
 
     public func archive() {
-        run { [self] in
+        run(activity: .archivingPaper) { [self] in
             self.state = try await self.coordinator.archive()
             await self.loadMeetingLibrary()
         }
     }
 
     public func reviseSettlement(_ revisions: [SettlementModuleID: String]) {
-        run { [self] in
+        run(activity: .revisingSettlement) { [self] in
             self.state = try await self.coordinator.reviseSettlement(revisions)
             await self.loadMeetingLibrary()
         }
     }
 
     public func restoreMeeting(id: String) {
-        run { [self] in
+        run(activity: .restoringPaper) { [self] in
             guard let restored = try await self.meetingRepository.load(id: id) else { return }
             if restored.stage == .archived {
                 self.state = try await self.coordinator.restore(restored)
@@ -326,7 +327,7 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public func deleteMeeting(id: String) {
-        run { [self] in
+        run(activity: .deletingPaper) { [self] in
             try await self.meetingRepository.delete(id: id)
             await self.loadMeetingLibrary()
         }
@@ -414,9 +415,13 @@ public final class MeetingViewModel: ObservableObject {
         contextTasteProfile = context.normalized.tasteProfile ?? ""
     }
 
-    private func run(_ operation: @escaping @MainActor () async throws -> Void) {
+    private func run(
+        activity activityKind: MeetingActivityKind,
+        _ operation: @escaping @MainActor () async throws -> Void
+    ) {
         guard !isBusy else { return }
         isBusy = true
+        activity = MeetingActivitySnapshot(kind: activityKind)
         errorMessage = nil
         Task { @MainActor in
             do {
@@ -434,6 +439,7 @@ public final class MeetingViewModel: ObservableObject {
                 )
             }
             await loadSessionEvents()
+            activity = nil
             isBusy = false
         }
     }

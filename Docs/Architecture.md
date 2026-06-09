@@ -53,6 +53,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `ScribeInquiryAnswerBatchDraft` keeps final inquiry turns together under the same rule, so evidence-gathering cannot skip a visible question.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
 `MeetingStageProgressSnapshot` derives the five-step product rail, localized stage titles, current position, and completion state from `MeetingStage`.
+`MeetingActivitySnapshot` derives tested in-flight action copy, icon intent, and provider-versus-local classification so SwiftUI can explain waiting states without embedding product logic in view files.
 `MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
 `RoundtableTranscriptSnapshot` groups voice openings, user moves, model replies, and legacy ungrouped turns into one tested reading model used by the SwiftUI roundtable and Markdown export.
 `RoundtableTransitionSnapshot` derives whether the roundtable has complete openings and at least one substantive exchange, so the UI cannot make inquiry available before there is real material.
@@ -93,6 +94,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Final inquiry answer batches are derived in Core and the flow engine rejects partial answers for the current active inquiry turn.
 - Every user-visible transition is represented by `MeetingStage`.
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
+- In-flight activity banners are derived in Core and tested so waiting states stay specific to the user's current action.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Roundtable transcript grouping is derived in Core and shared by live UI and export.

@@ -464,6 +464,20 @@ struct ParallelMeCoreSmokeTests {
             try expect(ready.actionTitle == "开始五声圆桌")
         }
 
+        try runner.run("meeting activity snapshots explain active work") {
+            let inquiry = MeetingActivitySnapshot(kind: .startingInquiry)
+            let localArchive = MeetingActivitySnapshot(kind: .archivingPaper)
+            let definition = MeetingActivitySnapshot(kind: .submittingDefinitionAnswers)
+
+            try expect(inquiry.title == "书记员正在进入问询")
+            try expect(inquiry.detail.contains("没有固定题数上限"))
+            try expect(inquiry.usesProvider)
+            try expect(localArchive.systemImage == "archivebox")
+            try expect(!localArchive.usesProvider)
+            try expect(definition.detail.contains("一起送回"))
+            try expect(MeetingActivityKind.allCases.count == 17)
+        }
+
         try runner.run("provider prompt specs preserve product contracts") {
             let definitionPrompt = ProviderPromptSpec.spec(for: .defineIssue).systemPrompt
             try expect(definitionPrompt.contains("input.context"))
@@ -1132,6 +1146,28 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.contextTasteProfile.isEmpty)
         }
 
+        try await runner.runAsync("meeting view model exposes activity while async work is running") {
+            let settingsStore = SlowProviderSettingsStore(delayNanoseconds: 160_000_000)
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: DemoLLMProvider(),
+                    repository: InMemoryMeetingRepository()
+                ),
+                providerSettingsStore: settingsStore
+            )
+
+            viewModel.saveRuntimePreferences()
+            try await waitFor("runtime activity start") {
+                viewModel.isBusy && viewModel.activity?.kind == .savingRuntimePreferences
+            }
+            try expect(viewModel.activity?.title == "正在保存运行配置")
+            try expect(viewModel.activity?.usesProvider == false)
+
+            try await waitFor("runtime activity clear") {
+                !viewModel.isBusy && viewModel.activity == nil
+            }
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -1714,5 +1750,32 @@ private actor ViewModelRuntimeRecordingProvider: LLMProvider {
                 pull: "先说清楚。"
             )
         )
+    }
+}
+
+private actor SlowProviderSettingsStore: ProviderSettingsStoring {
+    private var settings: ProviderRuntimeSettings
+    private let delayNanoseconds: UInt64
+
+    init(
+        settings: ProviderRuntimeSettings = ProviderRuntimeSettings(),
+        delayNanoseconds: UInt64
+    ) {
+        self.settings = settings
+        self.delayNanoseconds = delayNanoseconds
+    }
+
+    func loadSettings() async throws -> ProviderRuntimeSettings {
+        settings
+    }
+
+    func saveSettings(_ settings: ProviderRuntimeSettings) async throws {
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+        self.settings = settings
+    }
+
+    func clearSettings() async throws {
+        try await Task.sleep(nanoseconds: delayNanoseconds)
+        settings = ProviderRuntimeSettings()
     }
 }

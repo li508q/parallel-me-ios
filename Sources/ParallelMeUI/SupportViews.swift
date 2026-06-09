@@ -35,6 +35,51 @@ struct ErrorBanner: View {
     }
 }
 
+struct ActivityBanner: View {
+    var activity: MeetingActivitySnapshot
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+            ProgressView()
+                .controlSize(.small)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: ParallelMeSpacing.xs) {
+                    Image(systemName: activity.systemImage)
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(activity.title)
+                        .font(ParallelMeTypography.compact.weight(.medium))
+                }
+                Text(activity.detail)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if activity.usesProvider {
+                Text("模型")
+                    .font(ParallelMeTypography.eyebrow)
+                    .foregroundStyle(ParallelMeColor.future)
+                    .padding(.horizontal, ParallelMeSpacing.xs)
+                    .padding(.vertical, 3)
+                    .background(ParallelMeColor.future.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+        }
+        .foregroundStyle(ParallelMeColor.ink)
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.future.opacity(0.35), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(activity.title))
+        .accessibilityHint(Text(activity.detail))
+    }
+}
+
 struct SessionDiagnosticsPanel: View {
     var events: [MeetingSessionEvent]
 
