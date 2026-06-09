@@ -29,6 +29,33 @@ struct ParallelMeCoreSmokeTests {
             try expect(prompts.allSatisfy { $0.seedText.count >= 18 })
         }
 
+        try runner.run("app privacy manifest declares user content use") {
+            let manifestURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+                .appendingPathComponent("App/ParallelMe/PrivacyInfo.xcprivacy")
+            let data = try Data(contentsOf: manifestURL)
+            let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            let manifest = try unwrap(plist as? [String: Any], "Expected privacy manifest dictionary")
+            let collected = try unwrap(
+                manifest["NSPrivacyCollectedDataTypes"] as? [[String: Any]],
+                "Expected collected data declarations"
+            )
+            let userContent = try unwrap(
+                collected.first {
+                    $0["NSPrivacyCollectedDataType"] as? String == "NSPrivacyCollectedDataTypeOtherUserContent"
+                },
+                "Expected other user content declaration"
+            )
+            let purposes = try unwrap(
+                userContent["NSPrivacyCollectedDataTypePurposes"] as? [String],
+                "Expected user content purposes"
+            )
+
+            try expect(purposes == ["NSPrivacyCollectedDataTypePurposeAppFunctionality"])
+            try expect(userContent["NSPrivacyCollectedDataTypeTracking"] as? Bool == false)
+            try expect(userContent["NSPrivacyCollectedDataTypeLinked"] as? Bool == false)
+            try expect(manifest["NSPrivacyTracking"] as? Bool == false)
+        }
+
         try runner.run("meeting flow requires complete proposal") {
             let engine = MeetingFlowEngine()
             do {
