@@ -190,33 +190,36 @@ struct ResumeMeetingCard: View {
     var restore: (String) -> Void
     var delete: (String) -> Void
 
-    private var availability: PaperLibraryActionAvailabilitySnapshot {
-        PaperLibraryActionAvailabilitySnapshot(isBusy: isBusy)
+    private var presentation: ResumeMeetingPresentationSnapshot {
+        ResumeMeetingPresentationSnapshot(meeting: meeting, isBusy: isBusy)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Text("继续未完成纸页")
+            Text(presentation.eyebrow)
                 .font(ParallelMeTypography.eyebrow)
                 .foregroundStyle(ParallelMeColor.inkMuted)
-            Text(meeting.title)
+            Text(presentation.title)
                 .font(ParallelMeTypography.bodyStrong)
                 .foregroundStyle(ParallelMeColor.ink)
                 .lineLimit(2)
-            Text(meeting.subtitle)
+            Text(presentation.subtitle)
                 .font(ParallelMeTypography.compact)
                 .foregroundStyle(ParallelMeColor.inkMuted)
             HStack(spacing: ParallelMeSpacing.sm) {
                 Button {
-                    restore(meeting.id)
+                    restore(presentation.meetingID)
                 } label: {
-                    Label("继续", systemImage: "arrow.uturn.forward.circle.fill")
+                    Label(
+                        presentation.restoreAction.title,
+                        systemImage: presentation.restoreAction.systemImage
+                    )
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!availability.canRestore)
-                DeletePaperButton(meeting: meeting, canDelete: availability.canDelete, delete: delete) {
-                    Image(systemName: "trash")
+                .disabled(!presentation.restoreAction.isEnabled)
+                DeletePaperButton(deletion: presentation.deletion, delete: delete) {
+                    Image(systemName: presentation.deletion.action.systemImage)
                         .frame(width: 34, height: 34)
                 }
                 .buttonStyle(.bordered)
@@ -378,6 +381,13 @@ private struct PaperLibraryRow: View {
     var restore: (String) -> Void
     var delete: (String) -> Void
 
+    private var deletion: PaperDeletionPresentationSnapshot {
+        PaperDeletionPresentationSnapshot(
+            meeting: meeting,
+            availability: availability
+        )
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
             Button {
@@ -397,12 +407,11 @@ private struct PaperLibraryRow: View {
             .buttonStyle(.plain)
             .disabled(!availability.canRestore)
 
-            DeletePaperButton(meeting: meeting, canDelete: availability.canDelete, delete: delete) {
-                Image(systemName: "trash")
+            DeletePaperButton(deletion: deletion, delete: delete) {
+                Image(systemName: deletion.action.systemImage)
                     .font(.system(size: 14, weight: .medium))
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(Text("删除纸页"))
         }
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
@@ -415,8 +424,7 @@ private struct PaperLibraryRow: View {
 }
 
 private struct DeletePaperButton<Label: View>: View {
-    var meeting: MeetingSummary
-    var canDelete: Bool
+    var deletion: PaperDeletionPresentationSnapshot
     var delete: (String) -> Void
     @ViewBuilder var label: () -> Label
     @State private var isConfirmingDelete = false
@@ -427,19 +435,20 @@ private struct DeletePaperButton<Label: View>: View {
         } label: {
             label()
         }
-        .disabled(!canDelete)
+        .disabled(!deletion.action.isEnabled)
+        .accessibilityLabel(Text(deletion.action.accessibilityLabel))
         .confirmationDialog(
-            "删除这张纸页？",
+            deletion.confirmation.title,
             isPresented: $isConfirmingDelete,
             titleVisibility: .visible
         ) {
-            Button("删除纸页", role: .destructive) {
-                delete(meeting.id)
+            Button(deletion.confirmation.destructiveActionTitle, role: .destructive) {
+                delete(deletion.meetingID)
             }
-            .disabled(!canDelete)
-            Button("取消", role: .cancel) {}
+            .disabled(!deletion.action.isEnabled)
+            Button(deletion.confirmation.cancelActionTitle, role: .cancel) {}
         } message: {
-            Text("“\(meeting.title)” 会从这台设备移除。这个操作不能撤销。")
+            Text(deletion.confirmation.message)
         }
     }
 }

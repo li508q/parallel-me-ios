@@ -1292,6 +1292,39 @@ struct ParallelMeCoreSmokeTests {
             try expect(MeetingResumePolicy.candidate(in: [archived]) == nil)
         }
 
+        try runner.run("resume meeting presentation derives continuation and deletion controls") {
+            let meeting = MeetingSummary(
+                id: "paper_1",
+                title: "现金流观察期",
+                subtitle: "五声圆桌 · 5 个开场",
+                stage: .roundtable,
+                createdAt: Date(timeIntervalSince1970: 10),
+                updatedAt: Date(timeIntervalSince1970: 20)
+            )
+            let ready = ResumeMeetingPresentationSnapshot(meeting: meeting)
+            let busy = ResumeMeetingPresentationSnapshot(meeting: meeting, isBusy: true)
+
+            try expect(ready.meetingID == "paper_1")
+            try expect(ready.eyebrow == "继续未完成纸页")
+            try expect(ready.title == "现金流观察期")
+            try expect(ready.subtitle == "五声圆桌 · 5 个开场")
+            try expect(ready.restoreAction.title == "继续")
+            try expect(ready.restoreAction.systemImage == "arrow.uturn.forward.circle.fill")
+            try expect(ready.restoreAction.isEnabled)
+            try expect(ready.deletion.meetingID == "paper_1")
+            try expect(ready.deletion.action.title == "删除纸页")
+            try expect(ready.deletion.action.systemImage == "trash")
+            try expect(ready.deletion.action.isEnabled)
+            try expect(ready.deletion.action.accessibilityLabel == "删除纸页")
+            try expect(ready.deletion.confirmation.title == "删除这张纸页？")
+            try expect(ready.deletion.confirmation.message.contains("现金流观察期"))
+            try expect(ready.deletion.confirmation.destructiveActionTitle == "删除纸页")
+            try expect(ready.deletion.confirmation.cancelActionTitle == "取消")
+
+            try expect(!busy.restoreAction.isEnabled)
+            try expect(!busy.deletion.action.isEnabled)
+        }
+
         try runner.run("meeting library groups and sorts local papers") {
             let engine = MeetingFlowEngine()
             var oldArchived = try engine.start(rawInput: "旧归档")
