@@ -18,6 +18,7 @@ public final class MeetingViewModel: ObservableObject {
     @Published public var contextMeCard: String = ""
     @Published public var contextTasteProfile: String = ""
     @Published public var librarySearchText: String = ""
+    @Published public private(set) var runtimePreferencesMessage: String?
 
     private var coordinator: any MeetingCoordinating
     private let meetingRepository: AnyMeetingRepository
@@ -98,6 +99,10 @@ public final class MeetingViewModel: ObservableObject {
         errorMessage = nil
     }
 
+    public func dismissRuntimePreferencesMessage() {
+        runtimePreferencesMessage = nil
+    }
+
     public func loadProviderSettings() async {
         guard !hasLoadedProviderSettings, let providerSettingsStore else { return }
         hasLoadedProviderSettings = true
@@ -126,6 +131,23 @@ public final class MeetingViewModel: ObservableObject {
             resumableMeeting = library.resumable
         } catch {
             errorMessage = Self.userFacingMessage(for: error)
+        }
+    }
+
+    public func saveRuntimePreferences() {
+        run { [self] in
+            try await self.persistRuntimePreferences()
+            self.runtimePreferencesMessage = "运行配置已保存到本机。"
+        }
+    }
+
+    public func clearRuntimePreferences() {
+        run { [self] in
+            try await self.providerSettingsStore?.clearSettings()
+            try await self.providerContextStore?.clearContext()
+            self.applyProviderSettings(ProviderRuntimeSettings())
+            self.applyProviderContext(ProviderContext())
+            self.runtimePreferencesMessage = "运行配置已清空。"
         }
     }
 
@@ -304,10 +326,7 @@ public final class MeetingViewModel: ObservableObject {
 
     @discardableResult
     private func rebuildCoordinatorIfNeeded(restoring restoredState: MeetingFlowState? = nil) async throws -> MeetingFlowState? {
-        try await providerSettingsStore?.saveSettings(providerSettings)
-        try await providerContextStore?.saveContext(
-            ProviderContext(meCard: contextMeCard, tasteProfile: contextTasteProfile)
-        )
+        try await persistRuntimePreferences()
         let provider = try providerFactory(providerSettings)
         let restoredSnapshot = restoredState?.runtimeSnapshot?.normalized
         let effectiveContext = providerContext ?? restoredSnapshot?.context
@@ -341,6 +360,13 @@ public final class MeetingViewModel: ObservableObject {
 
     private var runtimeSnapshot: MeetingRuntimeSnapshot {
         MeetingRuntimeSnapshot(settings: providerSettings, context: providerContext)
+    }
+
+    private func persistRuntimePreferences() async throws {
+        try await providerSettingsStore?.saveSettings(providerSettings)
+        try await providerContextStore?.saveContext(
+            ProviderContext(meCard: contextMeCard, tasteProfile: contextTasteProfile)
+        )
     }
 
     private func applyProviderSettings(_ settings: ProviderRuntimeSettings) {

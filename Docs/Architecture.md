@@ -67,6 +67,7 @@ Provider context is stored separately from provider credentials:
 - `FileProviderContextStore` stores normalized optional context as local JSON.
 - Empty or whitespace-only fields are dropped before persistence and before provider requests.
 - Tests verify that stored context is normalized, clearable, and actually forwarded by the session coordinator.
+- `MeetingViewModel` exposes explicit save and clear actions for runtime preferences, so provider metadata, Keychain secrets, and context can be managed before a meeting starts.
 
 Each new meeting also stores a `MeetingRuntimeSnapshot` in `MeetingFlowState`. The snapshot records the provider mode, model, non-sensitive endpoint metadata, and normalized provider context used when the paper started. Settlement and archive timestamps are stored on the same state, so library sorting and timeline display can reflect real lifecycle events instead of inferring them from earlier answers. This gives restored meetings and debugging views one durable source of truth without storing API keys in meeting JSON.
 When an unfinished paper is restored from the library, `MeetingViewModel` rebuilds the session coordinator before the next model-backed action. The rebuilt runtime uses the current provider credentials and current provider context, falling back to the paper's stored context only when the current context is empty, and writes that effective runtime snapshot back onto the restored state. Archived papers bypass provider rebuilding so they remain readable offline even when credentials are missing or invalid.
@@ -87,6 +88,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Resume selection is derived in Core and ignores archived papers.
 - Paper library grouping, ordering, and search filtering are derived in Core and tested without UI.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
+- Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
 - Settlement revision drafts are normalized and tested before UI sends revisions back to the session coordinator.

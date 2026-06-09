@@ -37,6 +37,42 @@ struct ProviderSettingsPanel: View {
             }
             .font(ParallelMeTypography.compact)
             .foregroundStyle(ParallelMeColor.ink)
+
+            HStack(spacing: ParallelMeSpacing.sm) {
+                Button {
+                    viewModel.saveRuntimePreferences()
+                } label: {
+                    Label("保存", systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.isBusy)
+
+                Button(role: .destructive) {
+                    viewModel.clearRuntimePreferences()
+                } label: {
+                    Label("清空", systemImage: "trash")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(viewModel.isBusy)
+            }
+
+            if let message = viewModel.runtimePreferencesMessage {
+                HStack(alignment: .top, spacing: ParallelMeSpacing.xs) {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text(message)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        viewModel.dismissRuntimePreferencesMessage()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.rest)
+            }
         }
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)

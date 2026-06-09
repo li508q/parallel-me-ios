@@ -12,6 +12,7 @@ The first test layer is `ParallelMeCore`.
 - Final inquiry has no global maximum question count.
 - Provider prompt specs preserve fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
 - Provider context is normalized, persisted separately from credentials, clearable, and forwarded into provider requests.
+- Runtime preferences can be explicitly saved and cleared through the view model before any meeting starts.
 - Runtime snapshots are normalized in the flow engine and persisted by the session coordinator without storing API keys.
 - Restored unfinished papers rebuild the UI runtime before continuing and archived papers can be opened without valid provider credentials.
 - Meeting timeline derives active-paper progress and recent/full presentation snapshots without UI-specific business logic.
@@ -34,4 +35,4 @@ swift run ParallelMeCoreSmokeTests
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
 
-Current smoke coverage includes 43 checks across flow rules, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.
+Current smoke coverage includes 44 checks across flow rules, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, runtime preference actions, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.

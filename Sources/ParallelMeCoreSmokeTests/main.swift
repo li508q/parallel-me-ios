@@ -825,6 +825,59 @@ struct ParallelMeCoreSmokeTests {
             try expect(cleared.isEmpty)
         }
 
+        try await runner.runAsync("meeting view model saves and clears runtime preferences") {
+            let metadataStore = InMemoryProviderRuntimeMetadataStore()
+            let secretStore = InMemorySecretStore()
+            let settingsStore = ProviderSettingsRepository(
+                metadataStore: metadataStore,
+                secretStore: secretStore
+            )
+            let contextStore = InMemoryProviderContextStore()
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: DemoLLMProvider(),
+                    repository: InMemoryMeetingRepository()
+                ),
+                providerSettingsStore: settingsStore,
+                providerContextStore: contextStore
+            )
+
+            viewModel.providerMode = .openAICompatible
+            viewModel.providerBaseURL = " https://api.example.com/v1 "
+            viewModel.providerModel = " gpt-test "
+            viewModel.providerAPIKey = " sk-test "
+            viewModel.contextMeCard = "  我在高压工作里消耗自己  "
+            viewModel.contextTasteProfile = "\n先问事实，再给判断\n"
+
+            viewModel.saveRuntimePreferences()
+            try await waitFor("runtime preferences save") {
+                !viewModel.isBusy && viewModel.runtimePreferencesMessage == "运行配置已保存到本机。"
+            }
+            let savedSettings = try await settingsStore.loadSettings()
+            let savedContext = try await contextStore.loadContext()
+
+            try expect(savedSettings.mode == .openAICompatible)
+            try expect(savedSettings.baseURLString == " https://api.example.com/v1 ")
+            try expect(savedSettings.model == " gpt-test ")
+            try expect(savedSettings.apiKey == "sk-test")
+            try expect(savedContext.meCard == "我在高压工作里消耗自己")
+            try expect(savedContext.tasteProfile == "先问事实，再给判断")
+
+            viewModel.clearRuntimePreferences()
+            try await waitFor("runtime preferences clear") {
+                !viewModel.isBusy && viewModel.runtimePreferencesMessage == "运行配置已清空。"
+            }
+            let clearedSettings = try await settingsStore.loadSettings()
+            let clearedContext = try await contextStore.loadContext()
+
+            try expect(clearedSettings == ProviderRuntimeSettings())
+            try expect(clearedContext.isEmpty)
+            try expect(viewModel.providerMode == .demo)
+            try expect(viewModel.providerAPIKey.isEmpty)
+            try expect(viewModel.contextMeCard.isEmpty)
+            try expect(viewModel.contextTasteProfile.isEmpty)
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()

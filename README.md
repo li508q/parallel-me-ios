@@ -33,6 +33,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 - `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object`, uses `ProviderPromptSpec` for tested product contracts, and decodes structured JSON back into typed product payloads.
 - `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
 - Optional `ProviderContext` stores the user's durable background and response preferences locally, then passes them through every provider task as calibration rather than as a replacement for the current meeting evidence.
+- Runtime preferences can be explicitly saved or cleared from the home screen before starting a meeting.
 - `MeetingRuntimeSnapshot` records the non-secret provider/context state used when a meeting starts, making restored papers and debug views explainable.
 - Restored unfinished papers rebuild their provider runtime before continuing, so the next model action uses the current credentials and context; archived papers remain readable offline.
 - Settlement and archive timestamps are stored on the meeting state, so summaries, library ordering, and timelines reflect real lifecycle events.
