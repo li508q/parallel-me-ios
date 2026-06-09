@@ -728,6 +728,29 @@ struct ParallelMeCoreSmokeTests {
             try expect(settlement.headline == "这是我自己认领的正反合。")
         }
 
+        try runner.run("settlement revision draft only emits meaningful changes") {
+            var draft = SettlementRevisionDraft(settlement: sampleSettlement)
+            try expect(!draft.hasChanges)
+            try expect(!draft.hasDraftEdits)
+            try expect(!draft.canApply)
+            try expect(draft.canArchive)
+
+            draft.minimumAction = "  今晚只写一行预算。  "
+            draft.coreValues = "\n\(sampleSettlement.resolvedText(for: .coreValues))\n"
+
+            try expect(draft.revisions == [.minimumAction: "今晚只写一行预算。"])
+            try expect(draft.hasChanges)
+            try expect(draft.hasDraftEdits)
+            try expect(draft.canApply)
+            try expect(!draft.canArchive)
+
+            draft.dialecticSynthesis = "   "
+
+            try expect(draft.hasEmptyRequiredText)
+            try expect(!draft.canApply)
+            try expect(!draft.canArchive)
+        }
+
         try await runner.runAsync("provider factory creates demo provider") {
             let provider = try ProviderRuntimeFactory.makeProvider(settings: ProviderRuntimeSettings(mode: .demo))
             let envelope = try await provider.generate(

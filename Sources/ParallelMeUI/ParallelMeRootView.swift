@@ -682,11 +682,7 @@ public struct SettlementView: View {
     public var settlement: HeartSettlement
     public var revise: ([SettlementModuleID: String]) -> Void
     public var archive: () -> Void
-    @State private var creativeDraft = ""
-    @State private var valueDraft = ""
-    @State private var costDraft = ""
-    @State private var actionDraft = ""
-    @State private var synthesisDraft = ""
+    @State private var draft: SettlementRevisionDraft
 
     public init(
         settlement: HeartSettlement,
@@ -696,6 +692,7 @@ public struct SettlementView: View {
         self.settlement = settlement
         self.revise = revise
         self.archive = archive
+        _draft = State(initialValue: SettlementRevisionDraft(settlement: settlement))
     }
 
     public var body: some View {
@@ -704,42 +701,50 @@ public struct SettlementView: View {
                 .font(ParallelMeTypography.title)
             Text(settlement.headline)
                 .font(ParallelMeTypography.bodyStrong)
-            SettlementModuleEditor(title: "创造性无望", text: $creativeDraft)
-            SettlementModuleEditor(title: "核心价值主轴", text: $valueDraft)
-            SettlementModuleEditor(title: "痛苦接纳契约", text: $costDraft)
-            SettlementModuleEditor(title: "最小行动承诺", text: $actionDraft)
-            SettlementModuleEditor(title: "正反合", text: $synthesisDraft)
+            SettlementModuleEditor(title: "创造性无望", text: $draft.creativeHopelessness)
+            SettlementModuleEditor(title: "核心价值主轴", text: $draft.coreValues)
+            SettlementModuleEditor(title: "痛苦接纳契约", text: $draft.costAcceptance)
+            SettlementModuleEditor(title: "最小行动承诺", text: $draft.minimumAction)
+            SettlementModuleEditor(title: "正反合", text: $draft.dialecticSynthesis)
+            if draft.hasEmptyRequiredText {
+                Text("每一栏都需要保留一句可归档的语言。")
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.filial)
+            } else if draft.hasChanges {
+                Text("应用修订后再保存纸页，归档会使用你确认过的文本。")
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+            } else if !draft.hasChanges {
+                Text("改动后再应用修订；保存纸页会使用当前落定。")
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+            }
             Button {
-                revise([
-                    .creativeHopelessness: creativeDraft,
-                    .coreValues: valueDraft,
-                    .costAcceptance: costDraft,
-                    .minimumAction: actionDraft,
-                    .dialecticSynthesis: synthesisDraft
-                ])
+                revise(draft.revisions)
             } label: {
                 Label("应用修订", systemImage: "pencil.and.scribble")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .disabled(!draft.canApply)
             Button(action: archive) {
                 Label("保存纸页", systemImage: "archivebox.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!draft.canArchive)
         }
         .foregroundStyle(ParallelMeColor.ink)
         .onAppear {
             loadDrafts(from: settlement)
         }
+        .onChange(of: settlement) { _, newValue in
+            loadDrafts(from: newValue)
+        }
     }
 
     private func loadDrafts(from settlement: HeartSettlement) {
-        creativeDraft = settlement.resolvedText(for: .creativeHopelessness)
-        valueDraft = settlement.resolvedText(for: .coreValues)
-        costDraft = settlement.resolvedText(for: .costAcceptance)
-        actionDraft = settlement.resolvedText(for: .minimumAction)
-        synthesisDraft = settlement.resolvedText(for: .dialecticSynthesis)
+        draft = SettlementRevisionDraft(settlement: settlement)
     }
 }
 

@@ -19,6 +19,7 @@ The first test layer is `ParallelMeCore`.
 - Meeting archive snapshot derives archived detail rows from Core state and preserves user settlement revisions.
 - Settlement and archive timestamps drive summary freshness, library ordering, and timeline rows.
 - Meeting export renders archived papers into Markdown using Core state and user settlement revisions.
+- Settlement revision drafts emit only meaningful changes and block blank module text.
 - Meeting library grouping, sorting, summary search, and full-paper content search are tested in Core.
 - Resume policy selects the latest unfinished paper and ignores archived papers.
 - Settlement readiness depends on evidence and profile completeness, not on the number of turns.
@@ -33,4 +34,4 @@ swift run ParallelMeCoreSmokeTests
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
 
-Current smoke coverage includes 42 checks across flow rules, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.
+Current smoke coverage includes 43 checks across flow rules, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.
