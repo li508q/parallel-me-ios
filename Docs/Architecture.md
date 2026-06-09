@@ -109,6 +109,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Definition-stage recovery keeps a started paper retryable when the first model-backed definition request fails.
 - Definition-stage coverage only treats the raw petition and user answers as evidence. If the model returns only duplicate or unusable definition questions, Core generates purpose-targeted recovery questions instead of failing the paper.
 - Inquiry-stage recovery keeps a paper retryable when the first model-backed inquiry request fails after the inquiry stage has been persisted.
+- Inquiry-stage guarding filters repeated or already answered question text, restores missing module questions when the provider returns only duplicates, and only counts substantive action answers as minimum-action evidence.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Roundtable move actions are derived in Core and require complete fixed-voice openings, confirmed issue context, and task-frame availability.
 - Inquiry-to-settlement availability is derived in Core and requires no active questions, complete issue context, an alignment profile, and evidence for all settlement modules.

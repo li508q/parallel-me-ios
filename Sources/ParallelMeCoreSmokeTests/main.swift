@@ -400,6 +400,26 @@ struct ParallelMeCoreSmokeTests {
             try expect(readiness.missingModules.contains(.coreValues))
         }
 
+        try runner.run("settlement readiness ignores non-substantive action answers") {
+            let evaluator = SettlementReadinessEvaluator()
+            let readiness = evaluator.evaluate(
+                profile: completeProfile,
+                ledger: ScribeObservationLedger(),
+                answers: [
+                    ScribeInquiryAnswer(
+                        questionID: "unknown_action",
+                        question: "24 小时内能完成的行动是什么？",
+                        selectedOptionID: "custom",
+                        selectedLabel: "都不准，我自己说",
+                        customText: "我还不知道"
+                    )
+                ]
+            )
+
+            try expect(!readiness.isReady)
+            try expect(readiness.missingModules == [.minimumAction])
+        }
+
         try runner.run("readiness is evidence driven") {
             let evaluator = SettlementReadinessEvaluator()
             let profile = AlignmentProfile(
@@ -2166,6 +2186,81 @@ struct ParallelMeCoreSmokeTests {
             try expect(availability.blockers.contains(.activeQuestionsUnanswered))
         }
 
+        try await runner.runAsync("session coordinator recovers when inquiry questions dedupe empty") {
+            let previous = ScribeInquiryQuestion(
+                id: "previous_action",
+                question: "24 小时内，哪个动作最小但能让局面更真实一点？",
+                options: [
+                    ScribeInquiryOption(id: "write", label: "写一个现实清单"),
+                    ScribeInquiryOption(id: "custom", label: "都不准，我自己说")
+                ],
+                module: .minimumAction
+            )
+            let provider = StaticInquiryProvider(
+                response: AlignmentInquiryResponse(
+                    questions: [
+                        ScribeInquiryQuestion(
+                            id: "repeated_action",
+                            question: previous.question,
+                            options: [
+                                ScribeInquiryOption(id: "budget", label: "今晚写预算。")
+                            ],
+                            module: .minimumAction
+                        )
+                    ],
+                    readyForSettlement: true,
+                    profile: completeProfile,
+                    ledger: ScribeObservationLedger()
+                )
+            )
+            let repository = InMemoryMeetingRepository()
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想辞职又怕没钱")
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时内能做的事落下来。")],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.receiveInquiryQuestions(
+                [previous],
+                profile: nil,
+                ledger: ScribeObservationLedger(),
+                readyForSettlement: false,
+                in: state
+            )
+            state = try engine.answerInquiry([
+                ScribeInquiryAnswer(
+                    questionID: previous.id,
+                    question: previous.question,
+                    selectedOptionID: "custom",
+                    selectedLabel: "都不准，我自己说",
+                    customText: "我还不知道"
+                )
+            ], in: state)
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+            _ = try await coordinator.restore(state)
+
+            let inquiry = try await coordinator.requestNextInquiry()
+            let answeredIDs = Set(inquiry.inquiryAnswers.map(\.questionID))
+            let activeQuestions = inquiry.inquiryQuestions.filter { !answeredIDs.contains($0.id) }
+            let restoredProfile = try unwrap(inquiry.alignmentProfile, "Expected guarded profile to persist")
+            let readiness = SettlementReadinessEvaluator().evaluate(
+                profile: restoredProfile,
+                ledger: inquiry.scribeObservationLedger,
+                answers: inquiry.inquiryAnswers
+            )
+
+            try expect(!readiness.isReady)
+            try expect(activeQuestions.count == 1)
+            try expect(activeQuestions.first?.module == .minimumAction)
+            try expect(activeQuestions.first?.id.hasPrefix("recovery_minimum_action") == true)
+            try expect(activeQuestions.first?.options.contains(where: \.isCustomAnswer) == true)
+        }
+
         try await runner.runAsync("session coordinator settles only after readiness") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -2786,6 +2881,26 @@ private actor StaticDefinitionProvider: LLMProvider {
     ) async throws -> LLMEnvelope<ResponsePayload>
     where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
         guard request.kind == .defineIssue,
+              let payload = response as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        return LLMEnvelope(payload: payload, trace: ["static:\(request.kind.rawValue)"])
+    }
+}
+
+private actor StaticInquiryProvider: LLMProvider {
+    private let response: AlignmentInquiryResponse
+
+    init(response: AlignmentInquiryResponse) {
+        self.response = response
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .alignmentInquiry,
               let payload = response as? ResponsePayload else {
             throw MockLLMProviderError.missingResponse(kind: request.kind)
         }

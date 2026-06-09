@@ -207,7 +207,11 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             responseType: AlignmentInquiryResponse.self
         )
         await emit(.providerResponse, meetingID: current.id, message: "Received alignment inquiry", trace: envelope.trace)
-        let response = inquiryResponseGuard.normalize(envelope.payload, existingAnswers: current.inquiryAnswers)
+        let response = inquiryResponseGuard.normalize(
+            envelope.payload,
+            existingQuestions: current.inquiryQuestions,
+            existingAnswers: current.inquiryAnswers
+        )
         let next = try engine.receiveInquiryQuestions(
             response.questions,
             profile: response.profile,
