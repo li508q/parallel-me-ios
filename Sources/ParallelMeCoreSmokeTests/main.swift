@@ -779,6 +779,35 @@ struct ParallelMeCoreSmokeTests {
             try expect(!document.markdown.contains("Optional"))
         }
 
+        try runner.run("meeting export writer creates named Markdown file") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想辞职又怕没钱")
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把未来后果说清楚。")],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.settle(sampleSettlement, profile: completeProfile, in: state)
+            state = try engine.archive(state: state)
+
+            let document = MeetingExportDocument(state: state, generatedAt: Date(timeIntervalSince1970: 0))
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("ParallelMeExportSmoke-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+
+            let file = try MeetingExportFileWriter(directoryURL: directory).write(document: document)
+            let exportedText = try String(contentsOf: file.url, encoding: .utf8)
+
+            try expect(file.url.deletingLastPathComponent() == directory)
+            try expect(file.url.lastPathComponent == document.fileName)
+            try expect(file.url.pathExtension == "md")
+            try expect(exportedText == document.markdown)
+        }
+
         try runner.run("settlement revisions override resolved text and headline") {
             var settlement = sampleSettlement
             settlement.revise(moduleID: .coreValues, text: "我要守住自己写下的主轴。")

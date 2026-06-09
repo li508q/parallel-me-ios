@@ -7,6 +7,8 @@ struct MeetingPaperContextView: View {
     var isBusy: Bool
     var close: () -> Void
     @State private var isTimelineExpanded = false
+    @State private var exportFileURL: URL?
+    @State private var exportErrorMessage: String?
 
     private var summary: MeetingSummary {
         MeetingSummary(state: state)
@@ -60,17 +62,36 @@ struct MeetingPaperContextView: View {
                     .buttonStyle(.bordered)
                     .disabled(isBusy)
                     .accessibilityLabel(Text("回到首页，稍后继续这张纸页"))
-                    ShareLink(
-                        item: exportDocument.markdown,
-                        subject: Text(exportDocument.title)
-                    ) {
-                        Label("导出纸页", systemImage: "square.and.arrow.up")
-                            .labelStyle(.iconOnly)
-                            .frame(width: 30, height: 30)
+                    if let exportFileURL {
+                        ShareLink(
+                            item: exportFileURL,
+                            subject: Text(exportDocument.title),
+                            message: Text("ParallelMe 纸页")
+                        ) {
+                            Label("导出纸页", systemImage: "square.and.arrow.up")
+                                .labelStyle(.iconOnly)
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel(Text("导出这张纸页"))
+                        .accessibilityHint(Text(exportDocument.fileName))
+                    } else {
+                        Button(action: prepareExportFile) {
+                            Label("准备导出", systemImage: "square.and.arrow.up")
+                                .labelStyle(.iconOnly)
+                                .frame(width: 30, height: 30)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isBusy)
+                        .accessibilityLabel(Text("准备导出这张纸页"))
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(Text("导出这张纸页"))
                 }
+            }
+
+            if let exportErrorMessage {
+                Text(exportErrorMessage)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.filial)
             }
 
             if let snapshot = state.runtimeSnapshot {
@@ -108,6 +129,20 @@ struct MeetingPaperContextView: View {
             RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                 .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
         )
+        .task(id: state) {
+            prepareExportFile()
+        }
+    }
+
+    private func prepareExportFile() {
+        do {
+            let file = try MeetingExportFileWriter().write(document: exportDocument)
+            exportFileURL = file.url
+            exportErrorMessage = nil
+        } catch {
+            exportFileURL = nil
+            exportErrorMessage = "纸页文件暂时没有准备好，请稍后再试。"
+        }
     }
 }
 

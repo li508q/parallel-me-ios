@@ -56,6 +56,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingLibrarySnapshot` groups and filters saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
 `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
+`MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
 `SettlementRevisionDraft` owns settlement editing state and validation, so SwiftUI can render editable modules without deciding which revisions are meaningful.
 
 Provider runtime settings are split deliberately:
@@ -95,6 +96,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
+- Markdown export file writing is tested with a temporary local directory before the UI shares the file URL.
 - Settlement revision drafts are normalized and tested before UI sends revisions back to the session coordinator.
 - Repeated questions are filtered before they reach UI.
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
