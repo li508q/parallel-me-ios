@@ -4,22 +4,38 @@ public struct ProbeCoverage: Equatable, Sendable {
     public var answeredPurposes: Set<ProbePurpose>
     public var askedPurposes: Set<ProbePurpose>
     public var askedTexts: [String]
+    public var rawSignalPurposes: Set<ProbePurpose>
     public var missingPurposes: [ProbePurpose]
+    public var userAnswerCount: Int
+    public var articulatedAnswerCount: Int
+    public var boundaryAnswerCount: Int
 
     public init(
         answeredPurposes: Set<ProbePurpose>,
         askedPurposes: Set<ProbePurpose>,
         askedTexts: [String],
-        missingPurposes: [ProbePurpose]
+        rawSignalPurposes: Set<ProbePurpose> = [],
+        missingPurposes: [ProbePurpose],
+        userAnswerCount: Int = 0,
+        articulatedAnswerCount: Int = 0,
+        boundaryAnswerCount: Int = 0
     ) {
         self.answeredPurposes = answeredPurposes
         self.askedPurposes = askedPurposes
         self.askedTexts = askedTexts
+        self.rawSignalPurposes = rawSignalPurposes
         self.missingPurposes = missingPurposes
+        self.userAnswerCount = userAnswerCount
+        self.articulatedAnswerCount = articulatedAnswerCount
+        self.boundaryAnswerCount = boundaryAnswerCount
     }
 }
 
 public struct ScribeQuestionDeduplicator: Sendable {
+    private let minimumUserAnswers = 4
+    private let minimumArticulatedAnswers = 1
+    private let minimumBoundaryConfirmations = 1
+
     public init() {}
 
     public func normalize(
@@ -55,7 +71,10 @@ public struct ScribeQuestionDeduplicator: Sendable {
         var askedPurposes = Set<ProbePurpose>()
         var answeredPurposes = Set<ProbePurpose>()
         var askedTexts: [String] = []
-        var combined = rawInput
+        let rawSignalPurposes = detectedPurposes(in: rawInput)
+        var userAnswerCount = 0
+        var articulatedAnswerCount = 0
+        var boundaryAnswerCount = 0
 
         for entry in history {
             if let question = entry.question {
@@ -64,41 +83,42 @@ public struct ScribeQuestionDeduplicator: Sendable {
                 askedTexts.append(question.text)
             }
             if let answer = entry.answer {
+                userAnswerCount += 1
                 let answerText = [
                     answer.selectedOptionLabel,
                     answer.freeText
                 ]
                 .compactMap { $0 }
                 .joined(separator: " ")
-                combined += "\n\(answerText)"
                 if isSubstantiveAnswerEvidence(answerText),
                    let purpose = questionByID[answer.questionID]?.purpose ?? inferPurpose(from: answer.questionText ?? "") {
                     answeredPurposes.insert(purpose)
+                    if isArticulatedAnswerEvidence(answerText) {
+                        articulatedAnswerCount += 1
+                    }
+                    if isBoundaryConfirmation(answerText) {
+                        boundaryAnswerCount += 1
+                    }
                 }
             }
         }
 
-        let detected = detectedPurposes(in: combined).union(answeredPurposes)
-        let missing = ProbePurpose.allCases.filter { !detected.contains($0) }
+        let missing = ProbePurpose.allCases.filter { !answeredPurposes.contains($0) }
         return ProbeCoverage(
             answeredPurposes: answeredPurposes,
             askedPurposes: askedPurposes,
             askedTexts: askedTexts,
-            missingPurposes: missing
+            rawSignalPurposes: rawSignalPurposes,
+            missingPurposes: missing,
+            userAnswerCount: userAnswerCount,
+            articulatedAnswerCount: articulatedAnswerCount,
+            boundaryAnswerCount: boundaryAnswerCount
         )
     }
 
     public func shouldForceProbe(rawInput: String, history: [DefiningDialogueEntry]) -> Bool {
         let coverage = coverage(rawInput: rawInput, history: history)
-        guard !coverage.missingPurposes.isEmpty else { return false }
-        let userAnswerCount = history.filter { $0.answer != nil }.count
-        if userAnswerCount >= 3,
-           !coverage.missingPurposes.contains(.surfaceDilemma),
-           !coverage.missingPurposes.contains(.currentConstraints),
-           (!coverage.missingPurposes.contains(.coreFears) || !coverage.missingPurposes.contains(.expectedResolution)) {
-            return false
-        }
-        return true
+        return !readinessBlockingPurposes(coverage).isEmpty
     }
 
     public func recoveryQuestions(
@@ -107,10 +127,11 @@ public struct ScribeQuestionDeduplicator: Sendable {
         maxPerTurn: Int = 3
     ) -> [ScribeQuestion] {
         let coverage = coverage(rawInput: rawInput, history: history)
+        let blockingPurposes = readinessBlockingPurposes(coverage)
         var askedTexts = coverage.askedTexts
         var recovered: [ScribeQuestion] = []
 
-        for purpose in coverage.missingPurposes {
+        for purpose in blockingPurposes {
             let question = recoveryQuestion(
                 for: purpose,
                 rawInput: rawInput,
@@ -244,18 +265,35 @@ public struct ScribeQuestionDeduplicator: Sendable {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
 
-        let withoutCustomPlaceholder = trimmed
-            .replacingOccurrences(of: "都不准，我自己说", with: "")
-            .replacingOccurrences(of: "都不准", with: "")
-            .replacingOccurrences(of: "都不对", with: "")
-            .replacingOccurrences(of: "我自己说", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutCustomPlaceholder = normalizedUserEvidence(trimmed)
         guard !withoutCustomPlaceholder.isEmpty else { return false }
 
         return withoutCustomPlaceholder.range(
             of: #"^(我)?(还)?(不知道|不清楚|说不清|不确定|没想好|没有想好)(。|！|!|？|\?)?$"#,
             options: .regularExpression
         ) == nil
+    }
+
+    private func isArticulatedAnswerEvidence(_ text: String) -> Bool {
+        let normalized = normalizedUserEvidence(text)
+        guard isSubstantiveAnswerEvidence(normalized) else { return false }
+        return normalized.count >= 12
+    }
+
+    private func isBoundaryConfirmation(_ text: String) -> Bool {
+        normalizedUserEvidence(text).range(
+            of: #"(一变|什么情况下|边界|底线|最坏|失败成本|代价|不能碰|可以承受|观察期|验证|判断规则|停|继续|扛不住|条件|现金流|时间|身体)"#,
+            options: .regularExpression
+        ) != nil
+    }
+
+    private func normalizedUserEvidence(_ text: String) -> String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "都不准，我自己说", with: "")
+            .replacingOccurrences(of: "都不准", with: "")
+            .replacingOccurrences(of: "都不对", with: "")
+            .replacingOccurrences(of: "我自己说", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func isCustomOption(_ option: ScribeProbeOption) -> Bool {
@@ -282,6 +320,37 @@ public struct ScribeQuestionDeduplicator: Sendable {
     private func inferPurpose(from text: String) -> ProbePurpose? {
         let detected = detectedPurposes(in: text)
         return ProbePurpose.allCases.first(where: { detected.contains($0) })
+    }
+
+    private func readinessBlockingPurposes(_ coverage: ProbeCoverage) -> [ProbePurpose] {
+        var blockers = coverage.missingPurposes
+
+        if coverage.userAnswerCount < minimumUserAnswers {
+            blockers.append(contentsOf: coverage.missingPurposes.isEmpty ? ProbePurpose.allCases : coverage.missingPurposes)
+        }
+
+        if coverage.articulatedAnswerCount < minimumArticulatedAnswers {
+            blockers.append(.coreFears)
+            blockers.append(.surfaceDilemma)
+        }
+
+        if coverage.boundaryAnswerCount < minimumBoundaryConfirmations {
+            blockers.append(.currentConstraints)
+            blockers.append(.expectedResolution)
+        }
+
+        return deduplicatedPurposes(blockers)
+    }
+
+    private func deduplicatedPurposes(_ purposes: [ProbePurpose]) -> [ProbePurpose] {
+        var seen = Set<ProbePurpose>()
+        var result: [ProbePurpose] = []
+        for purpose in purposes {
+            guard !seen.contains(purpose) else { continue }
+            seen.insert(purpose)
+            result.append(purpose)
+        }
+        return result
     }
 
     private func normalizeText(_ text: String) -> String {

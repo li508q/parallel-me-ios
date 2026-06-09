@@ -278,7 +278,38 @@ struct ParallelMeCoreSmokeTests {
             )
 
             try expect(coverage.askedPurposes == [.expectedResolution])
+            try expect(coverage.rawSignalPurposes.contains(.surfaceDilemma))
+            try expect(coverage.answeredPurposes.isEmpty)
+            try expect(coverage.missingPurposes == ProbePurpose.allCases)
             try expect(coverage.missingPurposes.contains(.expectedResolution))
+        }
+
+        try runner.run("scribe forces proposal until user evidence is sufficient") {
+            let deduplicator = ScribeQuestionDeduplicator()
+            let rawInput = "我要不要回老家考公，月薪会从 2.5w 变 6k，我很怕后悔，也想让圆桌帮我确认观察期。"
+            try expect(deduplicator.shouldForceProbe(rawInput: rawInput, history: []))
+
+            var history = answeredDefinitionHistory(
+                answers: [
+                    (.surfaceDilemma, "我确认真正岔路是留在大厂继续拿高薪，还是回老家考公换稳定。"),
+                    (.currentConstraints, "现金流和父母期待是最硬条件。"),
+                    (.coreFears, "我怕失去选择权，也怕以后觉得自己被安排。")
+                ]
+            )
+            try expect(deduplicator.shouldForceProbe(rawInput: rawInput, history: history))
+
+            history.append(contentsOf: answeredDefinitionHistory(
+                answers: [
+                    (.expectedResolution, "我希望圆桌帮我确认一个观察期判断规则：什么条件一变就暂停考公。")
+                ],
+                startIndex: 4
+            ))
+            let coverage = deduplicator.coverage(rawInput: rawInput, history: history)
+            try expect(coverage.answeredPurposes == Set(ProbePurpose.allCases))
+            try expect(coverage.userAnswerCount == 4)
+            try expect(coverage.articulatedAnswerCount >= 1)
+            try expect(coverage.boundaryAnswerCount >= 1)
+            try expect(!deduplicator.shouldForceProbe(rawInput: rawInput, history: history))
         }
 
         try runner.run("scribe adds custom option") {
@@ -795,6 +826,9 @@ struct ParallelMeCoreSmokeTests {
             try expect(definitionPrompt.contains("不得设置总轮数上限"))
             try expect(definitionPrompt.contains("coreFears"))
             try expect(definitionPrompt.contains("expectedResolution"))
+            try expect(definitionPrompt.contains("关键词只能算线索"))
+            try expect(definitionPrompt.contains("用户回答覆盖"))
+            try expect(definitionPrompt.contains("现实边界/条件测试"))
             try expect(definitionPrompt.contains("不要使用固定收尾题"))
             try expect(definitionPrompt.contains("thinking 必须与 questions"))
             try expect(definitionPrompt.contains("userFeedback"))
@@ -1883,16 +1917,17 @@ struct ParallelMeCoreSmokeTests {
             let meetingID = try unwrap(viewModel.state?.id, "Expected started meeting id")
 
             viewModel.retryDefinition()
-            try await waitFor("retried definition proposal") {
+            try await waitFor("retried definition questions") {
                 !viewModel.isBusy &&
                 viewModel.state?.id == meetingID &&
-                viewModel.state?.issueProposal?.isComplete == true &&
+                viewModel.state?.issueProposal == nil &&
+                viewModel.state?.currentQuestions.isEmpty == false &&
                 viewModel.errorMessage == nil
             }
 
             let requestCount = await provider.definitionRequestCount()
             try expect(requestCount == 2)
-            try expect(viewModel.state?.taskFrame?.problemDefinition == completeProposal.issueSentence)
+            try expect(viewModel.state?.taskFrame == nil)
         }
 
         try await runner.runAsync("meeting view model retries failed inquiry request") {
@@ -1986,7 +2021,7 @@ struct ParallelMeCoreSmokeTests {
             let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
 
             let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
-            let proposed = try await coordinator.requestDefinition()
+            let proposed = try await driveDefinitionToProposal(coordinator)
             let opened = try await coordinator.confirmProposalAndOpenRoundtable()
             let saved = try await repository.load(id: started.id)
 
@@ -2177,7 +2212,7 @@ struct ParallelMeCoreSmokeTests {
             let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
 
             let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
-            _ = try await coordinator.requestDefinition()
+            _ = try await driveDefinitionToProposal(coordinator)
             do {
                 _ = try await coordinator.refineProposal(feedback: "  ")
                 throw TestFailure("Expected empty proposal feedback error")
@@ -2195,6 +2230,31 @@ struct ParallelMeCoreSmokeTests {
             try expect(refined.issueProposal?.expectedResolution.details == ["身体底线", "观察期"])
             try expect(refined.definingDialogue.last?.answer?.freeText == feedback)
             try expect(saved?.definingDialogue.last?.answer?.questionID == "proposal_feedback")
+        }
+
+        try await runner.runAsync("session coordinator blocks early definition proposal without user evidence") {
+            let provider = MockLLMProvider()
+            let repository = InMemoryMeetingRepository()
+            await provider.register(
+                IssueDefinitionResponse(
+                    proposal: completeProposal,
+                    readyToPropose: true,
+                    thinking: "模型觉得已经足够成案。"
+                ),
+                for: .defineIssue
+            )
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+
+            _ = try await coordinator.start(rawInput: "辞职还是留下，月薪和身体都卡住，我怕后悔，也想让圆桌给判断规则。")
+            let probing = try await coordinator.requestDefinition()
+            let saved = try await repository.load(id: probing.id)
+
+            try expect(probing.stage == .defining)
+            try expect(probing.definingSubstage == .probing)
+            try expect(probing.issueProposal == nil)
+            try expect(probing.currentQuestions.count == 3)
+            try expect(probing.currentQuestions.map(\.purpose) == [.surfaceDilemma, .currentConstraints, .coreFears])
+            try expect(saved?.issueProposal == nil)
         }
 
         try await runner.runAsync("session coordinator preserves contradictory definition questions") {
@@ -2254,7 +2314,7 @@ struct ParallelMeCoreSmokeTests {
             let probing = try await coordinator.requestDefinition()
 
             try expect(probing.currentQuestions.count == 3)
-            try expect(probing.currentQuestions.map(\.purpose) == [.currentConstraints, .coreFears, .expectedResolution])
+            try expect(probing.currentQuestions.map(\.purpose) == [.surfaceDilemma, .currentConstraints, .coreFears])
             try expect(!probing.currentQuestions.map(\.id).contains("repeat_expected"))
             try expect(probing.currentQuestions.allSatisfy { question in
                 question.options.contains { $0.isCustomAnswer }
@@ -2301,7 +2361,7 @@ struct ParallelMeCoreSmokeTests {
             let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
 
             _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
-            _ = try await coordinator.requestDefinition()
+            _ = try await driveDefinitionToProposal(coordinator)
             _ = try await coordinator.confirmProposalAndOpenRoundtable()
             _ = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
             let inquiry = try await coordinator.startInquiry()
@@ -2422,7 +2482,7 @@ struct ParallelMeCoreSmokeTests {
             let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
 
             _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
-            _ = try await coordinator.requestDefinition()
+            _ = try await driveDefinitionToProposal(coordinator)
             _ = try await coordinator.confirmProposalAndOpenRoundtable()
             _ = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
             _ = try await coordinator.startInquiry()
@@ -2465,7 +2525,7 @@ struct ParallelMeCoreSmokeTests {
             let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
 
             let started = try await coordinator.start(rawInput: "我想辞职又怕没钱")
-            _ = try await coordinator.requestDefinition()
+            _ = try await driveDefinitionToProposal(coordinator)
             _ = try await coordinator.confirmProposalAndOpenRoundtable()
             _ = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
             _ = try await coordinator.startInquiry()
@@ -2677,7 +2737,7 @@ struct ParallelMeCoreSmokeTests {
             )
 
             _ = try await coordinator.start(rawInput: "我想辞职又怕没钱")
-            let proposed = try await coordinator.requestDefinition()
+            let proposed = try await driveDefinitionToProposal(coordinator)
             let opened = try await coordinator.confirmProposalAndOpenRoundtable()
             let moved = try await coordinator.submitRoundtableMove(RoundtableMove(type: .continueAll))
             let tableAsked = try await coordinator.submitRoundtableMove(
@@ -2770,6 +2830,71 @@ struct ParallelMeCoreSmokeTests {
             ],
             purpose: purpose
         )
+    }
+
+    private static func answeredDefinitionHistory(
+        answers: [(ProbePurpose, String)],
+        startIndex: Int = 1
+    ) -> [DefiningDialogueEntry] {
+        answers.enumerated().flatMap { offset, pair in
+            let index = startIndex + offset
+            let prompt = question("answered_\(pair.0.rawValue)_\(index)", "阶段一定义追问 \(index)", pair.0)
+            let answer = ScribeAnswer(
+                questionID: prompt.id,
+                selectedOptionID: "custom",
+                selectedOptionLabel: "都不准，我自己说",
+                questionText: prompt.text,
+                freeText: pair.1
+            )
+            return [
+                DefiningDialogueEntry(role: .scribe, question: prompt),
+                DefiningDialogueEntry(role: .user, answer: answer)
+            ]
+        }
+    }
+
+    private static func definitionAnswer(for question: ScribeQuestion) -> ScribeAnswer {
+        let text: String
+        switch question.purpose {
+        case .surfaceDilemma:
+            text = "我确认真正岔路是继续留在高压高薪轨道，还是先停下来换一个可持续方向。"
+        case .currentConstraints:
+            text = "现金流、身体睡眠和一个月观察期是硬条件；这些条件一变，判断就要跟着变。"
+        case .coreFears:
+            text = "我最怕失去安全感，也怕继续下去以后不再相信自己的判断。"
+        case .expectedResolution:
+            text = "我希望圆桌帮我产出一个判断规则：什么代价不能碰，什么代价可以承受。"
+        }
+        return ScribeAnswer(
+            questionID: question.id,
+            selectedOptionID: "custom",
+            selectedOptionLabel: "都不准，我自己说",
+            questionText: question.text,
+            freeText: text
+        )
+    }
+
+    private static func driveDefinitionToProposal<Provider, Repository>(
+        _ coordinator: MeetingSessionCoordinator<Provider, Repository>,
+        maxRounds: Int = 4
+    ) async throws -> MeetingFlowState
+    where Provider: LLMProvider, Repository: MeetingRepository {
+        var state = try await coordinator.requestDefinition()
+        var rounds = 0
+
+        while state.issueProposal?.isComplete != true {
+            let questions = state.currentQuestions
+            guard !questions.isEmpty else {
+                throw TestFailure("Expected definition questions before proposal")
+            }
+            rounds += 1
+            guard rounds <= maxRounds else {
+                throw TestFailure("Definition did not reach proposal after \(maxRounds) rounds")
+            }
+            state = try await coordinator.submitProbeAnswers(questions.map(definitionAnswer(for:)))
+        }
+
+        return state
     }
 
     private static var completeProfile: AlignmentProfile {

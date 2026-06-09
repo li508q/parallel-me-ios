@@ -28,6 +28,8 @@ The scribe can ask 1-3 questions per turn. There is no total-turn cap. Repetitio
 
 Every question must include a free-text escape. If the provided options miss the user's real answer, the user can write their own language and that text becomes part of the meeting evidence. When the scribe asks multiple questions in one turn, iOS keeps them as one answer batch; the user answers every current question before the app sends the batch back to the scribe.
 
+Raw petition keywords are treated as leads, not confirmed evidence. Even if a provider returns a complete-looking proposal, iOS keeps the scribe in the defining loop until all four purposes have user answers, the dialogue has enough exploration, and at least one answer contains real user articulation plus a boundary or condition test.
+
 ## 3. Proposal Confirmation
 
 The user can confirm, edit, or ask the scribe to refine the proposal. The app cannot enter the roundtable until the proposal is complete enough to map into a task frame.

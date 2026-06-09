@@ -52,6 +52,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `PetitionStarterPrompts` provides the home screen's first-sentence seeds from Core, keeping onboarding copy stable and testable instead of scattered through SwiftUI.
 `MeetingStartReadinessSnapshot` derives home-screen start blockers, button text, input editability, and user-facing guidance from the raw petition and provider settings.
 `ScribeProbeAnswerBatchDraft` keeps a stage-one question turn together until every current question has an answer, preserving multi-question definition rounds.
+`ScribeQuestionDeduplicator` also owns the stage-one evidence guard: raw petition keywords are stored as signals, but proposal readiness requires user-answer coverage for all four purposes plus minimum exploration, articulation, and boundary evidence. `MeetingSessionCoordinator` applies that guard after provider responses, so a model cannot move the paper into proposal confirmation just by returning `readyToPropose=true`.
 `ScribeInquiryAnswerBatchDraft` keeps final inquiry turns together under the same rule, so evidence-gathering cannot skip a visible question.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
 `MeetingStageProgressSnapshot` derives the five-step product rail, localized stage titles, current position, and completion state from `MeetingStage`.
@@ -108,7 +109,9 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
 - In-flight activity banners are derived in Core and tested so waiting states stay specific to the user's current action.
 - Definition-stage recovery keeps a started paper retryable when the first model-backed definition request fails.
-- Definition-stage coverage only treats the raw petition and user answers as evidence. If the model returns only duplicate or unusable definition questions, Core generates purpose-targeted recovery questions instead of failing the paper.
+- Definition-stage coverage treats the raw petition as signal only; Core requires user-answer evidence, minimum exploration, user articulation, and a boundary confirmation before accepting a provider proposal.
+- If the model returns an early complete proposal, the session coordinator forces more scribe questions until the local evidence guard passes.
+- If the model returns only duplicate or unusable definition questions, Core generates purpose-targeted recovery questions instead of failing the paper.
 - Inquiry-stage recovery keeps a paper retryable when the first model-backed inquiry request fails after the inquiry stage has been persisted.
 - Inquiry-stage guarding filters repeated or already answered question text, restores missing module questions when the provider returns only duplicates, and only counts substantive action answers as minimum-action evidence.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.

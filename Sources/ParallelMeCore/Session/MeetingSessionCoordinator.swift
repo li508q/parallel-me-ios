@@ -276,14 +276,17 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         to current: MeetingFlowState
     ) async throws -> MeetingFlowState {
         let response = definitionResponseGuard.normalize(response)
-        if response.readyToPropose, let proposal = response.proposal, proposal.isComplete {
+        let mustKeepProbing = response.readyToPropose &&
+            deduplicator.shouldForceProbe(rawInput: current.rawInput, history: current.definingDialogue)
+
+        if response.readyToPropose, !mustKeepProbing, let proposal = response.proposal, proposal.isComplete {
             let proposed = try engine.receiveIssueProposal(proposal, in: current)
             state = proposed
             return try await persist(proposed)
         }
 
         let normalizedQuestions = deduplicator.normalize(response.questions, history: current.definingDialogue)
-        let questions = normalizedQuestions.isEmpty
+        let questions = (normalizedQuestions.isEmpty || mustKeepProbing)
             ? deduplicator.recoveryQuestions(rawInput: current.rawInput, history: current.definingDialogue)
             : normalizedQuestions
         guard !questions.isEmpty else {

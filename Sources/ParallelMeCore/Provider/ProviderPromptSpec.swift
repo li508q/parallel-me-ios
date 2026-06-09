@@ -42,6 +42,8 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                     contextConstraint,
                     "每次最多提出 1-3 个问题，但不得设置总轮数上限。",
                     "问题必须覆盖 surfaceDilemma、currentConstraints、coreFears、expectedResolution 中仍缺证据的部分。",
+                    "rawInput 里的关键词只能算线索，不能算用户已经确认；四个 Key 必须被用户回答覆盖后才允许 readyToPropose=true。",
+                    "如果用户回答数量不足、只有点选没有展开、或还没有现实边界/条件测试，必须继续追问。",
                     "Key 3 coreFears 与 Key 4 expectedResolution 必须拆开，不要重复追问同一主题。",
                     "不要使用固定收尾题或模板题；每个问题都必须指向 rawInput、dialogue 或 userFeedback 里尚未被证实的具体缺口。",
                     "thinking 必须与 questions、readyToPropose 一致；如果 thinking 认为仍缺证据，就必须返回 questions 且 readyToPropose=false。",
