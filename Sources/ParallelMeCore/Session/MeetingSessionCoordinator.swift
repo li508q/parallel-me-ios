@@ -278,14 +278,17 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             return try await persist(proposed)
         }
 
-        let normalized = deduplicator.normalize(response.questions, history: current.definingDialogue)
-        guard !normalized.isEmpty else {
+        let normalizedQuestions = deduplicator.normalize(response.questions, history: current.definingDialogue)
+        let questions = normalizedQuestions.isEmpty
+            ? deduplicator.recoveryQuestions(rawInput: current.rawInput, history: current.definingDialogue)
+            : normalizedQuestions
+        guard !questions.isEmpty else {
             if response.readyToPropose {
                 throw MeetingSessionError.emptyModelResult
             }
             throw MeetingSessionError.emptyModelResult
         }
-        let probing = try engine.receiveProbeQuestions(normalized, in: current)
+        let probing = try engine.receiveProbeQuestions(questions, in: current)
         state = probing
         return try await persist(probing)
     }

@@ -62,18 +62,16 @@ public struct ScribeQuestionDeduplicator: Sendable {
                 questionByID[question.id] = question
                 askedPurposes.insert(question.purpose)
                 askedTexts.append(question.text)
-                combined += "\n\(question.text)\n\(question.options.map(\.label).joined(separator: "\n"))"
             }
             if let answer = entry.answer {
                 let answerText = [
-                    answer.questionText,
                     answer.selectedOptionLabel,
                     answer.freeText
                 ]
                 .compactMap { $0 }
                 .joined(separator: " ")
                 combined += "\n\(answerText)"
-                if !answerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                if isSubstantiveAnswerEvidence(answerText),
                    let purpose = questionByID[answer.questionID]?.purpose ?? inferPurpose(from: answer.questionText ?? "") {
                     answeredPurposes.insert(purpose)
                 }
@@ -101,6 +99,30 @@ public struct ScribeQuestionDeduplicator: Sendable {
             return false
         }
         return true
+    }
+
+    public func recoveryQuestions(
+        rawInput: String,
+        history: [DefiningDialogueEntry],
+        maxPerTurn: Int = 3
+    ) -> [ScribeQuestion] {
+        let coverage = coverage(rawInput: rawInput, history: history)
+        var askedTexts = coverage.askedTexts
+        var recovered: [ScribeQuestion] = []
+
+        for purpose in coverage.missingPurposes {
+            let question = recoveryQuestion(
+                for: purpose,
+                rawInput: rawInput,
+                askedTexts: askedTexts
+            )
+            guard !recovered.contains(where: { areSimilar($0.text, question.text) }) else { continue }
+            recovered.append(question)
+            askedTexts.append(question.text)
+            if recovered.count == maxPerTurn { break }
+        }
+
+        return recovered
     }
 
     public func areSimilar(_ lhs: String, _ rhs: String) -> Bool {
@@ -132,6 +154,108 @@ public struct ScribeQuestionDeduplicator: Sendable {
             cleaned.append(ScribeProbeOption(id: "custom", label: "都不准，我自己说"))
         }
         return Array(cleaned.prefix(4))
+    }
+
+    private func recoveryQuestion(
+        for purpose: ProbePurpose,
+        rawInput: String,
+        askedTexts: [String]
+    ) -> ScribeQuestion {
+        let candidates = recoveryTextCandidates(for: purpose, rawInput: rawInput)
+        let selectedIndex = candidates.indices.first { index in
+            !askedTexts.contains(where: { areSimilar($0, candidates[index]) })
+        } ?? candidates.indices.last ?? 0
+        return ScribeQuestion(
+            id: "recovery_\(purpose.rawValue)_\(selectedIndex + 1)",
+            text: candidates[selectedIndex],
+            options: recoveryOptions(for: purpose),
+            purpose: purpose
+        )
+    }
+
+    private func recoveryTextCandidates(for purpose: ProbePurpose, rawInput: String) -> [String] {
+        let focus = rawInputFocus(rawInput)
+        switch purpose {
+        case .surfaceDilemma:
+            return [
+                "\(focus)现在最像哪一个具体岔路？",
+                "如果只把\(focus)说成两个方向，它们分别是什么？",
+                "\(focus)里真正需要被摆上桌面的选择是什么？"
+            ]
+        case .currentConstraints:
+            return [
+                "\(focus)里哪条现实限制最硬，足以改变判断？",
+                "现在最不能忽略的现实条件是什么：钱、时间、身体、承诺，还是别的？",
+                "如果今天就要推迟决定，最真实的外部原因会是什么？"
+            ]
+        case .coreFears:
+            return [
+                "如果这次选错，你最怕具体失去什么？",
+                "\(focus)背后哪个东西最不能被牺牲？",
+                "这件事里最不想承认、但一直在保护的担心是什么？"
+            ]
+        case .expectedResolution:
+            return [
+                "你希望这场圆桌最后帮你拿到哪种判断材料？",
+                "\(focus)谈完以后，你最想带走一个答案、一个标准，还是一个行动？",
+                "这次讨论如果有用，最后应该让你更确定什么？"
+            ]
+        }
+    }
+
+    private func recoveryOptions(for purpose: ProbePurpose) -> [ScribeProbeOption] {
+        let options: [ScribeProbeOption]
+        switch purpose {
+        case .surfaceDilemma:
+            options = [
+                ScribeProbeOption(id: "two_paths", label: "两个选择都代价很大"),
+                ScribeProbeOption(id: "unclear_choice", label: "我还没分清真正选择"),
+                ScribeProbeOption(id: "not_binary", label: "其实不是二选一")
+            ]
+        case .currentConstraints:
+            options = [
+                ScribeProbeOption(id: "money_time_body", label: "钱、时间或身体最硬"),
+                ScribeProbeOption(id: "commitment", label: "已有承诺最硬"),
+                ScribeProbeOption(id: "no_external_limit", label: "外部限制不硬，是心里卡")
+            ]
+        case .coreFears:
+            options = [
+                ScribeProbeOption(id: "security", label: "安全感或体面"),
+                ScribeProbeOption(id: "freedom", label: "自由或尊严"),
+                ScribeProbeOption(id: "relationship", label: "关系或亏欠")
+            ]
+        case .expectedResolution:
+            options = [
+                ScribeProbeOption(id: "decision_standard", label: "一个判断标准"),
+                ScribeProbeOption(id: "next_action", label: "一个最小下一步"),
+                ScribeProbeOption(id: "voice_map", label: "分清谁在保护什么")
+            ]
+        }
+        return options + [ScribeProbeOption(id: "custom", label: "都不准，我自己说")]
+    }
+
+    private func rawInputFocus(_ rawInput: String) -> String {
+        let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "这件事" }
+        return "“\(String(trimmed.prefix(24)))”"
+    }
+
+    private func isSubstantiveAnswerEvidence(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+
+        let withoutCustomPlaceholder = trimmed
+            .replacingOccurrences(of: "都不准，我自己说", with: "")
+            .replacingOccurrences(of: "都不准", with: "")
+            .replacingOccurrences(of: "都不对", with: "")
+            .replacingOccurrences(of: "我自己说", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !withoutCustomPlaceholder.isEmpty else { return false }
+
+        return withoutCustomPlaceholder.range(
+            of: #"^(我)?(还)?(不知道|不清楚|说不清|不确定|没想好|没有想好)(。|！|!|？|\?)?$"#,
+            options: .regularExpression
+        ) == nil
     }
 
     private func isCustomOption(_ option: ScribeProbeOption) -> Bool {

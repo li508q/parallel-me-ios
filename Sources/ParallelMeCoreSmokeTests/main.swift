@@ -216,6 +216,18 @@ struct ParallelMeCoreSmokeTests {
             try expect(normalized.map(\.id) == ["q3"])
         }
 
+        try runner.run("scribe coverage ignores unanswered question text") {
+            let deduplicator = ScribeQuestionDeduplicator()
+            let previous = question("q1", "你希望这次圆桌最终帮你验证什么？", .expectedResolution)
+            let coverage = deduplicator.coverage(
+                rawInput: "辞职还是留下",
+                history: [DefiningDialogueEntry(role: .scribe, question: previous)]
+            )
+
+            try expect(coverage.askedPurposes == [.expectedResolution])
+            try expect(coverage.missingPurposes.contains(.expectedResolution))
+        }
+
         try runner.run("scribe adds custom option") {
             let deduplicator = ScribeQuestionDeduplicator()
             let normalized = deduplicator.normalize([
@@ -2063,6 +2075,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(saved?.currentQuestions.map(\.id) == [followUp.id])
         }
 
+        try await runner.runAsync("session coordinator recovers when definition questions dedupe empty") {
+            let provider = StaticDefinitionProvider(
+                response: IssueDefinitionResponse(
+                    questions: [
+                        question("repeat_expected", "你希望这次圆桌讨论帮自己验证什么？", .expectedResolution)
+                    ],
+                    proposal: nil,
+                    readyToPropose: false,
+                    thinking: "仍然缺 expectedResolution。"
+                )
+            )
+            let repository = InMemoryMeetingRepository()
+            let engine = MeetingFlowEngine()
+            let previous = question("previous_expected", "你希望这次圆桌最终帮你验证什么？", .expectedResolution)
+            var state = try engine.start(rawInput: "辞职还是留下")
+            state = try engine.receiveProbeQuestions([previous], in: state)
+            state = try engine.answerProbe([
+                ScribeAnswer(
+                    questionID: previous.id,
+                    selectedOptionID: "custom",
+                    selectedOptionLabel: "都不准，我自己说",
+                    questionText: previous.text,
+                    freeText: "我还不知道"
+                )
+            ], in: state)
+            let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
+            _ = try await coordinator.restore(state)
+
+            let probing = try await coordinator.requestDefinition()
+
+            try expect(probing.currentQuestions.count == 3)
+            try expect(probing.currentQuestions.map(\.purpose) == [.currentConstraints, .coreFears, .expectedResolution])
+            try expect(!probing.currentQuestions.map(\.id).contains("repeat_expected"))
+            try expect(probing.currentQuestions.allSatisfy { question in
+                question.options.contains { $0.isCustomAnswer }
+            })
+        }
+
         try await runner.runAsync("session coordinator preserves contradictory inquiry questions") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -2720,6 +2770,26 @@ private actor FlakyInquiryProvider: LLMProvider {
             throw MockLLMProviderError.missingResponse(kind: request.kind)
         }
         return LLMEnvelope(payload: payload, trace: ["flaky:\(request.kind.rawValue)"])
+    }
+}
+
+private actor StaticDefinitionProvider: LLMProvider {
+    private let response: IssueDefinitionResponse
+
+    init(response: IssueDefinitionResponse) {
+        self.response = response
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .defineIssue,
+              let payload = response as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        return LLMEnvelope(payload: payload, trace: ["static:\(request.kind.rawValue)"])
     }
 }
 
