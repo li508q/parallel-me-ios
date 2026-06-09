@@ -220,6 +220,38 @@ struct ParallelMeCoreSmokeTests {
             try expect(answeredInquiry.inquiryAnswers.last?.customText == "明早先请半天假，去医院做检查。")
         }
 
+        try runner.run("probe answer batch requires every current question") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let fear = question("batch_fear", "真正怕失去什么？", .coreFears)
+            let constraint = question("batch_constraint", "哪个现实边界最硬？", .currentConstraints)
+            let probing = try engine.receiveProbeQuestions([fear, constraint], in: started)
+
+            var draft = ScribeProbeAnswerBatchDraft()
+            let fearOption = try unwrap(fear.options.first(where: { $0.id == "a" }), "Expected regular option")
+            let customOption = try unwrap(constraint.options.first(where: \.isCustomAnswer), "Expected custom option")
+            draft.select(question: fear, option: fearOption)
+
+            try expect(!draft.canSubmit(questions: [fear, constraint]))
+            try expect(draft.missingQuestionIDs(in: [fear, constraint]) == [constraint.id])
+            do {
+                _ = try engine.answerProbe(draft.answers(for: [fear, constraint]), in: probing)
+                throw TestFailure("Expected incomplete probe answers error")
+            } catch MeetingFlowError.incompleteProbeAnswers(let missingQuestionIDs) {
+                try expect(missingQuestionIDs == [constraint.id])
+            }
+
+            draft.select(question: constraint, option: customOption, customText: "  现金流最多只能撑三个月。  ")
+            let answers = draft.answers(for: [fear, constraint])
+            let answered = try engine.answerProbe(answers, in: probing)
+
+            try expect(draft.canSubmit(questions: [fear, constraint]))
+            try expect(answers.map(\.questionID) == [fear.id, constraint.id])
+            try expect(answers.last?.freeText == "现金流最多只能撑三个月。")
+            try expect(answered.definingDialogue.compactMap(\.question).map(\.id) == [fear.id, constraint.id])
+            try expect(answered.definingDialogue.compactMap(\.answer).map(\.questionID) == [fear.id, constraint.id])
+        }
+
         try runner.run("many answers do not force settlement") {
             let evaluator = SettlementReadinessEvaluator()
             let answers = (0..<24).map { index in

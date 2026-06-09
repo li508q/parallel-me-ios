@@ -25,7 +25,7 @@ The scribe completes a four-key issue proposal:
 
 The scribe can ask 1-3 questions per turn. There is no total-turn cap. Repetition is prevented by purpose coverage and question-similarity filtering.
 
-Every question must include a free-text escape. If the provided options miss the user's real answer, the user can write their own language and that text becomes part of the meeting evidence.
+Every question must include a free-text escape. If the provided options miss the user's real answer, the user can write their own language and that text becomes part of the meeting evidence. When the scribe asks multiple questions in one turn, iOS keeps them as one answer batch; the user answers every current question before the app sends the batch back to the scribe.
 
 ## 3. Proposal Confirmation
 

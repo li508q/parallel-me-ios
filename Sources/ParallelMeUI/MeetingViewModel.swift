@@ -187,7 +187,6 @@ public final class MeetingViewModel: ObservableObject {
         if option.isCustomAnswer, trimmedCustomText?.isEmpty != false { return }
 
         run { [self] in
-            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
             let answer = ScribeAnswer(
                 questionID: question.id,
                 selectedOptionID: option.id,
@@ -195,7 +194,14 @@ public final class MeetingViewModel: ObservableObject {
                 questionText: question.text,
                 freeText: option.isCustomAnswer ? trimmedCustomText : nil
             )
-            self.state = try await self.coordinator.submitProbeAnswers([answer])
+            self.state = try await self.submitProbeAnswersToCoordinator([answer])
+        }
+    }
+
+    public func submitProbeAnswers(_ answers: [ScribeAnswer]) {
+        guard !answers.isEmpty else { return }
+        run { [self] in
+            self.state = try await self.submitProbeAnswersToCoordinator(answers)
         }
     }
 
@@ -373,6 +379,11 @@ public final class MeetingViewModel: ObservableObject {
         MeetingRuntimeSnapshot(settings: providerSettings, context: providerContext)
     }
 
+    private func submitProbeAnswersToCoordinator(_ answers: [ScribeAnswer]) async throws -> MeetingFlowState {
+        _ = try await rebuildCoordinatorIfNeeded(restoring: state)
+        return try await coordinator.submitProbeAnswers(answers)
+    }
+
     private func persistRuntimePreferences() async throws {
         try await providerSettingsStore?.saveSettings(providerSettings)
         try await providerContextStore?.saveContext(
@@ -423,6 +434,8 @@ public final class MeetingViewModel: ObservableObject {
         case MeetingFlowError.incompleteProposal(let missing):
             let labels = missing.map(\.label).joined(separator: "、")
             return "这版议题还差 \(labels)，先别急着进圆桌。"
+        case MeetingFlowError.incompleteProbeAnswers(let missingQuestionIDs):
+            return "本轮还有 \(missingQuestionIDs.count) 个定义问题没回答，先一起补齐。"
         case MeetingFlowError.missingRoundtableOpenings:
             return "五声还没有完成开场，等它们先把位置坐稳。"
         case MeetingFlowError.incompleteRoundtableOpenings(let missing):

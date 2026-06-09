@@ -163,11 +163,11 @@ private struct DefiningView: View {
                     .font(ParallelMeTypography.compact)
                     .padding(.top, ParallelMeSpacing.sm)
             } else {
-                ForEach(state.currentQuestions) { question in
-                    ProbeQuestionView(question: question) { option, customText in
-                        viewModel.answerProbe(question: question, option: option, customText: customText)
-                    }
-                    .disabled(viewModel.isBusy)
+                ProbeQuestionBatchView(
+                    questions: state.currentQuestions,
+                    isBusy: viewModel.isBusy
+                ) { answers in
+                    viewModel.submitProbeAnswers(answers)
                 }
             }
         }
@@ -229,9 +229,61 @@ private struct IssueProposalView: View {
     }
 }
 
+private struct ProbeQuestionBatchView: View {
+    var questions: [ScribeQuestion]
+    var isBusy: Bool
+    var submit: ([ScribeAnswer]) -> Void
+    @State private var draft = ScribeProbeAnswerBatchDraft()
+
+    private var canSubmit: Bool {
+        draft.canSubmit(questions: questions) && !isBusy
+    }
+
+    private var submittedCount: Int {
+        questions.count - draft.missingQuestionIDs(in: questions).count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("书记员追问")
+                    .font(ParallelMeTypography.eyebrow)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                Spacer()
+                Text("\(submittedCount) / \(questions.count)")
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+            }
+
+            ForEach(questions) { question in
+                ProbeQuestionView(
+                    question: question,
+                    selection: draft.selection(for: question.id)
+                ) { option, customText in
+                    draft.select(question: question, option: option, customText: customText)
+                }
+                .disabled(isBusy)
+            }
+
+            Button {
+                submit(draft.answers(for: questions))
+            } label: {
+                Label("提交本轮回答", systemImage: "checkmark.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!canSubmit)
+        }
+        .onChange(of: questions.map(\.id)) { _, _ in
+            draft = ScribeProbeAnswerBatchDraft()
+        }
+    }
+}
+
 private struct ProbeQuestionView: View {
     var question: ScribeQuestion
-    var answer: (ScribeProbeOption, String?) -> Void
+    var selection: ScribeProbeAnswerSelection?
+    var select: (ScribeProbeOption, String?) -> Void
     @State private var customAnswer = ""
 
     private var regularOptions: [ScribeProbeOption] {
@@ -248,25 +300,50 @@ private struct ProbeQuestionView: View {
                 .font(ParallelMeTypography.bodyStrong)
             ForEach(regularOptions) { option in
                 Button {
-                    answer(option, nil)
+                    select(option, nil)
                 } label: {
-                    Text(option.label)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack {
+                        Text(option.label)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if isSelected(option) {
+                            Image(systemName: "checkmark.circle.fill")
+                        }
+                    }
                 }
                 .buttonStyle(.bordered)
             }
             if let customOption {
-                CustomAnswerComposer(
-                    text: $customAnswer,
-                    placeholder: "写下更准确的回答",
-                    title: "用这句回答",
-                    systemImage: "text.bubble.fill"
-                ) {
-                    answer(customOption, customAnswer)
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                    TextField("写下更准确的回答", text: $customAnswer, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .font(ParallelMeTypography.body)
+                        .lineLimit(2...4)
+                    Button {
+                        select(customOption, customAnswer)
+                    } label: {
+                        HStack {
+                            Label("选用这句回答", systemImage: "text.bubble.fill")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if isSelected(customOption) {
+                                Image(systemName: "checkmark.circle.fill")
+                            }
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(customAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .onChange(of: customAnswer) { _, newValue in
+                    if isSelected(customOption) {
+                        select(customOption, newValue)
+                    }
                 }
             }
         }
         .padding(.top, ParallelMeSpacing.sm)
+    }
+
+    private func isSelected(_ option: ScribeProbeOption) -> Bool {
+        selection?.selectedOptionID == option.id
     }
 }
 
