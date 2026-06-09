@@ -151,7 +151,7 @@ private struct RoundtableTranscriptSectionView: View {
             }
 
             ForEach(section.openingTurns) { turn in
-                VoiceOpeningView(turn: turn)
+                VoiceOpeningView(snapshot: VoiceOpeningSnapshot(turn: turn))
             }
             ForEach(section.turns) { turn in
                 VoiceTurnView(name: turn.name ?? "圆桌", voiceID: turn.voiceID, text: turn.text, footnote: nil)
@@ -168,19 +168,24 @@ private struct RoundtableTranscriptSectionView: View {
 }
 
 private struct VoiceOpeningView: View {
-    var turn: VoiceOpeningTurn
+    var snapshot: VoiceOpeningSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
             VoiceTurnView(
-                name: turn.name,
-                voiceID: turn.voiceID,
-                text: turn.payload.thesis,
-                footnote: turn.payload.pull
+                name: snapshot.name,
+                voiceID: snapshot.voiceID,
+                text: snapshot.thesis,
+                footnote: nil
             )
-            HStack(alignment: .top, spacing: ParallelMeSpacing.xs) {
-                VoiceOpeningDetail(title: "守护", text: turn.payload.protectedValue)
-                VoiceOpeningDetail(title: "担心", text: turn.payload.concern)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 132), spacing: ParallelMeSpacing.sm)],
+                alignment: .leading,
+                spacing: ParallelMeSpacing.xs
+            ) {
+                ForEach(snapshot.details.filter(\.isMeaningful)) { detail in
+                    VoiceOpeningDetail(title: detail.title, text: detail.body)
+                }
             }
         }
     }
@@ -201,9 +206,7 @@ private struct VoiceOpeningDetail: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .padding(ParallelMeSpacing.sm)
-        .background(ParallelMeColor.paper.opacity(0.65))
-        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .padding(.vertical, ParallelMeSpacing.xs)
     }
 }
 

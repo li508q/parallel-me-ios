@@ -1299,6 +1299,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(!RoundtableTranscriptSnapshot(record: RoundtableRecord(moves: [firstMove])).isEmpty)
         }
 
+        try runner.run("voice opening snapshot preserves fixed detail rows") {
+            let turn = VoiceOpeningTurn(
+                id: "opening_future",
+                voiceID: .future,
+                name: "  5 年后的我  ",
+                payload: VoiceOpeningPayload(
+                    thesis: "  先把长期后果放到桌面。  ",
+                    protectedValue: "  未来仍能认领这一步。  ",
+                    concern: "  不能用大道理压住疲惫。  ",
+                    taskEvidence: "  来自已确认的圆桌任务。  ",
+                    pull: "  追问哪种失败更可被承认。  "
+                )
+            )
+
+            let snapshot = VoiceOpeningSnapshot(turn: turn)
+
+            try expect(snapshot.id == "opening_future")
+            try expect(snapshot.voiceID == .future)
+            try expect(snapshot.name == "5 年后的我")
+            try expect(snapshot.thesis == "先把长期后果放到桌面。")
+            try expect(snapshot.isComplete)
+            try expect(snapshot.details.map(\.kind) == VoiceOpeningDetailKind.allCases)
+            try expect(snapshot.details.map(\.title) == ["守护", "担心", "证据", "追问职责"])
+            try expect(snapshot.details.map(\.body) == [
+                "未来仍能认领这一步。",
+                "不能用大道理压住疲惫。",
+                "来自已确认的圆桌任务。",
+                "追问哪种失败更可被承认。"
+            ])
+            try expect(!VoiceOpeningSnapshot(
+                id: "incomplete",
+                voiceID: .future,
+                name: "5 年后的我",
+                thesis: "先看长期。",
+                details: []
+            ).isComplete)
+        }
+
         try runner.run("meeting summaries use settlement and archive timestamps") {
             let engine = MeetingFlowEngine()
             var active = try engine.start(rawInput: "待落定纸页")
@@ -1463,6 +1501,8 @@ struct ParallelMeCoreSmokeTests {
             try expect(document.markdown.contains("Provider：gpt-4.1"))
             try expect(document.markdown.contains("个人背景：我最近睡眠很差"))
             try expect(document.markdown.contains("明早 10 点前预约体检。"))
+            try expect(document.markdown.contains("躺平的我 · 证据"))
+            try expect(document.markdown.contains("躺平的我 · 追问职责"))
             try expect(document.markdown.contains("- **创造性无望**"))
             try expect(!document.markdown.contains("- **无望**"))
             try expect(document.markdown.contains("纸页脉络"))

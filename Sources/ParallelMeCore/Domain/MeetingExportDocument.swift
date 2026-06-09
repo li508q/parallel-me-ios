@@ -63,7 +63,11 @@ public struct MeetingExportDocument: Equatable, Sendable {
             for section in transcript.sections {
                 appendPair(section.title, section.detail, to: &lines)
                 for opening in section.openingTurns {
-                    appendPair(opening.name, opening.payload.thesis, to: &lines)
+                    let snapshot = VoiceOpeningSnapshot(turn: opening)
+                    appendPair(snapshot.name, snapshot.thesis, to: &lines)
+                    for detail in snapshot.details where detail.isMeaningful {
+                        appendPair("\(snapshot.name) · \(detail.title)", detail.body, to: &lines)
+                    }
                 }
                 for turn in section.turns {
                     appendPair(turn.name ?? "圆桌", turn.text, to: &lines)
