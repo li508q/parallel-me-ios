@@ -911,12 +911,71 @@ struct ParallelMeCoreSmokeTests {
             let ready = ProposalConfirmationAvailabilitySnapshot(state: readyState)
             try expect(ready.canConfirm)
             try expect(ready.actionTitle == "确认议题，进入圆桌")
+            try expect(ready.actionSystemImage == "checkmark.circle.fill")
             try expect(ready.messageTone == .muted)
 
             let busy = ProposalConfirmationAvailabilitySnapshot(state: readyState, isBusy: true)
             try expect(!busy.canConfirm)
             try expect(busy.blockers == [.busy])
             try expect(busy.actionTitle == "书记员整理中")
+        }
+
+        try runner.run("issue definition presentation derives stage modes and revision controls") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let questionState = try engine.receiveProbeQuestions(
+                [question("definition_presentation_fear", "真正怕失去什么？", .coreFears)],
+                in: started
+            )
+            let proposalState = try engine.receiveIssueProposal(completeProposal, in: started)
+
+            let recovery = IssueDefinitionStagePresentationSnapshot(
+                state: started,
+                isBusy: false
+            )
+            let loading = IssueDefinitionStagePresentationSnapshot(
+                state: started,
+                isBusy: true
+            )
+            let questions = IssueDefinitionStagePresentationSnapshot(
+                state: questionState,
+                isBusy: true
+            )
+            let emptyRevision = IssueDefinitionStagePresentationSnapshot(
+                state: proposalState,
+                isBusy: false,
+                proposalFeedback: "   "
+            )
+            let readyRevision = IssueDefinitionStagePresentationSnapshot(
+                state: proposalState,
+                isBusy: false,
+                proposalFeedback: "核心恐惧不准。"
+            )
+            let busyRevision = IssueDefinitionStagePresentationSnapshot(
+                state: proposalState,
+                isBusy: true,
+                proposalFeedback: "核心恐惧不准。"
+            )
+
+            try expect(recovery.title == "本次议题")
+            try expect(recovery.rawInput == "我想辞职又怕没钱")
+            try expect(recovery.mode == .recovery)
+            try expect(recovery.recovery.title == "书记员这一步没有完成。")
+            try expect(recovery.recovery.detail.contains("不需要回首页重写"))
+            try expect(recovery.recovery.retryAction.title == "重新整理议题")
+            try expect(recovery.recovery.retryAction.systemImage == "arrow.clockwise")
+            try expect(recovery.recovery.retryAction.isEnabled)
+            try expect(loading.mode == .loading)
+            try expect(loading.loadingTitle == "书记员正在整理问题")
+            try expect(!loading.recovery.retryAction.isEnabled)
+            try expect(questions.mode == .questions)
+            try expect(emptyRevision.mode == .proposal)
+            try expect(emptyRevision.revision.prompt == "哪里不准？直接写给书记员")
+            try expect(emptyRevision.revision.action.title == "修订这版议题")
+            try expect(emptyRevision.revision.action.systemImage == "arrow.triangle.2.circlepath")
+            try expect(!emptyRevision.revision.action.isEnabled)
+            try expect(readyRevision.revision.action.isEnabled)
+            try expect(!busyRevision.revision.action.isEnabled)
         }
 
         try runner.run("runtime preferences actions gate invalid OpenAI settings and busy state") {

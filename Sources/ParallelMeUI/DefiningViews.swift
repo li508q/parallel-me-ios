@@ -7,27 +7,42 @@ struct DefiningView: View {
     @ObservedObject var viewModel: MeetingViewModel
     @State private var proposalFeedback = ""
 
+    private var presentation: IssueDefinitionStagePresentationSnapshot {
+        IssueDefinitionStagePresentationSnapshot(
+            state: state,
+            isBusy: viewModel.isBusy,
+            proposalFeedback: proposalFeedback
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Text("本次议题")
+            Text(presentation.title)
                 .font(ParallelMeTypography.bodyStrong)
-            Text(state.rawInput)
+            Text(presentation.rawInput)
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.inkMuted)
-            if let proposal = state.issueProposal {
+
+            switch presentation.mode {
+            case .proposal:
                 let confirmation = ProposalConfirmationAvailabilitySnapshot(
                     state: state,
                     isBusy: viewModel.isBusy
                 )
-                IssueProposalView(snapshot: IssueProposalSnapshot(proposal: proposal))
+                if let proposal = state.issueProposal {
+                    IssueProposalView(snapshot: IssueProposalSnapshot(proposal: proposal))
+                }
                 ProposalRevisionView(
                     feedback: $proposalFeedback,
-                    isBusy: viewModel.isBusy
+                    presentation: presentation.revision
                 ) {
                     viewModel.refineProposal(proposalFeedback)
                 }
                 Button(action: viewModel.confirmProposal) {
-                    Label(confirmation.actionTitle, systemImage: "checkmark.circle.fill")
+                    Label(
+                        confirmation.actionTitle,
+                        systemImage: confirmation.actionSystemImage
+                    )
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -36,15 +51,16 @@ struct DefiningView: View {
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(messageColor(for: confirmation.messageTone))
                     .fixedSize(horizontal: false, vertical: true)
-            } else if state.currentQuestions.isEmpty {
-                if viewModel.isBusy {
-                    ProgressView("书记员正在整理问题")
-                        .font(ParallelMeTypography.compact)
-                        .padding(.top, ParallelMeSpacing.sm)
-                } else {
-                    DefinitionRetryView(retry: viewModel.retryDefinition)
-                }
-            } else {
+            case .loading:
+                ProgressView(presentation.loadingTitle)
+                    .font(ParallelMeTypography.compact)
+                    .padding(.top, ParallelMeSpacing.sm)
+            case .recovery:
+                DefinitionRetryView(
+                    snapshot: presentation.recovery,
+                    retry: viewModel.retryDefinition
+                )
+            case .questions:
                 ProbeQuestionBatchView(
                     questions: state.currentQuestions,
                     isBusy: viewModel.isBusy
@@ -69,22 +85,27 @@ struct DefiningView: View {
 }
 
 private struct DefinitionRetryView: View {
+    var snapshot: IssueDefinitionRecoveryPresentationSnapshot
     var retry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Text("书记员这一步没有完成。")
+            Text(snapshot.title)
                 .font(ParallelMeTypography.bodyStrong)
                 .foregroundStyle(ParallelMeColor.ink)
-            Text("可以重新整理本次议题；当前纸页会保留，不需要回首页重写。")
+            Text(snapshot.detail)
                 .font(ParallelMeTypography.compact)
                 .foregroundStyle(ParallelMeColor.inkMuted)
                 .fixedSize(horizontal: false, vertical: true)
             Button(action: retry) {
-                Label("重新整理议题", systemImage: "arrow.clockwise")
+                Label(
+                    snapshot.retryAction.title,
+                    systemImage: snapshot.retryAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!snapshot.retryAction.isEnabled)
         }
         .padding(.top, ParallelMeSpacing.sm)
     }
@@ -92,27 +113,26 @@ private struct DefinitionRetryView: View {
 
 private struct ProposalRevisionView: View {
     @Binding var feedback: String
-    var isBusy: Bool
+    var presentation: IssueDefinitionRevisionPresentationSnapshot
     var refine: () -> Void
-
-    private var canRefine: Bool {
-        !feedback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isBusy
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             Divider()
                 .padding(.vertical, ParallelMeSpacing.xs)
-            TextField("哪里不准？直接写给书记员", text: $feedback, axis: .vertical)
+            TextField(presentation.prompt, text: $feedback, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .font(ParallelMeTypography.body)
                 .lineLimit(2...4)
             Button(action: refine) {
-                Label("修订这版议题", systemImage: "arrow.triangle.2.circlepath")
+                Label(
+                    presentation.action.title,
+                    systemImage: presentation.action.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(!canRefine)
+            .disabled(!presentation.action.isEnabled)
         }
     }
 }

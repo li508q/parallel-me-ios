@@ -57,6 +57,10 @@ public struct ProposalConfirmationAvailabilitySnapshot: Codable, Equatable, Send
         return "需要重新整理议题"
     }
 
+    public var actionSystemImage: String {
+        "checkmark.circle.fill"
+    }
+
     public var message: String {
         if blockers.contains(.busy) {
             return "书记员正在处理这一步，先不要重复提交。"
