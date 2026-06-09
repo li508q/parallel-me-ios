@@ -269,10 +269,10 @@ struct ParallelMeCoreSmokeTests {
             try expect(normalized.map(\.id) == ["q3"])
         }
 
-        try runner.run("scribe coverage ignores unanswered question text") {
-            let deduplicator = ScribeQuestionDeduplicator()
+        try runner.run("issue definition evidence ignores unanswered question text") {
+            let evaluator = IssueDefinitionEvidenceEvaluator()
             let previous = question("q1", "你希望这次圆桌最终帮你验证什么？", .expectedResolution)
-            let coverage = deduplicator.coverage(
+            let coverage = evaluator.coverage(
                 rawInput: "辞职还是留下",
                 history: [DefiningDialogueEntry(role: .scribe, question: previous)]
             )
@@ -284,10 +284,11 @@ struct ParallelMeCoreSmokeTests {
             try expect(coverage.missingPurposes.contains(.expectedResolution))
         }
 
-        try runner.run("scribe forces proposal until user evidence is sufficient") {
-            let deduplicator = ScribeQuestionDeduplicator()
+        try runner.run("issue definition evidence gates proposals until sufficient") {
+            let evaluator = IssueDefinitionEvidenceEvaluator()
             let rawInput = "我要不要回老家考公，月薪会从 2.5w 变 6k，我很怕后悔，也想让圆桌帮我确认观察期。"
-            try expect(deduplicator.shouldForceProbe(rawInput: rawInput, history: []))
+            try expect(!evaluator.evaluate(rawInput: rawInput, history: []).isReady)
+            try expect(evaluator.blockingPurposes(rawInput: rawInput, history: []) == ProbePurpose.allCases)
 
             var history = answeredDefinitionHistory(
                 answers: [
@@ -296,7 +297,7 @@ struct ParallelMeCoreSmokeTests {
                     (.coreFears, "我怕失去选择权，也怕以后觉得自己被安排。")
                 ]
             )
-            try expect(deduplicator.shouldForceProbe(rawInput: rawInput, history: history))
+            try expect(!evaluator.evaluate(rawInput: rawInput, history: history).isReady)
 
             history.append(contentsOf: answeredDefinitionHistory(
                 answers: [
@@ -304,12 +305,12 @@ struct ParallelMeCoreSmokeTests {
                 ],
                 startIndex: 4
             ))
-            let coverage = deduplicator.coverage(rawInput: rawInput, history: history)
+            let coverage = evaluator.coverage(rawInput: rawInput, history: history)
             try expect(coverage.answeredPurposes == Set(ProbePurpose.allCases))
             try expect(coverage.userAnswerCount == 4)
             try expect(coverage.articulatedAnswerCount >= 1)
             try expect(coverage.boundaryAnswerCount >= 1)
-            try expect(!deduplicator.shouldForceProbe(rawInput: rawInput, history: history))
+            try expect(evaluator.evaluate(rawInput: rawInput, history: history).isReady)
         }
 
         try runner.run("scribe adds custom option") {

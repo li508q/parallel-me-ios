@@ -10,7 +10,7 @@ The first test layer is `ParallelMeCore`.
 - Start readiness explains empty petitions and incomplete provider settings before the first meeting step, and locks starter/petition editing while start work is in flight.
 - Stage-one answer batches must cover every current scribe question before the flow can continue.
 - Inquiry answer batches must cover every current active inquiry question before the flow can continue.
-- Stage-one proposal readiness is guarded by user-answer evidence, not raw petition keyword coverage or provider `readyToPropose` alone.
+- `IssueDefinitionEvidenceEvaluator` guards stage-one proposal readiness with user-answer evidence, not raw petition keyword coverage or provider `readyToPropose` alone.
 - Settlement request availability explains unanswered inquiry questions, missing profiles, missing task context, incomplete settlement evidence, and busy state before generating Heart Settlement.
 - Stage-one questions are deduplicated by purpose and similar wording.
 - Free-text answers are preserved for both defining questions and final inquiry.
