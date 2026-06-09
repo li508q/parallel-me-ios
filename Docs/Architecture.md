@@ -97,6 +97,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Every user-visible transition is represented by `MeetingStage`.
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
 - In-flight activity banners are derived in Core and tested so waiting states stay specific to the user's current action.
+- Definition-stage recovery keeps a started paper retryable when the first model-backed definition request fails.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Current-paper timeline items and recent/full presentation snapshots are derived in Core and tested against complete meeting progress.
 - Roundtable transcript grouping is derived in Core and shared by live UI and export.

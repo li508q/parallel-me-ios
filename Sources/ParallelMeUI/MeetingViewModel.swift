@@ -217,6 +217,14 @@ public final class MeetingViewModel: ObservableObject {
         }
     }
 
+    public func retryDefinition() {
+        run(activity: .retryingDefinition) { [self] in
+            _ = try await self.rebuildCoordinatorIfNeeded(restoring: self.state)
+            self.state = try await self.coordinator.requestDefinition()
+            await self.loadMeetingLibrary()
+        }
+    }
+
     public func refineProposal(_ feedback: String) {
         let trimmed = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }

@@ -4,6 +4,7 @@ public enum MeetingActivityKind: String, CaseIterable, Codable, Sendable {
     case savingRuntimePreferences
     case clearingRuntimePreferences
     case startingMeeting
+    case retryingDefinition
     case submittingDefinitionAnswers
     case refiningProposal
     case confirmingProposal
@@ -47,6 +48,11 @@ public struct MeetingActivitySnapshot: Equatable, Identifiable, Sendable {
             title = "书记员正在接住这件事"
             detail = "先把原始困惑整理成可追问或可确认的议题。"
             systemImage = "pencil.and.outline"
+            usesProvider = true
+        case .retryingDefinition:
+            title = "书记员正在重新整理议题"
+            detail = "会沿用当前纸页和已有回答，再请求一次定义结果。"
+            systemImage = "arrow.clockwise"
             usesProvider = true
         case .submittingDefinitionAnswers:
             title = "书记员正在吸收本轮回答"

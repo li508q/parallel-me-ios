@@ -29,9 +29,13 @@ struct DefiningView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isBusy)
             } else if state.currentQuestions.isEmpty {
-                ProgressView("书记员正在整理问题")
-                    .font(ParallelMeTypography.compact)
-                    .padding(.top, ParallelMeSpacing.sm)
+                if viewModel.isBusy {
+                    ProgressView("书记员正在整理问题")
+                        .font(ParallelMeTypography.compact)
+                        .padding(.top, ParallelMeSpacing.sm)
+                } else {
+                    DefinitionRetryView(retry: viewModel.retryDefinition)
+                }
             } else {
                 ProbeQuestionBatchView(
                     questions: state.currentQuestions,
@@ -44,6 +48,28 @@ struct DefiningView: View {
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
         .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+    }
+}
+
+private struct DefinitionRetryView: View {
+    var retry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text("书记员这一步没有完成。")
+                .font(ParallelMeTypography.bodyStrong)
+                .foregroundStyle(ParallelMeColor.ink)
+            Text("可以重新整理本次议题；当前纸页会保留，不需要回首页重写。")
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(ParallelMeColor.inkMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: retry) {
+                Label("重新整理议题", systemImage: "arrow.clockwise")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.top, ParallelMeSpacing.sm)
     }
 }
 

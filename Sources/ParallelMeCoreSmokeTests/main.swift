@@ -491,7 +491,9 @@ struct ParallelMeCoreSmokeTests {
             try expect(localArchive.systemImage == "archivebox")
             try expect(!localArchive.usesProvider)
             try expect(definition.detail.contains("一起送回"))
-            try expect(MeetingActivityKind.allCases.count == 17)
+            try expect(MeetingActivitySnapshot(kind: .retryingDefinition).usesProvider)
+            try expect(MeetingActivitySnapshot(kind: .retryingDefinition).title.contains("重新整理"))
+            try expect(MeetingActivityKind.allCases.count == 18)
         }
 
         try runner.run("provider prompt specs preserve product contracts") {
@@ -1322,6 +1324,48 @@ struct ParallelMeCoreSmokeTests {
             }
         }
 
+        try await runner.runAsync("meeting view model retries failed definition request") {
+            let provider = FlakyDefinitionProvider(
+                success: IssueDefinitionResponse(
+                    proposal: completeProposal,
+                    readyToPropose: true,
+                    thinking: "proposal ready"
+                )
+            )
+            let repository = InMemoryMeetingRepository()
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: provider,
+                    repository: repository
+                ),
+                meetingRepository: repository,
+                providerFactory: { _ in AnyLLMProvider(provider) }
+            )
+
+            viewModel.petition = "我想辞职又怕没钱"
+            viewModel.startMeeting()
+            try await waitFor("failed initial definition") {
+                !viewModel.isBusy &&
+                viewModel.state?.stage == .defining &&
+                viewModel.state?.issueProposal == nil &&
+                viewModel.state?.currentQuestions.isEmpty == true &&
+                viewModel.errorMessage != nil
+            }
+            let meetingID = try unwrap(viewModel.state?.id, "Expected started meeting id")
+
+            viewModel.retryDefinition()
+            try await waitFor("retried definition proposal") {
+                !viewModel.isBusy &&
+                viewModel.state?.id == meetingID &&
+                viewModel.state?.issueProposal?.isComplete == true &&
+                viewModel.errorMessage == nil
+            }
+
+            let requestCount = await provider.definitionRequestCount()
+            try expect(requestCount == 2)
+            try expect(viewModel.state?.taskFrame?.problemDefinition == completeProposal.issueSentence)
+        }
+
         try await runner.runAsync("session coordinator persists definition and openings") {
             let provider = MockLLMProvider()
             let repository = InMemoryMeetingRepository()
@@ -1958,6 +2002,40 @@ private actor MockOpenAITransport: OpenAICompatibleTransport {
             headerFields: nil
         )!
         return (responseData, response)
+    }
+}
+
+private actor FlakyDefinitionProvider: LLMProvider {
+    private let success: IssueDefinitionResponse
+    private var remainingFailures: Int
+    private var requests = 0
+
+    init(success: IssueDefinitionResponse, failures: Int = 1) {
+        self.success = success
+        self.remainingFailures = failures
+    }
+
+    func definitionRequestCount() -> Int {
+        requests
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .defineIssue else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        requests += 1
+        if remainingFailures > 0 {
+            remainingFailures -= 1
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        guard let payload = success as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        return LLMEnvelope(payload: payload, trace: ["flaky:\(request.kind.rawValue)"])
     }
 }
 
