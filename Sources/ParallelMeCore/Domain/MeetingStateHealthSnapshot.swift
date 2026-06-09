@@ -88,24 +88,32 @@ public struct MeetingStateHealthSnapshot: Codable, Equatable, Sendable {
             }
         case .inquiry:
             Self.appendIssueReadinessFindings(for: state, to: &findings)
-            let answered = Set(state.inquiryAnswers.map(\.questionID))
-            let activeQuestionCount = state.inquiryQuestions.filter { !answered.contains($0.id) }.count
-            if activeQuestionCount > 0 {
+            let settlementAvailability = SettlementRequestAvailabilitySnapshot(state: state)
+            if settlementAvailability.blockers.contains(.activeQuestionsUnanswered) {
                 findings.append(
                     .warning(
                         id: "inquiry.answers",
                         title: "本轮问询未完成",
-                        detail: "还有 \(activeQuestionCount) 个书记员问题需要回答。",
+                        detail: "还有 \(settlementAvailability.activeQuestionCount) 个书记员问题需要回答。",
                         systemImage: "questionmark.bubble"
                     )
                 )
-            } else if state.alignmentProfile == nil {
+            } else if settlementAvailability.blockers.contains(.missingAlignmentProfile) {
                 findings.append(
                     .warning(
                         id: "inquiry.awaitingQuestions",
                         title: "等待下一轮问询",
                         detail: "当前没有未答问题，也没有足够证据生成本心落定。",
                         systemImage: "arrow.clockwise"
+                    )
+                )
+            } else if settlementAvailability.blockers.contains(.settlementEvidenceMissing) {
+                findings.append(
+                    .warning(
+                        id: "inquiry.settlementEvidence",
+                        title: "本心落定证据不足",
+                        detail: "还缺 \(settlementAvailability.missingSettlementModules.map(\.label).joined(separator: "、")) 的证据。",
+                        systemImage: "sparkles"
                     )
                 )
             }

@@ -46,7 +46,7 @@ The first test layer is `ParallelMeCore`.
 - Settlement readiness depends on evidence and profile completeness, not on the number of turns.
 - Session coordination persists each meaningful transition and records debug events.
 - Session diagnostics summarize recent events, failures, pending provider responses, and event counts in Core.
-- Meeting state health snapshots diagnose restored-paper structural gaps and healthy completed states in Core.
+- Meeting state health snapshots diagnose restored-paper structural gaps, inquiry evidence gaps, and healthy completed states in Core.
 - Demo mode can drive a complete local meeting from petition to archive.
 
 ## Running Tests

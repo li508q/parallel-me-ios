@@ -2162,6 +2162,23 @@ struct ParallelMeCoreSmokeTests {
             )
             try expect(MeetingStateHealthSnapshot(state: roundtable).isHealthy)
 
+            var inquiry = try engine.startInquiry(in: roundtable)
+            inquiry.alignmentProfile = AlignmentProfile()
+            let missingEvidence = MeetingStateHealthSnapshot(state: inquiry)
+            try expect(missingEvidence.tone == .warning)
+            try expect(missingEvidence.findings.map(\.id) == ["inquiry.settlementEvidence"])
+
+            inquiry.alignmentProfile = completeProfile
+            inquiry.inquiryAnswers = [
+                ScribeInquiryAnswer(
+                    questionID: "health-action",
+                    question: "24 小时内能完成的行动是什么？",
+                    selectedOptionID: "budget",
+                    selectedLabel: "今晚写预算和观察期行动。"
+                )
+            ]
+            try expect(MeetingStateHealthSnapshot(state: inquiry).isHealthy)
+
             var archived = roundtable
             archived.stage = .archived
             let missingSettlement = MeetingStateHealthSnapshot(state: archived)
