@@ -478,6 +478,16 @@ struct ParallelMeCoreSmokeTests {
             )
             try expect(ready.canStart)
             try expect(ready.actionTitle == "开始五声圆桌")
+
+            let busy = MeetingStartReadinessSnapshot(
+                petition: "我想换工作",
+                providerSettings: ProviderRuntimeSettings(mode: .demo),
+                isBusy: true
+            )
+            try expect(!busy.canStart)
+            try expect(!busy.canEditPetition)
+            try expect(!busy.canUseStarterPrompts)
+            try expect(busy.actionTitle == "书记员整理中")
         }
 
         try runner.run("runtime preferences actions lock while busy") {

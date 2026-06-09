@@ -44,6 +44,14 @@ public struct MeetingStartReadinessSnapshot: Codable, Equatable, Sendable {
         blockers.isEmpty
     }
 
+    public var canEditPetition: Bool {
+        !blockers.contains(.busy)
+    }
+
+    public var canUseStarterPrompts: Bool {
+        canEditPetition
+    }
+
     public var title: String {
         if blockers.contains(.busy) {
             return "书记员正在整理"

@@ -48,7 +48,7 @@ This keeps prompt iteration, network transport, and product state transitions in
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
 `PetitionStarterPrompts` provides the home screen's first-sentence seeds from Core, keeping onboarding copy stable and testable instead of scattered through SwiftUI.
-`MeetingStartReadinessSnapshot` derives home-screen start blockers, button text, and user-facing guidance from the raw petition and provider settings.
+`MeetingStartReadinessSnapshot` derives home-screen start blockers, button text, input editability, and user-facing guidance from the raw petition and provider settings.
 `ScribeProbeAnswerBatchDraft` keeps a stage-one question turn together until every current question has an answer, preserving multi-question definition rounds.
 `ScribeInquiryAnswerBatchDraft` keeps final inquiry turns together under the same rule, so evidence-gathering cannot skip a visible question.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
@@ -94,7 +94,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 
 - Every model-facing action returns a typed payload.
 - Starter petition prompts are defined in Core and tested for uniqueness and usable seed text before SwiftUI renders them.
-- Home-screen start readiness is derived in Core and tested for empty petitions and incomplete provider settings.
+- Home-screen start readiness is derived in Core and tested for empty petitions, incomplete provider settings, and busy input locking.
 - Stage-one answer batches are derived in Core and the flow engine rejects partial answers for the current question turn.
 - Final inquiry answer batches are derived in Core and the flow engine rejects partial answers for the current active inquiry turn.
 - Every user-visible transition is represented by `MeetingStage`.

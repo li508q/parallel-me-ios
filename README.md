@@ -35,7 +35,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - `ProviderRuntimeSettings` normalizes provider URL, model, and API key text before persistence, runtime snapshots, and provider creation.
 - `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
 - `PetitionStarterPrompts` keeps the home screen's first-sentence seeds in Core so onboarding copy is testable.
-- `MeetingStartReadinessSnapshot` explains empty petitions and incomplete provider settings before the first model-backed step.
+- `MeetingStartReadinessSnapshot` explains empty petitions, incomplete provider settings, and busy start input locking before the first model-backed step.
 - Definition retry recovery keeps a started paper usable if the first model-backed definition request fails.
 - Inquiry retry recovery keeps a paper usable if the first model-backed inquiry request fails after entering inquiry.
 - `ScribeProbeAnswerBatchDraft` keeps multi-question definition turns together so the scribe receives a complete answer batch.

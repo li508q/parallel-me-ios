@@ -82,12 +82,14 @@ public struct ParallelMeRootView: View {
     }
 
     private var startCard: some View {
-        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+        let readiness = viewModel.startReadiness
+        return VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             ProviderSettingsPanel(viewModel: viewModel)
             if viewModel.petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 PetitionStarterPromptGrid { prompt in
                     viewModel.useStarterPrompt(prompt)
                 }
+                .disabled(!readiness.canUseStarterPrompts)
             }
             TextEditor(text: $viewModel.petition)
                 .font(ParallelMeTypography.body)
@@ -101,15 +103,16 @@ public struct ParallelMeRootView: View {
                     RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                         .stroke(ParallelMeColor.line, lineWidth: 1)
                 )
-            StartReadinessView(snapshot: viewModel.startReadiness)
+                .disabled(!readiness.canEditPetition)
+            StartReadinessView(snapshot: readiness)
             Button {
                 viewModel.startMeeting()
             } label: {
-                Label(viewModel.startReadiness.actionTitle, systemImage: "arrow.right.circle.fill")
+                Label(readiness.actionTitle, systemImage: "arrow.right.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!viewModel.canStart)
+            .disabled(!readiness.canStart)
         }
     }
 
