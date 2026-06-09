@@ -104,3 +104,41 @@ private struct SettlementModuleEditor: View {
         .padding(.vertical, ParallelMeSpacing.xs)
     }
 }
+
+struct SettlementUnavailableView: View {
+    var snapshot: SettlementStageSnapshot
+    var reset: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
+            HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+                Image(systemName: snapshot.systemImage)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(ParallelMeColor.filial)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                    Text(snapshot.title)
+                        .font(ParallelMeTypography.title)
+                        .foregroundStyle(ParallelMeColor.ink)
+                    Text(snapshot.detail)
+                        .font(ParallelMeTypography.body)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Button(action: reset) {
+                Label(snapshot.recoveryActionTitle, systemImage: "house")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(ParallelMeSpacing.md)
+        .background(ParallelMeColor.paperLift)
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                .stroke(ParallelMeColor.filial.opacity(0.35), lineWidth: 1)
+        )
+    }
+}

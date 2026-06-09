@@ -65,7 +65,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingExportAvailabilitySnapshot` defines when a paper can be shared from the UI, keeping export entry points aligned with the archive lifecycle. `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
 `RuntimePreferencesActionAvailabilitySnapshot` locks provider and context editing while a runtime preference operation is in flight.
-`SettlementRevisionDraft` owns settlement editing state and validation, and `SettlementActionAvailabilitySnapshot` derives busy-aware apply/archive availability so SwiftUI can render editable modules without deciding which actions are safe.
+`SettlementStageSnapshot` keeps restored settlement-stage papers from rendering a blank body when the Heart Settlement payload is missing. `SettlementRevisionDraft` owns settlement editing state and validation, and `SettlementActionAvailabilitySnapshot` derives busy-aware apply/archive availability so SwiftUI can render editable modules without deciding which actions are safe.
 
 Provider runtime settings are split deliberately:
 

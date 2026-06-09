@@ -1109,6 +1109,24 @@ struct ParallelMeCoreSmokeTests {
             try expect(incomplete.messageTone == .warning)
         }
 
+        try runner.run("settlement stage snapshot exposes missing settlement recovery") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(rawInput: "我想辞职又怕没钱")
+            state.stage = .settlement
+
+            let missing = SettlementStageSnapshot(state: state)
+            try expect(!missing.hasSettlement)
+            try expect(!missing.canShowSettlementEditor)
+            try expect(missing.title == "本心落定缺失")
+            try expect(missing.recoveryActionTitle == "回首页")
+
+            state.heartSettlement = sampleSettlement
+            let ready = SettlementStageSnapshot(state: state)
+            try expect(ready.hasSettlement)
+            try expect(ready.canShowSettlementEditor)
+            try expect(ready.title == "本心落定")
+        }
+
         try runner.run("archive requires complete heart settlement") {
             let engine = MeetingFlowEngine()
             var missingSettlement = try engine.start(rawInput: "我想辞职又怕没钱")

@@ -128,13 +128,16 @@ public struct ParallelMeRootView: View {
         case .inquiry:
             InquiryView(state: state, activeQuestions: viewModel.activeInquiryQuestions, viewModel: viewModel)
         case .settlement:
-            if let settlement = state.heartSettlement {
+            let snapshot = SettlementStageSnapshot(state: state)
+            if snapshot.canShowSettlementEditor, let settlement = state.heartSettlement {
                 SettlementView(
                     settlement: settlement,
                     isBusy: viewModel.isBusy,
                     revise: viewModel.reviseSettlement,
                     archive: viewModel.archive
                 )
+            } else {
+                SettlementUnavailableView(snapshot: snapshot, reset: viewModel.reset)
             }
         case .archived:
             ArchivedView(state: state, reset: viewModel.reset)
