@@ -1035,6 +1035,92 @@ struct ParallelMeCoreSmokeTests {
             try expect(envelope.trace == ["demo:defineIssue"])
         }
 
+        try await runner.runAsync("openai-compatible provider sends strict chat request and decodes response") {
+            let payload = IssueDefinitionResponse(
+                proposal: completeProposal,
+                readyToPropose: true,
+                thinking: "proposal ready"
+            )
+            let payloadData = try ParallelMeCoding.makeEncoder().encode(payload)
+            let payloadJSON = try unwrap(String(data: payloadData, encoding: .utf8), "Expected payload JSON")
+            let transport = MockOpenAITransport(
+                statusCode: 200,
+                responseData: try chatCompletionResponseData(content: "```json\n\(payloadJSON)\n```")
+            )
+            let provider = OpenAICompatibleProvider(
+                configuration: OpenAICompatibleConfiguration(
+                    baseURL: URL(string: "https://api.example.com/v1")!,
+                    apiKey: "sk-test",
+                    model: "gpt-4.1-mini",
+                    temperature: 0.2,
+                    timeout: 12
+                ),
+                transport: transport
+            )
+
+            let envelope = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(rawInput: "我想辞职又怕没钱", dialogue: [])
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
+            let captured = try await unwrap(transport.latestRequest(), "Expected captured OpenAI request")
+            let bodyData = try unwrap(captured.body, "Expected request body")
+            let body = try unwrap(
+                JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                "Expected JSON request body"
+            )
+            let responseFormat = try unwrap(body["response_format"] as? [String: Any], "Expected response format")
+            let messages = try unwrap(body["messages"] as? [[String: Any]], "Expected messages")
+            let systemPrompt = try unwrap(messages.first?["content"] as? String, "Expected system prompt")
+            let userPrompt = try unwrap(messages.last?["content"] as? String, "Expected user prompt")
+
+            try expect(envelope.payload.proposal == completeProposal)
+            try expect(envelope.trace == ["openai-compatible:defineIssue"])
+            try expect(captured.urlString == "https://api.example.com/v1/chat/completions")
+            try expect(captured.method == "POST")
+            try expect(captured.timeout == 12)
+            try expect(captured.authorization == "Bearer sk-test")
+            try expect(captured.contentType == "application/json")
+            try expect(body["model"] as? String == "gpt-4.1-mini")
+            try expect(body["temperature"] as? Double == 0.2)
+            try expect(responseFormat["type"] as? String == "json_object")
+            try expect(messages.map { $0["role"] as? String } == ["system", "user"])
+            try expect(systemPrompt.contains("只返回一个严格 JSON object"))
+            try expect(userPrompt.contains("任务输入 JSON"))
+            try expect(userPrompt.contains("我想辞职又怕没钱"))
+        }
+
+        try await runner.runAsync("openai-compatible provider reports HTTP error body") {
+            let transport = MockOpenAITransport(
+                statusCode: 429,
+                responseData: Data(#"{"error":"rate limited"}"#.utf8)
+            )
+            let provider = OpenAICompatibleProvider(
+                configuration: OpenAICompatibleConfiguration(
+                    baseURL: URL(string: "https://api.example.com/v1")!,
+                    apiKey: "sk-test",
+                    model: "gpt-4.1-mini"
+                ),
+                transport: transport
+            )
+
+            do {
+                _ = try await provider.generate(
+                    request: LLMRequest(
+                        kind: .defineIssue,
+                        payload: IssueDefinitionInput(rawInput: "我想辞职又怕没钱", dialogue: [])
+                    ),
+                    responseType: IssueDefinitionResponse.self
+                )
+                throw TestFailure("Expected OpenAI-compatible transport error")
+            } catch OpenAICompatibleProviderError.transport(let statusCode, let body) {
+                try expect(statusCode == 429)
+                try expect(body.contains("rate limited"))
+            }
+        }
+
         try await runner.runAsync("provider settings repository keeps api key out of metadata") {
             let directory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("parallel-me-provider-\(UUID().uuidString)", isDirectory: true)
@@ -1685,6 +1771,21 @@ private func unwrap<T>(_ value: T?, _ message: String) throws -> T {
     return value
 }
 
+private func chatCompletionResponseData(content: String) throws -> Data {
+    try JSONSerialization.data(
+        withJSONObject: [
+            "choices": [
+                [
+                    "message": [
+                        "content": content
+                    ]
+                ]
+            ]
+        ],
+        options: []
+    )
+}
+
 @MainActor
 private func waitFor(
     _ name: String,
@@ -1697,6 +1798,48 @@ private func waitFor(
             throw TestFailure("Timed out waiting for \(name)")
         }
         try await Task.sleep(nanoseconds: 20_000_000)
+    }
+}
+
+private struct CapturedOpenAIRequest: Sendable {
+    var urlString: String?
+    var method: String?
+    var timeout: TimeInterval
+    var body: Data?
+    var authorization: String?
+    var contentType: String?
+}
+
+private actor MockOpenAITransport: OpenAICompatibleTransport {
+    private let statusCode: Int
+    private let responseData: Data
+    private var capturedRequest: CapturedOpenAIRequest?
+
+    init(statusCode: Int, responseData: Data) {
+        self.statusCode = statusCode
+        self.responseData = responseData
+    }
+
+    func latestRequest() -> CapturedOpenAIRequest? {
+        capturedRequest
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        capturedRequest = CapturedOpenAIRequest(
+            urlString: request.url?.absoluteString,
+            method: request.httpMethod,
+            timeout: request.timeoutInterval,
+            body: request.httpBody,
+            authorization: request.value(forHTTPHeaderField: "Authorization"),
+            contentType: request.value(forHTTPHeaderField: "Content-Type")
+        )
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://mock.parallelme.local")!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (responseData, response)
     }
 }
 

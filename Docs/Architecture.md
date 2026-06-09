@@ -32,7 +32,7 @@ Stage-one proposal refinement also lives in the coordinator. User feedback is ap
 The provider boundary is intentionally typed:
 
 - `ProviderPromptSpec` defines the role, hard constraints, and JSON response contract for every model-facing task.
-- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type.
+- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type. Its HTTP transport is injectable so request shape, headers, error handling, and JSON decoding are testable without live network calls.
 - `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key.
 - `MockLLMProvider` is the precise test double used when a test needs one exact payload per task.
 - `ProviderContext` carries optional durable user background and response preferences through every provider payload. Prompt specs explicitly treat it as calibration only, so it cannot override the current petition, proposal, moves, answers, or feedback.
@@ -112,5 +112,6 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Proposal feedback is persisted as part of the defining dialogue before a refined proposal is requested.
 - The final inquiry loop has no hard cap; tests assert this invariant.
 - Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
+- OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
 - Session events record provider requests, provider responses, persistence, and failures; the default app keeps the latest events in memory and exposes them through the collapsible running trace panel.

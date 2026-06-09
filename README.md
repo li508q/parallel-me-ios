@@ -30,7 +30,7 @@ The default app also wires an in-memory session event sink so the SwiftUI runnin
 ## Runtime Providers
 
 - `DemoLLMProvider` drives a complete local meeting without network, useful for UI work and smoke tests.
-- `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object`, uses `ProviderPromptSpec` for tested product contracts, and decodes structured JSON back into typed product payloads.
+- `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object`, uses `ProviderPromptSpec` for tested product contracts, and decodes structured JSON back into typed product payloads through an injectable HTTP transport.
 - `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
 - `PetitionStarterPrompts` keeps the home screen's first-sentence seeds in Core so onboarding copy is testable.
 - `MeetingStartReadinessSnapshot` explains empty petitions and incomplete provider settings before the first model-backed step.

@@ -29,18 +29,38 @@ public enum OpenAICompatibleProviderError: Error, Equatable, Sendable {
     case invalidJSON(String)
 }
 
+public protocol OpenAICompatibleTransport: Sendable {
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse)
+}
+
+public actor URLSessionOpenAICompatibleTransport: OpenAICompatibleTransport {
+    private let session: URLSession
+
+    public init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    public func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw OpenAICompatibleProviderError.transport(statusCode: -1, body: "Missing HTTP response")
+        }
+        return (data, httpResponse)
+    }
+}
+
 public actor OpenAICompatibleProvider: LLMProvider {
     private let configuration: OpenAICompatibleConfiguration
-    private let session: URLSession
+    private let transport: any OpenAICompatibleTransport
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
 
     public init(
         configuration: OpenAICompatibleConfiguration,
-        session: URLSession = .shared
+        transport: any OpenAICompatibleTransport = URLSessionOpenAICompatibleTransport()
     ) {
         self.configuration = configuration
-        self.session = session
+        self.transport = transport
         self.encoder = ParallelMeCoding.makeEncoder()
         self.decoder = ParallelMeCoding.makeDecoder()
     }
@@ -64,10 +84,7 @@ public actor OpenAICompatibleProvider: LLMProvider {
         urlRequest.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let (responseData, response) = try await session.data(for: urlRequest)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw OpenAICompatibleProviderError.transport(statusCode: -1, body: "Missing HTTP response")
-        }
+        let (responseData, httpResponse) = try await transport.data(for: urlRequest)
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw OpenAICompatibleProviderError.transport(
                 statusCode: httpResponse.statusCode,
