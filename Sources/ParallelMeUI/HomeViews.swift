@@ -232,12 +232,13 @@ struct PaperLibrarySection: View {
     var restore: (String) -> Void
     var delete: (String) -> Void
 
-    private var hasQuery: Bool {
-        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var isFiltering: Bool {
-        filter != .all
+    private var presentation: MeetingLibraryPresentationSnapshot {
+        MeetingLibraryPresentationSnapshot(
+            library: library,
+            sourceLibrary: sourceLibrary,
+            searchText: searchText,
+            filter: filter
+        )
     }
 
     private var availability: PaperLibraryActionAvailabilitySnapshot {
@@ -245,14 +246,14 @@ struct PaperLibrarySection: View {
     }
 
     var body: some View {
-        if !sourceLibrary.isEmpty {
+        if presentation.shouldShowLibrary {
             VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("纸页库")
+                    Text(presentation.title)
                         .font(ParallelMeTypography.bodyStrong)
                         .foregroundStyle(ParallelMeColor.ink)
                     Spacer()
-                    Text(statusText)
+                    Text(presentation.statusText)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                 }
@@ -270,7 +271,7 @@ struct PaperLibrarySection: View {
                     TextField("搜索纸页", text: $searchText)
                         .textFieldStyle(.plain)
                         .font(ParallelMeTypography.compact)
-                    if hasQuery {
+                    if presentation.hasSearchQuery {
                         Button {
                             searchText = ""
                         } label: {
@@ -297,9 +298,9 @@ struct PaperLibrarySection: View {
                 }
                 .pickerStyle(.segmented)
                 .font(ParallelMeTypography.compact)
-                .disabled(sourceLibrary.totalCount == 0)
+                .disabled(!presentation.shouldShowLibrary)
 
-                if library.isEmpty {
+                if let emptyStateText = presentation.emptyStateText {
                     Text(emptyStateText)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
@@ -308,22 +309,11 @@ struct PaperLibrarySection: View {
                         .background(ParallelMeColor.paperLift)
                         .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
                 } else {
-                    if !library.unfinished.isEmpty {
+                    ForEach(presentation.groups) { group in
                         PaperLibraryGroup(
-                            title: "未完成",
-                            meetings: library.unfinished,
-                            tint: ParallelMeColor.future,
-                            availability: availability,
-                            restore: restore,
-                            delete: delete
-                        )
-                    }
-
-                    if !library.archived.isEmpty {
-                        PaperLibraryGroup(
-                            title: "已归档",
-                            meetings: library.archived,
-                            tint: ParallelMeColor.money,
+                            title: group.title,
+                            meetings: group.meetings,
+                            tint: tint(for: group.kind),
                             availability: availability,
                             restore: restore,
                             delete: delete
@@ -334,23 +324,12 @@ struct PaperLibrarySection: View {
         }
     }
 
-    private var statusText: String {
-        if hasQuery || isFiltering {
-            return "\(library.totalCount) 个匹配"
-        }
-        return "\(sourceLibrary.totalCount) 张 · \(sourceLibrary.archivedCount) 已归档"
-    }
-
-    private var emptyStateText: String {
-        switch (hasQuery, filter) {
-        case (true, _):
-            return "没有匹配纸页"
-        case (false, .unfinished):
-            return "暂时没有未完成纸页"
-        case (false, .archived):
-            return "暂时没有已归档纸页"
-        case (false, .all):
-            return "纸页库还是空的"
+    private func tint(for kind: MeetingLibraryPresentationGroupKind) -> Color {
+        switch kind {
+        case .unfinished:
+            return ParallelMeColor.future
+        case .archived:
+            return ParallelMeColor.money
         }
     }
 }

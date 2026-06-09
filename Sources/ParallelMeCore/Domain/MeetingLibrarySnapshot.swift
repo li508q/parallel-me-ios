@@ -104,3 +104,93 @@ public struct MeetingLibrarySnapshot: Codable, Equatable, Sendable {
         unfinished + archived
     }
 }
+
+public enum MeetingLibraryPresentationGroupKind: String, Codable, Sendable, Identifiable {
+    case unfinished
+    case archived
+
+    public var id: String { rawValue }
+}
+
+public struct MeetingLibraryPresentationGroup: Codable, Equatable, Sendable, Identifiable {
+    public var kind: MeetingLibraryPresentationGroupKind
+    public var title: String
+    public var meetings: [MeetingSummary]
+
+    public var id: MeetingLibraryPresentationGroupKind {
+        kind
+    }
+
+    public init(
+        kind: MeetingLibraryPresentationGroupKind,
+        title: String,
+        meetings: [MeetingSummary]
+    ) {
+        self.kind = kind
+        self.title = title
+        self.meetings = meetings
+    }
+}
+
+public struct MeetingLibraryPresentationSnapshot: Codable, Equatable, Sendable {
+    public var title: String
+    public var statusText: String
+    public var hasSearchQuery: Bool
+    public var isFiltering: Bool
+    public var shouldShowLibrary: Bool
+    public var emptyStateText: String?
+    public var groups: [MeetingLibraryPresentationGroup]
+
+    public init(
+        library: MeetingLibrarySnapshot,
+        sourceLibrary: MeetingLibrarySnapshot,
+        searchText: String,
+        filter: MeetingLibraryFilter
+    ) {
+        title = "纸页库"
+        hasSearchQuery = !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        isFiltering = filter != .all
+        shouldShowLibrary = !sourceLibrary.isEmpty
+        statusText = if hasSearchQuery || isFiltering {
+            "\(library.totalCount) 个匹配"
+        } else {
+            "\(sourceLibrary.totalCount) 张 · \(sourceLibrary.archivedCount) 已归档"
+        }
+
+        var groups: [MeetingLibraryPresentationGroup] = []
+        if !library.unfinished.isEmpty {
+            groups.append(
+                MeetingLibraryPresentationGroup(
+                    kind: .unfinished,
+                    title: "未完成",
+                    meetings: library.unfinished
+                )
+            )
+        }
+        if !library.archived.isEmpty {
+            groups.append(
+                MeetingLibraryPresentationGroup(
+                    kind: .archived,
+                    title: "已归档",
+                    meetings: library.archived
+                )
+            )
+        }
+        self.groups = groups
+
+        emptyStateText = if library.isEmpty {
+            switch (hasSearchQuery, filter) {
+            case (true, _):
+                "没有匹配纸页"
+            case (false, .unfinished):
+                "暂时没有未完成纸页"
+            case (false, .archived):
+                "暂时没有已归档纸页"
+            case (false, .all):
+                "纸页库还是空的"
+            }
+        } else {
+            nil
+        }
+    }
+}

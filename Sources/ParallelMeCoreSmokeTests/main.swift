@@ -1015,6 +1015,85 @@ struct ParallelMeCoreSmokeTests {
             try expect(library.filtered(searchText: "   ") == library)
         }
 
+        try runner.run("meeting library presentation derives status groups and empty copy") {
+            let now = Date(timeIntervalSince1970: 100)
+            let summaries = [
+                MeetingSummary(
+                    id: "money",
+                    title: "现金流观察期",
+                    subtitle: "五声圆桌 · 5 个开场",
+                    stage: .roundtable,
+                    createdAt: Date(timeIntervalSince1970: 10),
+                    updatedAt: now
+                ),
+                MeetingSummary(
+                    id: "health",
+                    title: "身体底线",
+                    subtitle: "已归档",
+                    stage: .archived,
+                    createdAt: Date(timeIntervalSince1970: 20),
+                    updatedAt: Date(timeIntervalSince1970: 90)
+                )
+            ]
+            let source = MeetingLibrarySnapshot(summaries: summaries)
+            let all = MeetingLibraryPresentationSnapshot(
+                library: source,
+                sourceLibrary: source,
+                searchText: "",
+                filter: .all
+            )
+            let search = MeetingLibraryPresentationSnapshot(
+                library: source.filtered(searchText: "现金"),
+                sourceLibrary: source,
+                searchText: "  现金  ",
+                filter: .all
+            )
+            let noMatch = MeetingLibraryPresentationSnapshot(
+                library: source.filtered(searchText: "不存在"),
+                sourceLibrary: source,
+                searchText: "不存在",
+                filter: .all
+            )
+            let noArchivedSource = MeetingLibrarySnapshot(summaries: [summaries[0]])
+            let noArchived = MeetingLibraryPresentationSnapshot(
+                library: noArchivedSource.filtered(searchText: "", filter: .archived),
+                sourceLibrary: noArchivedSource,
+                searchText: "",
+                filter: .archived
+            )
+            let emptySource = MeetingLibrarySnapshot()
+            let emptyAll = MeetingLibraryPresentationSnapshot(
+                library: emptySource,
+                sourceLibrary: emptySource,
+                searchText: "",
+                filter: .all
+            )
+
+            try expect(all.shouldShowLibrary)
+            try expect(all.title == "纸页库")
+            try expect(all.statusText == "2 张 · 1 已归档")
+            try expect(!all.hasSearchQuery)
+            try expect(!all.isFiltering)
+            try expect(all.emptyStateText == nil)
+            try expect(all.groups.map(\.kind) == [.unfinished, .archived])
+            try expect(all.groups.map(\.title) == ["未完成", "已归档"])
+            try expect(all.groups.first?.meetings.map(\.id) == ["money"])
+            try expect(all.groups.last?.meetings.map(\.id) == ["health"])
+
+            try expect(search.statusText == "1 个匹配")
+            try expect(search.hasSearchQuery)
+            try expect(search.groups.map(\.kind) == [.unfinished])
+            try expect(search.groups.first?.meetings.map(\.id) == ["money"])
+            try expect(noMatch.statusText == "0 个匹配")
+            try expect(noMatch.emptyStateText == "没有匹配纸页")
+            try expect(noMatch.groups.isEmpty)
+            try expect(noArchived.statusText == "0 个匹配")
+            try expect(noArchived.isFiltering)
+            try expect(noArchived.emptyStateText == "暂时没有已归档纸页")
+            try expect(!emptyAll.shouldShowLibrary)
+            try expect(emptyAll.emptyStateText == "纸页库还是空的")
+        }
+
         try runner.run("meeting library searches full paper content") {
             let engine = MeetingFlowEngine()
             var state = try engine.start(rawInput: "我想重新安排工作")
