@@ -943,6 +943,61 @@ struct ParallelMeCoreSmokeTests {
             try expect(busy.actionTitle == "书记员整理中")
         }
 
+        try runner.run("home start presentation derives header prompts and start controls") {
+            let empty = HomeStartPresentationSnapshot(
+                petition: "   ",
+                providerSettings: ProviderRuntimeSettings(mode: .demo)
+            )
+            let ready = HomeStartPresentationSnapshot(
+                petition: "我想换工作",
+                providerSettings: ProviderRuntimeSettings(mode: .demo)
+            )
+            let busy = HomeStartPresentationSnapshot(
+                petition: "我想换工作",
+                providerSettings: ProviderRuntimeSettings(mode: .demo),
+                isBusy: true
+            )
+            let customPrompts = [
+                PetitionStarterPrompt(
+                    id: "custom",
+                    title: "自定义",
+                    detail: "帮助起笔",
+                    seedText: "我想先说一句。",
+                    accentVoiceID: .future
+                )
+            ]
+            let custom = HomeStartPresentationSnapshot(
+                petition: "",
+                providerSettings: ProviderRuntimeSettings(mode: .demo),
+                starterPrompts: customPrompts
+            )
+
+            try expect(empty.brand == "ParallelMe")
+            try expect(empty.headline == "今天，想听见哪件事？")
+            try expect(empty.detail.contains("五声"))
+            try expect(empty.shouldShowStarterPrompts)
+            try expect(empty.canUseStarterPrompts)
+            try expect(empty.canEditPetition)
+            try expect(empty.startAction.title == "还不能开始")
+            try expect(empty.startAction.systemImage == "arrow.right.circle.fill")
+            try expect(!empty.startAction.isEnabled)
+            try expect(empty.readiness.blockers == [.emptyPetition])
+
+            try expect(!ready.shouldShowStarterPrompts)
+            try expect(ready.startAction.title == "开始五声圆桌")
+            try expect(ready.startAction.isEnabled)
+            try expect(ready.readiness.canStart)
+
+            try expect(!busy.canEditPetition)
+            try expect(!busy.canUseStarterPrompts)
+            try expect(!busy.startAction.isEnabled)
+            try expect(busy.startAction.title == "书记员整理中")
+
+            try expect(custom.starterPrompts.map(\.id) == ["custom"])
+            try expect(custom.starterPrompts.first?.accessibilityLabel == "自定义")
+            try expect(custom.starterPrompts.first?.accessibilityHint == "填入起笔困惑：我想先说一句。")
+        }
+
         try runner.run("proposal confirmation availability explains blocked confirmations") {
             let engine = MeetingFlowEngine()
             let started = try engine.start(rawInput: "我想辞职又怕没钱")

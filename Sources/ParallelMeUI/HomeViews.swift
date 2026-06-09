@@ -109,12 +109,14 @@ struct ProviderSettingsPanel: View {
 }
 
 struct PetitionStarterPromptGrid: View {
-    var prompts: [PetitionStarterPrompt] = PetitionStarterPrompts.all
+    var prompts: [PetitionStarterPromptPresentationSnapshot] =
+        PetitionStarterPrompts.all.map(PetitionStarterPromptPresentationSnapshot.init(prompt:))
     var select: (PetitionStarterPrompt) -> Void
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: ParallelMeSpacing.sm)], spacing: ParallelMeSpacing.sm) {
-            ForEach(prompts) { prompt in
+            ForEach(prompts) { snapshot in
+                let prompt = snapshot.prompt
                 Button {
                     select(prompt)
                 } label: {
@@ -145,8 +147,8 @@ struct PetitionStarterPromptGrid: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(Text(prompt.title))
-                .accessibilityHint(Text("填入起笔困惑：\(prompt.seedText)"))
+                .accessibilityLabel(Text(snapshot.accessibilityLabel))
+                .accessibilityHint(Text(snapshot.accessibilityHint))
             }
         }
     }

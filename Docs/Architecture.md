@@ -51,6 +51,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `FileMeetingRepository` skips unreadable JSON records when listing the local library, so one damaged or legacy file cannot hide the rest of the user's saved papers.
 `PetitionStarterPrompts` provides the home screen's first-sentence seeds from Core, keeping onboarding copy stable and testable instead of scattered through SwiftUI.
 `MeetingStartReadinessSnapshot` derives home-screen start blockers, button text, input editability, and user-facing guidance from the raw petition and provider settings.
+`HomeStartPresentationSnapshot` combines starter prompts and start readiness into the home entry surface, deriving the header copy, starter-card visibility and accessibility, petition editor lock, and start action chrome.
 `IssueDefinitionStagePresentationSnapshot` derives stage-one visible mode, loading copy, retry recovery, and proposal-revision controls, so SwiftUI does not decide when a defining paper should show questions, recovery, loading, or proposal confirmation.
 `ScribeProbeAnswerBatchDraft` keeps a stage-one question turn together until every current question has an answer, preserving multi-question definition rounds.
 `ScribeAnswerBatchPresentationSnapshot` derives shared progress text, submit actions, and custom-answer control copy for definition and inquiry batches, keeping multi-question UI state aligned with the Core draft rules.
@@ -108,6 +109,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Every model-facing action returns a typed payload.
 - Starter petition prompts are defined in Core and tested for uniqueness and usable seed text before SwiftUI renders them.
 - Home-screen start readiness is derived in Core and tested for empty petitions, incomplete provider settings, and busy input locking.
+- Home-screen entry presentation derives header copy, starter prompt visibility and accessibility, petition editability, and start action controls in Core.
 - Stage-one answer batches are derived in Core and the flow engine rejects partial answers for the current question turn.
 - Final inquiry answer batches are derived in Core and the flow engine rejects partial answers for the current active inquiry turn.
 - Every user-visible transition is represented by `MeetingStage`.

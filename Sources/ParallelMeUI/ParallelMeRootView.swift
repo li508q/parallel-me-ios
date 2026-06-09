@@ -73,28 +73,29 @@ public struct ParallelMeRootView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-            Text("ParallelMe")
+        let presentation = homeStartPresentation
+        return VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
+            Text(presentation.brand)
                 .font(ParallelMeTypography.eyebrow)
                 .foregroundStyle(ParallelMeColor.inkMuted)
-            Text("今天，想听见哪件事？")
+            Text(presentation.headline)
                 .font(ParallelMeTypography.title)
                 .foregroundStyle(ParallelMeColor.ink)
-            Text("书记员先帮你定义议题，再让五声坐下来慢慢摊开。")
+            Text(presentation.detail)
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.inkMuted)
         }
     }
 
     private var startCard: some View {
-        let readiness = viewModel.startReadiness
+        let presentation = homeStartPresentation
         return VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             ProviderSettingsPanel(viewModel: viewModel)
-            if viewModel.petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                PetitionStarterPromptGrid { prompt in
+            if presentation.shouldShowStarterPrompts {
+                PetitionStarterPromptGrid(prompts: presentation.starterPrompts) { prompt in
                     viewModel.useStarterPrompt(prompt)
                 }
-                .disabled(!readiness.canUseStarterPrompts)
+                .disabled(!presentation.canUseStarterPrompts)
             }
             TextEditor(text: $viewModel.petition)
                 .font(ParallelMeTypography.body)
@@ -108,17 +109,28 @@ public struct ParallelMeRootView: View {
                     RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                         .stroke(ParallelMeColor.line, lineWidth: 1)
                 )
-                .disabled(!readiness.canEditPetition)
-            StartReadinessView(snapshot: readiness)
+                .disabled(!presentation.canEditPetition)
+            StartReadinessView(snapshot: presentation.readiness)
             Button {
                 viewModel.startMeeting()
             } label: {
-                Label(readiness.actionTitle, systemImage: "arrow.right.circle.fill")
+                Label(
+                    presentation.startAction.title,
+                    systemImage: presentation.startAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!readiness.canStart)
+            .disabled(!presentation.startAction.isEnabled)
         }
+    }
+
+    private var homeStartPresentation: HomeStartPresentationSnapshot {
+        HomeStartPresentationSnapshot(
+            petition: viewModel.petition,
+            providerSettings: viewModel.providerSettings,
+            isBusy: viewModel.isBusy
+        )
     }
 
     @ViewBuilder
