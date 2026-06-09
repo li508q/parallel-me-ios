@@ -914,6 +914,19 @@ struct ParallelMeCoreSmokeTests {
             try expect(archive.timelineItems.last?.kind == .archived)
         }
 
+        try runner.run("meeting export availability follows archive state") {
+            for stage in [MeetingStage.defining, .roundtable, .inquiry, .settlement] {
+                let snapshot = MeetingExportAvailabilitySnapshot(stage: stage)
+                try expect(!snapshot.canExport)
+                try expect(snapshot.actionTitle == "归档后导出")
+            }
+
+            let archived = MeetingExportAvailabilitySnapshot(stage: .archived)
+            try expect(archived.canExport)
+            try expect(archived.actionTitle == "导出纸页")
+            try expect(archived.accessibilityHint.contains("已归档"))
+        }
+
         try runner.run("meeting export document renders archived paper") {
             let engine = MeetingFlowEngine()
             var state = try engine.start(

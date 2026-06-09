@@ -51,6 +51,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - `RoundtableTranscriptSnapshot` groups openings and user-driven moves for live reading and Markdown export.
 - `MeetingLibrarySnapshot` groups, status-filters, and full-text searches local papers across recent, unfinished, and archived sections.
 - `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data for restored papers.
+- Export controls are gated by Core state, so only archived papers prepare shareable Markdown files.
 - `MeetingExportDocument` renders a paper into Markdown, and `MeetingExportFileWriter` writes a named `.md` file for iOS sharing and developer-readable inspection.
 - `SettlementRevisionDraft` keeps final-card edits normalized, change-aware, and safe to archive.
 

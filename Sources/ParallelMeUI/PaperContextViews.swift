@@ -33,6 +33,10 @@ struct MeetingPaperContextView: View {
         MeetingExportDocument(state: state)
     }
 
+    private var exportAvailability: MeetingExportAvailabilitySnapshot {
+        MeetingExportAvailabilitySnapshot(state: state)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
@@ -62,28 +66,31 @@ struct MeetingPaperContextView: View {
                     .buttonStyle(.bordered)
                     .disabled(isBusy)
                     .accessibilityLabel(Text("回到首页，稍后继续这张纸页"))
-                    if let exportFileURL {
-                        ShareLink(
-                            item: exportFileURL,
-                            subject: Text(exportDocument.title),
-                            message: Text("ParallelMe 纸页")
-                        ) {
-                            Label("导出纸页", systemImage: "square.and.arrow.up")
-                                .labelStyle(.iconOnly)
-                                .frame(width: 30, height: 30)
+                    if exportAvailability.canExport {
+                        if let exportFileURL {
+                            ShareLink(
+                                item: exportFileURL,
+                                subject: Text(exportDocument.title),
+                                message: Text("ParallelMe 纸页")
+                            ) {
+                                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
+                                    .labelStyle(.iconOnly)
+                                    .frame(width: 30, height: 30)
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityLabel(Text(exportAvailability.actionTitle))
+                            .accessibilityHint(Text(exportDocument.fileName))
+                        } else {
+                            Button(action: prepareExportFile) {
+                                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
+                                    .labelStyle(.iconOnly)
+                                    .frame(width: 30, height: 30)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(isBusy)
+                            .accessibilityLabel(Text(exportAvailability.actionTitle))
+                            .accessibilityHint(Text(exportAvailability.accessibilityHint))
                         }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel(Text("导出这张纸页"))
-                        .accessibilityHint(Text(exportDocument.fileName))
-                    } else {
-                        Button(action: prepareExportFile) {
-                            Label("准备导出", systemImage: "square.and.arrow.up")
-                                .labelStyle(.iconOnly)
-                                .frame(width: 30, height: 30)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(isBusy)
-                        .accessibilityLabel(Text("准备导出这张纸页"))
                     }
                 }
             }
@@ -130,7 +137,12 @@ struct MeetingPaperContextView: View {
                 .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
         )
         .task(id: state) {
-            prepareExportFile()
+            if exportAvailability.canExport {
+                prepareExportFile()
+            } else {
+                exportFileURL = nil
+                exportErrorMessage = nil
+            }
         }
     }
 

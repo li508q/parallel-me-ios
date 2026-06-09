@@ -61,7 +61,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
 `MeetingLibrarySnapshot` groups, status-filters, and full-text searches saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
-`MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
+`MeetingExportAvailabilitySnapshot` defines when a paper can be shared from the UI, keeping export entry points aligned with the archive lifecycle. `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
 `SettlementRevisionDraft` owns settlement editing state and validation, so SwiftUI can render editable modules without deciding which revisions are meaningful.
 
@@ -108,6 +108,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
+- Export availability is derived in Core, so the UI only prepares Markdown files for archived papers.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
 - Markdown export file writing is tested with a temporary local directory before the UI shares the file URL.
 - Settlement revision drafts are normalized and tested before UI sends revisions back to the session coordinator.
