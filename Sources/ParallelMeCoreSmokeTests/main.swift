@@ -751,6 +751,70 @@ struct ParallelMeCoreSmokeTests {
             try expect(busy.blockers == [.busy])
         }
 
+        try runner.run("inquiry presentation derives active questions and settlement controls") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            let roundtable = try engine.confirmProposal(in: proposed)
+            let opened = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: roundtable)
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把 24 小时内能做的事落下来。")],
+                in: opened
+            )
+            let inquiry = try engine.startInquiry(in: moved)
+            let actionQuestion = ScribeInquiryQuestion(
+                id: "inquiry_presentation_action",
+                question: "24 小时内能完成的行动是什么？",
+                options: [ScribeInquiryOption(id: "budget", label: "今晚写预算。")],
+                module: .minimumAction
+            )
+            let activeQuestionState = try engine.receiveInquiryQuestions(
+                [actionQuestion],
+                profile: nil,
+                ledger: ScribeObservationLedger(),
+                readyForSettlement: false,
+                in: inquiry
+            )
+            var ready = inquiry
+            ready.alignmentProfile = completeProfile
+            ready.inquiryAnswers = [
+                ScribeInquiryAnswer(
+                    questionID: actionQuestion.id,
+                    question: actionQuestion.question,
+                    selectedOptionID: "budget",
+                    selectedLabel: "今晚写预算和观察期行动。"
+                )
+            ]
+
+            let withQuestions = InquiryStagePresentationSnapshot(state: activeQuestionState)
+            let canContinue = InquiryStagePresentationSnapshot(state: inquiry)
+            let requestable = InquiryStagePresentationSnapshot(state: ready)
+            let busyRequestable = InquiryStagePresentationSnapshot(state: ready, isBusy: true)
+
+            try expect(withQuestions.title == "书记员问询")
+            try expect(withQuestions.mode == .questions)
+            try expect(withQuestions.activeQuestions.map(\.id) == [actionQuestion.id])
+            try expect(!withQuestions.settlementRequest.continueInquiryAction.isVisible)
+            try expect(withQuestions.settlementRequest.requestSettlementAction.title == "还不能落定")
+            try expect(withQuestions.settlementRequest.requestSettlementAction.systemImage == "sparkles")
+            try expect(!withQuestions.settlementRequest.requestSettlementAction.isEnabled)
+
+            try expect(canContinue.mode == .settlementRequest)
+            try expect(canContinue.activeQuestions.isEmpty)
+            try expect(canContinue.settlementRequest.continueInquiryAction.isVisible)
+            try expect(canContinue.settlementRequest.continueInquiryAction.isEnabled)
+            try expect(canContinue.settlementRequest.continueInquiryAction.title == "继续书记员问询")
+            try expect(canContinue.settlementRequest.continueInquiryAction.systemImage == "arrow.clockwise")
+
+            try expect(requestable.mode == .settlementRequest)
+            try expect(requestable.settlementRequest.title == "证据已经足够")
+            try expect(requestable.settlementRequest.requestSettlementAction.title == "生成本心落定")
+            try expect(requestable.settlementRequest.requestSettlementAction.isEnabled)
+            try expect(!requestable.settlementRequest.continueInquiryAction.isVisible)
+            try expect(!busyRequestable.settlementRequest.requestSettlementAction.isEnabled)
+        }
+
         try runner.run("meeting flow stores normalized runtime snapshot") {
             let engine = MeetingFlowEngine()
             let state = try engine.start(

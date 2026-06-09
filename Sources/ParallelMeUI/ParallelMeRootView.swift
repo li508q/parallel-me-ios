@@ -129,7 +129,7 @@ public struct ParallelMeRootView: View {
         case .roundtable:
             RoundtableView(state: state, viewModel: viewModel)
         case .inquiry:
-            InquiryView(state: state, activeQuestions: viewModel.activeInquiryQuestions, viewModel: viewModel)
+            InquiryView(state: state, viewModel: viewModel)
         case .settlement:
             let snapshot = SettlementStageSnapshot(state: state)
             if snapshot.canShowSettlementEditor, let settlement = state.heartSettlement {

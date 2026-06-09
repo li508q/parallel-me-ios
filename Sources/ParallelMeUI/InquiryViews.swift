@@ -4,22 +4,26 @@ import SwiftUI
 
 struct InquiryView: View {
     var state: MeetingFlowState
-    var activeQuestions: [ScribeInquiryQuestion]
     @ObservedObject var viewModel: MeetingViewModel
+
+    private var presentation: InquiryStagePresentationSnapshot {
+        InquiryStagePresentationSnapshot(state: state, isBusy: viewModel.isBusy)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
-            Text("书记员问询")
+            Text(presentation.title)
                 .font(ParallelMeTypography.bodyStrong)
-            if activeQuestions.isEmpty {
+            switch presentation.mode {
+            case .settlementRequest:
                 SettlementRequestView(
-                    snapshot: SettlementRequestAvailabilitySnapshot(state: state, isBusy: viewModel.isBusy),
+                    snapshot: presentation.settlementRequest,
                     requestSettlement: viewModel.requestSettlement,
                     continueInquiry: viewModel.retryInquiry
                 )
-            } else {
+            case .questions:
                 InquiryQuestionBatchView(
-                    questions: activeQuestions,
+                    questions: presentation.activeQuestions,
                     isBusy: viewModel.isBusy
                 ) { answers in
                     viewModel.submitInquiryAnswers(answers)
@@ -30,7 +34,7 @@ struct InquiryView: View {
 }
 
 private struct SettlementRequestView: View {
-    var snapshot: SettlementRequestAvailabilitySnapshot
+    var snapshot: SettlementRequestPresentationSnapshot
     var requestSettlement: () -> Void
     var continueInquiry: () -> Void
 
@@ -44,20 +48,27 @@ private struct SettlementRequestView: View {
                 .foregroundStyle(messageColor)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if snapshot.canContinueInquiry {
+            if snapshot.continueInquiryAction.isVisible {
                 Button(action: continueInquiry) {
-                    Label(snapshot.continueInquiryActionTitle, systemImage: "arrow.clockwise")
+                    Label(
+                        snapshot.continueInquiryAction.title,
+                        systemImage: snapshot.continueInquiryAction.systemImage
+                    )
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .disabled(!snapshot.continueInquiryAction.isEnabled)
             }
 
             Button(action: requestSettlement) {
-                Label(snapshot.requestActionTitle, systemImage: "sparkles")
+                Label(
+                    snapshot.requestSettlementAction.title,
+                    systemImage: snapshot.requestSettlementAction.systemImage
+                )
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!snapshot.canRequestSettlement)
+            .disabled(!snapshot.requestSettlementAction.isEnabled)
         }
         .padding(ParallelMeSpacing.md)
         .background(ParallelMeColor.paperLift)
