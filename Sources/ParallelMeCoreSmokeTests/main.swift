@@ -1622,6 +1622,20 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.contextTasteProfile.isEmpty)
         }
 
+        try await runner.runAsync("meeting view model reports friendly provider settings load errors") {
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: DemoLLMProvider(),
+                    repository: InMemoryMeetingRepository()
+                ),
+                providerSettingsStore: FailingProviderSettingsStore()
+            )
+
+            await viewModel.loadProviderSettings()
+
+            try expect(viewModel.errorMessage == "OpenAI 配置还不完整，请检查 Base URL、模型名和 API Key。")
+        }
+
         try await runner.runAsync("meeting view model exposes activity while async work is running") {
             let settingsStore = SlowProviderSettingsStore(delayNanoseconds: 160_000_000)
             let viewModel = MeetingViewModel(
@@ -2693,4 +2707,14 @@ private actor SlowProviderSettingsStore: ProviderSettingsStoring {
         try await Task.sleep(nanoseconds: delayNanoseconds)
         settings = ProviderRuntimeSettings()
     }
+}
+
+private actor FailingProviderSettingsStore: ProviderSettingsStoring {
+    func loadSettings() async throws -> ProviderRuntimeSettings {
+        throw ProviderRuntimeFactoryError.invalidOpenAICompatibleSettings
+    }
+
+    func saveSettings(_ settings: ProviderRuntimeSettings) async throws {}
+
+    func clearSettings() async throws {}
 }

@@ -127,7 +127,7 @@ public final class MeetingViewModel: ObservableObject {
         do {
             applyProviderSettings(try await providerSettingsStore.loadSettings())
         } catch {
-            errorMessage = String(describing: error)
+            errorMessage = Self.userFacingMessage(for: error)
         }
     }
 
