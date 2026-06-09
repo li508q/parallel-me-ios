@@ -958,13 +958,35 @@ struct ParallelMeCoreSmokeTests {
             for stage in [MeetingStage.defining, .roundtable, .inquiry, .settlement] {
                 let snapshot = MeetingExportAvailabilitySnapshot(stage: stage)
                 try expect(!snapshot.canExport)
+                try expect(!snapshot.shouldShowExportControl)
                 try expect(snapshot.actionTitle == "归档后导出")
             }
 
             let archived = MeetingExportAvailabilitySnapshot(stage: .archived)
             try expect(archived.canExport)
+            try expect(archived.shouldShowExportControl)
             try expect(archived.actionTitle == "导出纸页")
             try expect(archived.accessibilityHint.contains("已归档"))
+
+            var missingSettlement = try MeetingFlowEngine().start(rawInput: "我想辞职又怕没钱")
+            missingSettlement.stage = .archived
+            let missing = MeetingExportAvailabilitySnapshot(state: missingSettlement)
+            try expect(!missing.canExport)
+            try expect(missing.shouldShowExportControl)
+            try expect(missing.actionTitle == "无法导出")
+            try expect(missing.blockerMessage?.contains("缺少完整本心落定") == true)
+
+            var incompleteSettlement = sampleSettlement
+            incompleteSettlement.minimumViableCommitment.report = "   "
+            missingSettlement.heartSettlement = incompleteSettlement
+            let incomplete = MeetingExportAvailabilitySnapshot(state: missingSettlement)
+            try expect(!incomplete.canExport)
+            try expect(incomplete.blockerMessage?.contains("缺少完整本心落定") == true)
+
+            missingSettlement.heartSettlement = sampleSettlement
+            let ready = MeetingExportAvailabilitySnapshot(state: missingSettlement)
+            try expect(ready.canExport)
+            try expect(ready.blockerMessage == nil)
         }
 
         try runner.run("meeting export document renders archived paper") {

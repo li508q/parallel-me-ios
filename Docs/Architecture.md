@@ -115,7 +115,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Runtime preference fields and actions lock while runtime preference work is in flight.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
-- Export availability is derived in Core, so the UI only prepares Markdown files for archived papers.
+- Export availability is derived in Core, so the UI only prepares Markdown files for archived papers with complete Heart Settlement content.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.
 - Markdown export file writing is tested with a temporary local directory before the UI shares the file URL.
 - Settlement revision drafts are normalized and tested before UI sends revisions back to the session coordinator.

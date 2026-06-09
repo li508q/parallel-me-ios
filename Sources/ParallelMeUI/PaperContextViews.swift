@@ -66,37 +66,18 @@ struct MeetingPaperContextView: View {
                     .buttonStyle(.bordered)
                     .disabled(isBusy)
                     .accessibilityLabel(Text("回到首页，稍后继续这张纸页"))
-                    if exportAvailability.canExport {
-                        if let exportFileURL {
-                            ShareLink(
-                                item: exportFileURL,
-                                subject: Text(exportDocument.title),
-                                message: Text("ParallelMe 纸页")
-                            ) {
-                                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
-                                    .labelStyle(.iconOnly)
-                                    .frame(width: 30, height: 30)
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityLabel(Text(exportAvailability.actionTitle))
-                            .accessibilityHint(Text(exportDocument.fileName))
-                        } else {
-                            Button(action: prepareExportFile) {
-                                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
-                                    .labelStyle(.iconOnly)
-                                    .frame(width: 30, height: 30)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(isBusy)
-                            .accessibilityLabel(Text(exportAvailability.actionTitle))
-                            .accessibilityHint(Text(exportAvailability.accessibilityHint))
-                        }
+                    if exportAvailability.shouldShowExportControl {
+                        exportControl
                     }
                 }
             }
 
             if let exportErrorMessage {
                 Text(exportErrorMessage)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.filial)
+            } else if let blockerMessage = exportAvailability.blockerMessage {
+                Text(blockerMessage)
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(ParallelMeColor.filial)
             }
@@ -146,7 +127,36 @@ struct MeetingPaperContextView: View {
         }
     }
 
+    @ViewBuilder
+    private var exportControl: some View {
+        if exportAvailability.canExport, let exportFileURL {
+            ShareLink(
+                item: exportFileURL,
+                subject: Text(exportDocument.title),
+                message: Text("ParallelMe 纸页")
+            ) {
+                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(Text(exportAvailability.actionTitle))
+            .accessibilityHint(Text(exportDocument.fileName))
+        } else {
+            Button(action: prepareExportFile) {
+                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
+                    .labelStyle(.iconOnly)
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isBusy || !exportAvailability.canExport)
+            .accessibilityLabel(Text(exportAvailability.actionTitle))
+            .accessibilityHint(Text(exportAvailability.accessibilityHint))
+        }
+    }
+
     private func prepareExportFile() {
+        guard exportAvailability.canExport else { return }
         do {
             let file = try MeetingExportFileWriter().write(document: exportDocument)
             exportFileURL = file.url

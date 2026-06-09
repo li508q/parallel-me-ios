@@ -30,7 +30,7 @@ The first test layer is `ParallelMeCore`.
 - Roundtable transcript grouping covers openings, user moves, model replies, and legacy ungrouped turns.
 - Meeting archive snapshot derives archived detail rows from Core state and preserves user settlement revisions.
 - Settlement and archive timestamps drive summary freshness, library ordering, and timeline rows.
-- Export availability is gated to archived papers before the UI prepares a shareable Markdown file.
+- Export availability is gated to archived papers with complete Heart Settlement content before the UI prepares a shareable Markdown file.
 - Paper library action availability locks restore/delete actions while async paper-library work is in flight.
 - Meeting export renders archived papers into Markdown using Core state and user settlement revisions.
 - Meeting export writes named Markdown files to a local directory before iOS sharing.

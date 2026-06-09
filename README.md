@@ -55,7 +55,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - `PaperLibraryActionAvailabilitySnapshot` locks restore/delete actions while paper-library work is in flight.
 - `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data for restored papers.
 - Archive is guarded by complete five-module Heart Settlement content before a paper can become finished.
-- Export controls are gated by Core state, so only archived papers prepare shareable Markdown files.
+- Export controls are gated by Core state, so only archived papers with complete Heart Settlement content prepare shareable Markdown files.
 - `MeetingExportDocument` renders a paper into Markdown, and `MeetingExportFileWriter` writes a named `.md` file for iOS sharing and developer-readable inspection.
 - `SettlementStageSnapshot` gives restored settlement-stage papers a visible recovery path when the Heart Settlement payload is missing.
 - `SettlementRevisionDraft` and `SettlementActionAvailabilitySnapshot` keep final-card edits normalized, change-aware, busy-aware, and safe to archive.
