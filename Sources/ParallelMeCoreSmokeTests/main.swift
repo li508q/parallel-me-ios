@@ -1045,6 +1045,34 @@ struct ParallelMeCoreSmokeTests {
             try expect(!draft.canArchive)
         }
 
+        try runner.run("settlement action availability locks while busy") {
+            var draft = SettlementRevisionDraft(settlement: sampleSettlement)
+            let ready = SettlementActionAvailabilitySnapshot(draft: draft)
+
+            try expect(!ready.canApplyRevision)
+            try expect(ready.canArchive)
+            try expect(ready.message.contains("保存纸页"))
+            try expect(ready.messageTone == .muted)
+
+            draft.minimumAction = "今晚只写一行预算。"
+            let edited = SettlementActionAvailabilitySnapshot(draft: draft)
+            let busy = SettlementActionAvailabilitySnapshot(draft: draft, isBusy: true)
+
+            try expect(edited.canApplyRevision)
+            try expect(!edited.canArchive)
+            try expect(edited.message.contains("应用修订"))
+            try expect(!busy.canApplyRevision)
+            try expect(!busy.canArchive)
+            try expect(busy.message.contains("正在处理"))
+
+            draft.minimumAction = "   "
+            let incomplete = SettlementActionAvailabilitySnapshot(draft: draft)
+
+            try expect(!incomplete.canApplyRevision)
+            try expect(!incomplete.canArchive)
+            try expect(incomplete.messageTone == .warning)
+        }
+
         try runner.run("archive requires complete heart settlement") {
             let engine = MeetingFlowEngine()
             var missingSettlement = try engine.start(rawInput: "我想辞职又怕没钱")

@@ -55,7 +55,7 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 - Archive is guarded by complete five-module Heart Settlement content before a paper can become finished.
 - Export controls are gated by Core state, so only archived papers prepare shareable Markdown files.
 - `MeetingExportDocument` renders a paper into Markdown, and `MeetingExportFileWriter` writes a named `.md` file for iOS sharing and developer-readable inspection.
-- `SettlementRevisionDraft` keeps final-card edits normalized, change-aware, and safe to archive.
+- `SettlementRevisionDraft` and `SettlementActionAvailabilitySnapshot` keep final-card edits normalized, change-aware, busy-aware, and safe to archive.
 
 ## Local Development
 

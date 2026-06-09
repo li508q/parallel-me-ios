@@ -4,19 +4,26 @@ import SwiftUI
 
 public struct SettlementView: View {
     public var settlement: HeartSettlement
+    public var isBusy: Bool
     public var revise: ([SettlementModuleID: String]) -> Void
     public var archive: () -> Void
     @State private var draft: SettlementRevisionDraft
 
     public init(
         settlement: HeartSettlement,
+        isBusy: Bool = false,
         revise: @escaping ([SettlementModuleID: String]) -> Void = { _ in },
         archive: @escaping () -> Void = {}
     ) {
         self.settlement = settlement
+        self.isBusy = isBusy
         self.revise = revise
         self.archive = archive
         _draft = State(initialValue: SettlementRevisionDraft(settlement: settlement))
+    }
+
+    private var actionAvailability: SettlementActionAvailabilitySnapshot {
+        SettlementActionAvailabilitySnapshot(draft: draft, isBusy: isBusy)
     }
 
     public var body: some View {
@@ -25,24 +32,14 @@ public struct SettlementView: View {
                 .font(ParallelMeTypography.title)
             Text(settlement.headline)
                 .font(ParallelMeTypography.bodyStrong)
-            SettlementModuleEditor(title: "创造性无望", text: $draft.creativeHopelessness)
-            SettlementModuleEditor(title: "核心价值主轴", text: $draft.coreValues)
-            SettlementModuleEditor(title: "痛苦接纳契约", text: $draft.costAcceptance)
-            SettlementModuleEditor(title: "最小行动承诺", text: $draft.minimumAction)
-            SettlementModuleEditor(title: "正反合", text: $draft.dialecticSynthesis)
-            if draft.hasEmptyRequiredText {
-                Text("每一栏都需要保留一句可归档的语言。")
-                    .font(ParallelMeTypography.compact)
-                    .foregroundStyle(ParallelMeColor.filial)
-            } else if draft.hasChanges {
-                Text("应用修订后再保存纸页，归档会使用你确认过的文本。")
-                    .font(ParallelMeTypography.compact)
-                    .foregroundStyle(ParallelMeColor.inkMuted)
-            } else if !draft.hasChanges {
-                Text("改动后再应用修订；保存纸页会使用当前落定。")
-                    .font(ParallelMeTypography.compact)
-                    .foregroundStyle(ParallelMeColor.inkMuted)
-            }
+            SettlementModuleEditor(title: "创造性无望", text: $draft.creativeHopelessness, isDisabled: isBusy)
+            SettlementModuleEditor(title: "核心价值主轴", text: $draft.coreValues, isDisabled: isBusy)
+            SettlementModuleEditor(title: "痛苦接纳契约", text: $draft.costAcceptance, isDisabled: isBusy)
+            SettlementModuleEditor(title: "最小行动承诺", text: $draft.minimumAction, isDisabled: isBusy)
+            SettlementModuleEditor(title: "正反合", text: $draft.dialecticSynthesis, isDisabled: isBusy)
+            Text(actionAvailability.message)
+                .font(ParallelMeTypography.compact)
+                .foregroundStyle(messageColor)
             Button {
                 revise(draft.revisions)
             } label: {
@@ -50,13 +47,13 @@ public struct SettlementView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
-            .disabled(!draft.canApply)
+            .disabled(!actionAvailability.canApplyRevision)
             Button(action: archive) {
                 Label("保存纸页", systemImage: "archivebox.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!draft.canArchive)
+            .disabled(!actionAvailability.canArchive)
         }
         .foregroundStyle(ParallelMeColor.ink)
         .onAppear {
@@ -70,11 +67,21 @@ public struct SettlementView: View {
     private func loadDrafts(from settlement: HeartSettlement) {
         draft = SettlementRevisionDraft(settlement: settlement)
     }
+
+    private var messageColor: Color {
+        switch actionAvailability.messageTone {
+        case .muted:
+            return ParallelMeColor.inkMuted
+        case .warning:
+            return ParallelMeColor.filial
+        }
+    }
 }
 
 private struct SettlementModuleEditor: View {
     var title: String
     @Binding var text: String
+    var isDisabled: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
@@ -92,6 +99,7 @@ private struct SettlementModuleEditor: View {
                     RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                         .stroke(ParallelMeColor.line.opacity(0.75), lineWidth: 1)
                 )
+                .disabled(isDisabled)
         }
         .padding(.vertical, ParallelMeSpacing.xs)
     }

@@ -126,6 +126,7 @@ public struct ParallelMeRootView: View {
             if let settlement = state.heartSettlement {
                 SettlementView(
                     settlement: settlement,
+                    isBusy: viewModel.isBusy,
                     revise: viewModel.reviseSettlement,
                     archive: viewModel.archive
                 )
