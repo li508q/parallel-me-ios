@@ -19,6 +19,7 @@ public struct ProviderRuntimeMetadata: Codable, Equatable, Sendable {
     }
 
     public init(settings: ProviderRuntimeSettings) {
+        let settings = settings.normalized
         self.init(
             mode: settings.mode,
             baseURLString: settings.baseURLString,
@@ -83,12 +84,12 @@ public actor ProviderSettingsRepository: ProviderSettingsStoring {
     }
 
     public func saveSettings(_ settings: ProviderRuntimeSettings) async throws {
+        let settings = settings.normalized
         try await metadataStore.saveMetadata(ProviderRuntimeMetadata(settings: settings))
-        let trimmedKey = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedKey.isEmpty {
+        if settings.apiKey.isEmpty {
             try await secretStore.deleteSecret(key: apiKeySecretName)
         } else {
-            try await secretStore.saveSecret(trimmedKey, key: apiKeySecretName)
+            try await secretStore.saveSecret(settings.apiKey, key: apiKeySecretName)
         }
     }
 
@@ -263,4 +264,3 @@ public actor KeychainSecretStore: SecretStore {
     }
     #endif
 }
-

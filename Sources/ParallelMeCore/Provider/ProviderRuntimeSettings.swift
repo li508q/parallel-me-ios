@@ -37,15 +37,23 @@ public struct ProviderRuntimeSettings: Codable, Equatable, Sendable {
         case .demo:
             true
         case .openAICompatible:
-            resolvedBaseURL != nil &&
-            !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            normalized.resolvedBaseURL != nil &&
+            !normalized.model.isEmpty &&
+            !normalized.apiKey.isEmpty
         }
     }
 
+    public var normalized: ProviderRuntimeSettings {
+        ProviderRuntimeSettings(
+            mode: mode,
+            baseURLString: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines),
+            model: model.trimmingCharacters(in: .whitespacesAndNewlines),
+            apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
     public var resolvedBaseURL: URL? {
-        let trimmed = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed),
+        guard let url = URL(string: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)),
               let scheme = url.scheme?.lowercased(),
               ["http", "https"].contains(scheme),
               url.host?.isEmpty == false else {
@@ -57,6 +65,17 @@ public struct ProviderRuntimeSettings: Codable, Equatable, Sendable {
 
 public enum ProviderRuntimeFactory {
     public static func makeProvider(settings: ProviderRuntimeSettings) throws -> AnyLLMProvider {
+        try makeProvider(
+            settings: settings,
+            openAITransport: URLSessionOpenAICompatibleTransport()
+        )
+    }
+
+    public static func makeProvider(
+        settings: ProviderRuntimeSettings,
+        openAITransport: any OpenAICompatibleTransport
+    ) throws -> AnyLLMProvider {
+        let settings = settings.normalized
         switch settings.mode {
         case .demo:
             return AnyLLMProvider(DemoLLMProvider())
@@ -70,7 +89,8 @@ public enum ProviderRuntimeFactory {
                         baseURL: baseURL,
                         apiKey: settings.apiKey,
                         model: settings.model
-                    )
+                    ),
+                    transport: openAITransport
                 )
             )
         }

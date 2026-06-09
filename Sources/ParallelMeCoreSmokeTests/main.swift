@@ -408,6 +408,22 @@ struct ParallelMeCoreSmokeTests {
         try runner.run("provider settings validate demo and openai-compatible modes") {
             try expect(ProviderRuntimeSettings(mode: .demo).isUsable)
             try expect(!ProviderRuntimeSettings(mode: .openAICompatible).isUsable)
+            let paddedSettings = ProviderRuntimeSettings(
+                mode: .openAICompatible,
+                baseURLString: " https://api.example.com/v1 ",
+                model: " gpt-test ",
+                apiKey: " sk-test "
+            )
+            try expect(paddedSettings.isUsable)
+            try expect(
+                paddedSettings.normalized == ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "https://api.example.com/v1",
+                    model: "gpt-test",
+                    apiKey: "sk-test"
+                )
+            )
+            try expect(paddedSettings.resolvedBaseURL?.absoluteString == "https://api.example.com/v1")
             try expect(
                 !ProviderRuntimeSettings(
                     mode: .openAICompatible,
@@ -1035,6 +1051,47 @@ struct ParallelMeCoreSmokeTests {
             try expect(envelope.trace == ["demo:defineIssue"])
         }
 
+        try await runner.runAsync("provider factory normalizes openai-compatible settings") {
+            let payload = IssueDefinitionResponse(
+                proposal: completeProposal,
+                readyToPropose: true,
+                thinking: "proposal ready"
+            )
+            let payloadData = try ParallelMeCoding.makeEncoder().encode(payload)
+            let payloadJSON = try unwrap(String(data: payloadData, encoding: .utf8), "Expected payload JSON")
+            let transport = MockOpenAITransport(
+                statusCode: 200,
+                responseData: try chatCompletionResponseData(content: payloadJSON)
+            )
+            let provider = try ProviderRuntimeFactory.makeProvider(
+                settings: ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: " https://api.example.com/v1 ",
+                    model: " gpt-4.1-mini ",
+                    apiKey: " sk-test "
+                ),
+                openAITransport: transport
+            )
+
+            _ = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(rawInput: "我想辞职又怕没钱", dialogue: [])
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
+            let captured = try await unwrap(transport.latestRequest(), "Expected captured OpenAI request")
+            let bodyData = try unwrap(captured.body, "Expected request body")
+            let body = try unwrap(
+                JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                "Expected JSON request body"
+            )
+
+            try expect(captured.urlString == "https://api.example.com/v1/chat/completions")
+            try expect(captured.authorization == "Bearer sk-test")
+            try expect(body["model"] as? String == "gpt-4.1-mini")
+        }
+
         try await runner.runAsync("openai-compatible provider sends strict chat request and decodes response") {
             let payload = IssueDefinitionResponse(
                 proposal: completeProposal,
@@ -1222,8 +1279,8 @@ struct ParallelMeCoreSmokeTests {
             let savedContext = try await contextStore.loadContext()
 
             try expect(savedSettings.mode == .openAICompatible)
-            try expect(savedSettings.baseURLString == " https://api.example.com/v1 ")
-            try expect(savedSettings.model == " gpt-test ")
+            try expect(savedSettings.baseURLString == "https://api.example.com/v1")
+            try expect(savedSettings.model == "gpt-test")
             try expect(savedSettings.apiKey == "sk-test")
             try expect(savedContext.meCard == "我在高压工作里消耗自己")
             try expect(savedContext.tasteProfile == "先问事实，再给判断")

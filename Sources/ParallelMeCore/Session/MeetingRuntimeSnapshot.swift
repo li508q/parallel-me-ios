@@ -19,6 +19,7 @@ public struct MeetingRuntimeSnapshot: Codable, Equatable, Sendable {
     }
 
     public init(settings: ProviderRuntimeSettings, context: ProviderContext? = nil) {
+        let settings = settings.normalized
         self.init(
             providerMode: settings.mode,
             providerModel: settings.model,

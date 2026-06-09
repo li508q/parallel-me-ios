@@ -69,6 +69,7 @@ Provider runtime settings are split deliberately:
 
 - Non-sensitive metadata, such as mode, base URL, and model, is stored as local JSON.
 - API keys are stored through `SecretStore`; the default app implementation uses Keychain.
+- Runtime provider settings are normalized before persistence, runtime snapshots, and provider creation, so UI whitespace cannot leak into requests or saved debug metadata.
 - Tests use in-memory secret storage and verify that API keys never appear in metadata JSON.
 
 Provider context is stored separately from provider credentials:
@@ -114,5 +115,6 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - The final inquiry loop has no hard cap; tests assert this invariant.
 - Provider prompt specs are tested for product invariants such as fixed voices, free-text exits, no hard inquiry cap, context boundaries, and required settlement modules.
 - OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
+- Runtime provider settings normalization is tested across validation, persistence, snapshots, and OpenAI-compatible provider factory requests.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
 - Session events record provider requests, provider responses, persistence, and failures; Core derives the diagnostics snapshot, and the default app exposes it through the collapsible running trace panel.
