@@ -1483,6 +1483,41 @@ struct ParallelMeCoreSmokeTests {
             try expect(userPrompt.contains("我想辞职又怕没钱"))
         }
 
+        try await runner.runAsync("openai-compatible provider extracts first balanced JSON object") {
+            let payload = IssueDefinitionResponse(
+                proposal: completeProposal,
+                readyToPropose: true,
+                thinking: "proposal ready with {evidence} and \"quoted\" text"
+            )
+            let payloadData = try ParallelMeCoding.makeEncoder().encode(payload)
+            let payloadJSON = try unwrap(String(data: payloadData, encoding: .utf8), "Expected payload JSON")
+            let transport = MockOpenAITransport(
+                statusCode: 200,
+                responseData: try chatCompletionResponseData(
+                    content: "```JSON\n\(payloadJSON)\n```\n附注：{\"ignored\":true}"
+                )
+            )
+            let provider = OpenAICompatibleProvider(
+                configuration: OpenAICompatibleConfiguration(
+                    baseURL: URL(string: "https://api.example.com/v1")!,
+                    apiKey: "sk-test",
+                    model: "gpt-4.1-mini"
+                ),
+                transport: transport
+            )
+
+            let envelope = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(rawInput: "我想辞职又怕没钱", dialogue: [])
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
+
+            try expect(envelope.payload.proposal == completeProposal)
+            try expect(envelope.payload.thinking == "proposal ready with {evidence} and \"quoted\" text")
+        }
+
         try await runner.runAsync("openai-compatible provider reports HTTP error body") {
             let transport = MockOpenAITransport(
                 statusCode: 429,

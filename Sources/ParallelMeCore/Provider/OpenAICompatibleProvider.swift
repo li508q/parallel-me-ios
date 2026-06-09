@@ -116,19 +116,52 @@ public actor OpenAICompatibleProvider: LLMProvider {
     }
 
     private func extractJSONObject(from content: String) -> String {
-        var text = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("```") {
-            text = text
-                .replacingOccurrences(of: "```json", with: "")
-                .replacingOccurrences(of: "```", with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        if let start = text.firstIndex(of: "{"),
-           let end = text.lastIndex(of: "}"),
-           start <= end {
-            return String(text[start...end])
+        let text = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        var searchIndex = text.startIndex
+        while searchIndex < text.endIndex,
+              let start = text[searchIndex...].firstIndex(of: "{") {
+            if let candidate = balancedJSONObject(in: text, startingAt: start),
+               let data = candidate.data(using: .utf8),
+               (try? JSONSerialization.jsonObject(with: data)) != nil {
+                return candidate
+            }
+            searchIndex = text.index(after: start)
         }
         return text
+    }
+
+    private func balancedJSONObject(in text: String, startingAt start: String.Index) -> String? {
+        var depth = 0
+        var isInsideString = false
+        var isEscaped = false
+        var index = start
+
+        while index < text.endIndex {
+            let character = text[index]
+            if isInsideString {
+                if isEscaped {
+                    isEscaped = false
+                } else if character == "\\" {
+                    isEscaped = true
+                } else if character == "\"" {
+                    isInsideString = false
+                }
+            } else if character == "\"" {
+                isInsideString = true
+            } else if character == "{" {
+                depth += 1
+            } else if character == "}" {
+                depth -= 1
+                if depth == 0 {
+                    return String(text[start...index])
+                }
+                if depth < 0 {
+                    return nil
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
     }
 }
 

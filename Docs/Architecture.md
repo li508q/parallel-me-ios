@@ -32,7 +32,7 @@ Stage-one proposal refinement also lives in the coordinator. User feedback is ap
 The provider boundary is intentionally typed:
 
 - `ProviderPromptSpec` defines the role, hard constraints, and JSON response contract for every model-facing task.
-- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type. Its HTTP transport is injectable so request shape, headers, error handling, and JSON decoding are testable without live network calls.
+- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type. Its HTTP transport is injectable, and its response parser extracts the first balanced JSON object so fenced payloads with trailing notes remain testable without live network calls.
 - `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key.
 - `MockLLMProvider` is the precise test double used when a test needs one exact payload per task.
 - `ProviderContext` carries optional durable user background and response preferences through every provider payload. Prompt specs explicitly treat it as calibration only, so it cannot override the current petition, proposal, moves, answers, or feedback.
