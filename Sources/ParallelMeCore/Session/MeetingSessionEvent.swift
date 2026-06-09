@@ -40,6 +40,7 @@ public struct MeetingSessionDiagnosticsSnapshot: Equatable, Sendable {
     public var providerResponseCount: Int
     public var persistedCount: Int
     public var failureCount: Int
+    public var pendingProviderResponseCount: Int
     public var latestFailure: MeetingSessionEvent?
 
     public init(events: [MeetingSessionEvent] = [], limit: Int = 12) {
@@ -57,6 +58,7 @@ public struct MeetingSessionDiagnosticsSnapshot: Equatable, Sendable {
         self.persistedCount = ordered.filter { $0.kind == .persisted }.count
         self.failureCount = ordered.filter { $0.kind == .failed }.count
         self.latestFailure = ordered.last { $0.kind == .failed }
+        self.pendingProviderResponseCount = Self.pendingProviderResponseCount(in: ordered)
     }
 
     public var isEmpty: Bool {
@@ -69,10 +71,6 @@ public struct MeetingSessionDiagnosticsSnapshot: Equatable, Sendable {
 
     public var hasFailures: Bool {
         failureCount > 0
-    }
-
-    public var pendingProviderResponseCount: Int {
-        max(0, providerRequestCount - providerResponseCount)
     }
 
     public var title: String {
@@ -96,6 +94,21 @@ public struct MeetingSessionDiagnosticsSnapshot: Equatable, Sendable {
             return "显示最近 \(displayedCount) 条，共 \(totalCount) 条。"
         }
         return "请求 \(providerRequestCount) · 响应 \(providerResponseCount) · 保存 \(persistedCount)"
+    }
+
+    private static func pendingProviderResponseCount(in orderedEvents: [MeetingSessionEvent]) -> Int {
+        var pending = 0
+        for event in orderedEvents {
+            switch event.kind {
+            case .providerRequest:
+                pending += 1
+            case .providerResponse, .failed:
+                pending = max(0, pending - 1)
+            case .started, .persisted:
+                break
+            }
+        }
+        return pending
     }
 }
 

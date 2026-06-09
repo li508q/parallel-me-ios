@@ -2292,6 +2292,17 @@ struct ParallelMeCoreSmokeTests {
 
             let snapshot = MeetingSessionDiagnosticsSnapshot(events: events, limit: 3)
             let pending = MeetingSessionDiagnosticsSnapshot(events: Array(events.prefix(5)), limit: 12)
+            let failedThenPending = MeetingSessionDiagnosticsSnapshot(
+                events: events + [
+                    MeetingSessionEvent(
+                        id: "request-3",
+                        kind: .providerRequest,
+                        message: "request retry",
+                        createdAt: Date(timeIntervalSince1970: 7)
+                    )
+                ],
+                limit: 12
+            )
 
             try expect(snapshot.totalCount == 6)
             try expect(snapshot.displayedCount == 3)
@@ -2301,11 +2312,12 @@ struct ParallelMeCoreSmokeTests {
             try expect(snapshot.persistedCount == 1)
             try expect(snapshot.failureCount == 1)
             try expect(snapshot.latestFailure?.id == "failed")
-            try expect(snapshot.pendingProviderResponseCount == 1)
+            try expect(snapshot.pendingProviderResponseCount == 0)
             try expect(snapshot.title == "运行轨迹 · 1 次失败")
             try expect(snapshot.detail == "模型服务返回 429")
             try expect(pending.title == "运行轨迹 · 等待模型响应")
             try expect(pending.detail == "还有 1 个模型请求没有对应响应。")
+            try expect(failedThenPending.pendingProviderResponseCount == 1)
             try expect(MeetingSessionDiagnosticsSnapshot().isEmpty)
         }
 
