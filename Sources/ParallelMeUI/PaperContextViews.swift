@@ -10,16 +10,14 @@ struct MeetingPaperContextView: View {
     @State private var exportFileURL: URL?
     @State private var exportErrorMessage: String?
 
-    private var summary: MeetingSummary {
-        MeetingSummary(state: state)
-    }
-
-    private var timelineSnapshot: MeetingTimelineSnapshot {
-        MeetingTimelineSnapshot(state: state)
-    }
-
-    private var timelinePresentation: MeetingTimelinePresentationSnapshot {
-        timelineSnapshot.presentation(isExpanded: isTimelineExpanded)
+    private var presentation: MeetingPaperContextPresentationSnapshot {
+        MeetingPaperContextPresentationSnapshot(
+            state: state,
+            isBusy: isBusy,
+            isTimelineExpanded: isTimelineExpanded,
+            hasPreparedExportFile: exportFileURL != nil,
+            preparedExportFileName: exportFileURL?.lastPathComponent
+        )
     }
 
     private var exportDocument: MeetingExportDocument {
@@ -34,17 +32,17 @@ struct MeetingPaperContextView: View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
             HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
-                    Text(summary.title)
+                    Text(presentation.summaryTitle)
                         .font(ParallelMeTypography.bodyStrong)
                         .foregroundStyle(ParallelMeColor.ink)
                         .lineLimit(2)
-                    Text(summary.subtitle)
+                    Text(presentation.summarySubtitle)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                 }
                 Spacer(minLength: ParallelMeSpacing.sm)
                 VStack(alignment: .trailing, spacing: ParallelMeSpacing.xs) {
-                    Text("\(timelineSnapshot.totalCount) 步")
+                    Text(presentation.stepCountText)
                         .font(ParallelMeTypography.eyebrow)
                         .foregroundStyle(ParallelMeColor.inkMuted)
                         .padding(.horizontal, ParallelMeSpacing.sm)
@@ -52,14 +50,17 @@ struct MeetingPaperContextView: View {
                         .background(ParallelMeColor.paper)
                         .clipShape(Capsule())
                     Button(action: close) {
-                        Label("回首页", systemImage: "house")
+                        Label(
+                            presentation.closeAction.title,
+                            systemImage: presentation.closeAction.systemImage
+                        )
                             .labelStyle(.iconOnly)
                             .frame(width: 30, height: 30)
                     }
                     .buttonStyle(.bordered)
-                    .disabled(isBusy)
-                    .accessibilityLabel(Text("回到首页，稍后继续这张纸页"))
-                    if exportAvailability.shouldShowExportControl {
+                    .disabled(!presentation.closeAction.isEnabled)
+                    .accessibilityLabel(Text(presentation.closeAction.accessibilityLabel))
+                    if presentation.export.shouldShowControl {
                         exportControl
                     }
                 }
@@ -69,22 +70,22 @@ struct MeetingPaperContextView: View {
                 Text(exportErrorMessage)
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(ParallelMeColor.filial)
-            } else if let blockerMessage = exportAvailability.blockerMessage {
+            } else if let blockerMessage = presentation.export.blockerMessage {
                 Text(blockerMessage)
                     .font(ParallelMeTypography.compact)
                     .foregroundStyle(ParallelMeColor.filial)
             }
 
-            if let snapshot = state.runtimeSnapshot {
-                RuntimeSnapshotView(snapshot: snapshot)
+            if let runtime = presentation.runtime {
+                RuntimeSnapshotView(snapshot: runtime)
             }
 
-            DisclosureGroup("纸页脉络 · \(timelinePresentation.title)") {
+            DisclosureGroup(presentation.timelineDisclosureTitle) {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                    ForEach(timelinePresentation.items) { item in
+                    ForEach(presentation.timeline.items) { item in
                         TimelineRow(item: item)
                     }
-                    if let control = timelinePresentation.expansionControl {
+                    if let control = presentation.timeline.expansionControl {
                         Button {
                             isTimelineExpanded.toggle()
                         } label: {
@@ -119,34 +120,41 @@ struct MeetingPaperContextView: View {
 
     @ViewBuilder
     private var exportControl: some View {
-        if exportAvailability.canExport, let exportFileURL {
+        if presentation.export.canSharePreparedFile, let exportFileURL {
             ShareLink(
                 item: exportFileURL,
                 subject: Text(exportDocument.title),
-                message: Text("ParallelMe 纸页")
+                message: Text(presentation.export.shareMessage)
             ) {
-                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
+                Label(
+                    presentation.export.action.title,
+                    systemImage: presentation.export.action.systemImage
+                )
                     .labelStyle(.iconOnly)
                     .frame(width: 30, height: 30)
             }
             .buttonStyle(.bordered)
-            .accessibilityLabel(Text(exportAvailability.actionTitle))
-            .accessibilityHint(Text(exportDocument.fileName))
+            .disabled(!presentation.export.action.isEnabled)
+            .accessibilityLabel(Text(presentation.export.action.accessibilityLabel))
+            .accessibilityHint(Text(presentation.export.action.accessibilityHint ?? exportDocument.fileName))
         } else {
             Button(action: prepareExportFile) {
-                Label(exportAvailability.actionTitle, systemImage: "square.and.arrow.up")
+                Label(
+                    presentation.export.action.title,
+                    systemImage: presentation.export.action.systemImage
+                )
                     .labelStyle(.iconOnly)
                     .frame(width: 30, height: 30)
             }
             .buttonStyle(.bordered)
-            .disabled(isBusy || !exportAvailability.canExport)
-            .accessibilityLabel(Text(exportAvailability.actionTitle))
-            .accessibilityHint(Text(exportAvailability.accessibilityHint))
+            .disabled(!presentation.export.action.isEnabled)
+            .accessibilityLabel(Text(presentation.export.action.accessibilityLabel))
+            .accessibilityHint(Text(presentation.export.action.accessibilityHint ?? ""))
         }
     }
 
     private func prepareExportFile() {
-        guard exportAvailability.canExport else { return }
+        guard presentation.export.canExport else { return }
         do {
             let file = try MeetingExportFileWriter().write(document: exportDocument)
             exportFileURL = file.url
@@ -159,16 +167,12 @@ struct MeetingPaperContextView: View {
 }
 
 private struct RuntimeSnapshotView: View {
-    var snapshot: MeetingRuntimeSnapshot
-
-    private var context: ProviderContext? {
-        snapshot.context?.normalized
-    }
+    var snapshot: MeetingRuntimePresentationSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
             HStack(spacing: ParallelMeSpacing.xs) {
-                Image(systemName: "slider.horizontal.3")
+                Image(systemName: snapshot.providerSystemImage)
                     .font(.system(size: 13, weight: .semibold))
                 Text(snapshot.providerLabel)
                     .font(ParallelMeTypography.compact.weight(.medium))
@@ -180,14 +184,11 @@ private struct RuntimeSnapshotView: View {
             }
             .foregroundStyle(ParallelMeColor.ink)
 
-            if let context, !context.isEmpty {
-                DisclosureGroup("会话上下文") {
+            if snapshot.hasContextRows {
+                DisclosureGroup(snapshot.contextTitle) {
                     VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
-                        if let meCard = context.meCard {
-                            RuntimeSnapshotRow(title: "个人背景", text: meCard)
-                        }
-                        if let tasteProfile = context.tasteProfile {
-                            RuntimeSnapshotRow(title: "回应偏好", text: tasteProfile)
+                        ForEach(snapshot.contextRows) { row in
+                            RuntimeSnapshotRow(title: row.title, text: row.body)
                         }
                     }
                     .padding(.top, ParallelMeSpacing.xs)

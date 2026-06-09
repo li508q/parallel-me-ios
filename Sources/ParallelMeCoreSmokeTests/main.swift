@@ -1579,6 +1579,93 @@ struct ParallelMeCoreSmokeTests {
             try expect(ready.blockerMessage == nil)
         }
 
+        try runner.run("paper context presentation derives runtime export and timeline controls") {
+            let engine = MeetingFlowEngine()
+            var state = try engine.start(
+                rawInput: "我想辞职又怕没钱",
+                runtimeSnapshot: MeetingRuntimeSnapshot(
+                    providerMode: .openAICompatible,
+                    providerModel: "  gpt-4.1  ",
+                    providerBaseURLString: " https://api.openai.com/v1 ",
+                    context: ProviderContext(
+                        meCard: "  我最近睡眠很差  ",
+                        tasteProfile: "  先问事实，再给判断  "
+                    )
+                )
+            )
+            state = try engine.receiveIssueProposal(completeProposal, in: state)
+            state = try engine.confirmProposal(in: state)
+            state = try engine.receiveOpenings(VoiceID.allCases.map { opening($0) }, in: state)
+            state = try engine.appendRoundtableMove(
+                RoundtableMove(type: .userToTable, userText: "身体底线在哪里？"),
+                turns: [RoundtableTurn(voiceID: .future, text: "未来的我希望你把体检排进 24 小时内。")],
+                in: state
+            )
+            state = try engine.startInquiry(in: state)
+            state = try engine.settle(sampleSettlement, profile: completeProfile, in: state)
+            state = try engine.archive(state: state)
+
+            let collapsed = MeetingPaperContextPresentationSnapshot(
+                state: state,
+                isBusy: false,
+                isTimelineExpanded: false,
+                hasPreparedExportFile: false
+            )
+            let prepared = MeetingPaperContextPresentationSnapshot(
+                state: state,
+                isBusy: false,
+                isTimelineExpanded: false,
+                hasPreparedExportFile: true,
+                preparedExportFileName: "paper.md"
+            )
+            let busy = MeetingPaperContextPresentationSnapshot(
+                state: state,
+                isBusy: true,
+                isTimelineExpanded: false,
+                hasPreparedExportFile: true,
+                preparedExportFileName: "paper.md"
+            )
+            let expanded = MeetingPaperContextPresentationSnapshot(
+                state: state,
+                isBusy: false,
+                isTimelineExpanded: true,
+                hasPreparedExportFile: true,
+                preparedExportFileName: "paper.md"
+            )
+
+            try expect(collapsed.summaryTitle == sampleSettlement.headline)
+            try expect(collapsed.summarySubtitle.contains("已归档"))
+            try expect(collapsed.stepCountText == "6 步")
+            try expect(collapsed.closeAction.title == "回首页")
+            try expect(collapsed.closeAction.systemImage == "house")
+            try expect(collapsed.closeAction.isEnabled)
+            try expect(collapsed.export.shouldShowControl)
+            try expect(collapsed.export.canExport)
+            try expect(!collapsed.export.canSharePreparedFile)
+            try expect(collapsed.export.action.title == "导出纸页")
+            try expect(collapsed.export.action.systemImage == "square.and.arrow.up")
+            try expect(collapsed.export.action.isEnabled)
+            try expect(collapsed.export.shareMessage == "ParallelMe 纸页")
+            try expect(collapsed.runtime?.providerSystemImage == "slider.horizontal.3")
+            try expect(collapsed.runtime?.providerLabel == "gpt-4.1")
+            try expect(collapsed.runtime?.contextSummary == "个人背景 · 回应偏好")
+            try expect(collapsed.runtime?.contextTitle == "会话上下文")
+            try expect(collapsed.runtime?.contextRows.map(\.title) == ["个人背景", "回应偏好"])
+            try expect(collapsed.runtime?.contextRows.map(\.body) == ["我最近睡眠很差", "先问事实，再给判断"])
+            try expect(collapsed.timelineDisclosureTitle == "纸页脉络 · 最近 5 / 共 6 步")
+            try expect(collapsed.timeline.items.count == 5)
+            try expect(collapsed.timeline.expansionControl?.title == "展开全部")
+
+            try expect(prepared.export.canSharePreparedFile)
+            try expect(prepared.export.action.accessibilityHint == "paper.md")
+            try expect(!busy.closeAction.isEnabled)
+            try expect(!busy.export.action.isEnabled)
+            try expect(busy.export.canSharePreparedFile)
+            try expect(expanded.timelineDisclosureTitle == "纸页脉络 · 完整 6 步")
+            try expect(expanded.timeline.items.count == 6)
+            try expect(expanded.timeline.expansionControl?.title == "收起")
+        }
+
         try runner.run("meeting export document renders archived paper") {
             let engine = MeetingFlowEngine()
             var state = try engine.start(
