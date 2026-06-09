@@ -123,6 +123,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Runtime preference fields and actions lock while runtime preference work is in flight.
+- Runtime preference persistence happens only after provider creation succeeds, so failed unfinished-paper restores cannot overwrite saved settings or context with invalid draft configuration.
 - Restored unfinished papers rebuild provider runtime before continuing, while archived papers remain inspectable offline.
 - Export availability is derived in Core, so the UI only prepares Markdown files for archived papers with complete Heart Settlement content.
 - Markdown export is generated in Core and tested against archived paper state, including user settlement revisions.

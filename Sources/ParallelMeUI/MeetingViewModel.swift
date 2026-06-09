@@ -389,11 +389,11 @@ public final class MeetingViewModel: ObservableObject {
 
     @discardableResult
     private func rebuildCoordinatorIfNeeded(restoring restoredState: MeetingFlowState? = nil) async throws -> MeetingFlowState? {
-        try await persistRuntimePreferences()
         let provider = try providerFactory(providerSettings)
         let restoredSnapshot = restoredState?.runtimeSnapshot?.normalized
         let effectiveContext = providerContext ?? restoredSnapshot?.context
         let effectiveSnapshot = MeetingRuntimeSnapshot(settings: providerSettings, context: effectiveContext).normalized
+        try await persistRuntimePreferences()
         let stateToRestore = restoredState.map { state in
             var next = state
             next.runtimeSnapshot = effectiveSnapshot

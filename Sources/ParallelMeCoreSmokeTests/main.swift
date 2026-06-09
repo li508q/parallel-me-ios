@@ -1989,6 +1989,44 @@ struct ParallelMeCoreSmokeTests {
             try expect(viewModel.state?.roundtable.openingTurns.count == 5)
         }
 
+        try await runner.runAsync("meeting view model keeps stored runtime after failed restore rebuild") {
+            let repository = InMemoryMeetingRepository()
+            let settingsStore = ProviderSettingsRepository(
+                metadataStore: InMemoryProviderRuntimeMetadataStore(),
+                secretStore: InMemorySecretStore()
+            )
+            let contextStore = InMemoryProviderContextStore()
+            let storedContext = ProviderContext(meCard: "原先保存的上下文", tasteProfile: "原先偏好")
+            var restored = try MeetingFlowEngine().start(rawInput: "我想辞职又怕没钱")
+            restored = try MeetingFlowEngine().receiveIssueProposal(completeProposal, in: restored)
+            try await repository.save(restored)
+            try await contextStore.saveContext(storedContext)
+
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(provider: DemoLLMProvider(), repository: repository),
+                meetingRepository: repository,
+                providerSettingsStore: settingsStore,
+                providerContextStore: contextStore
+            )
+            viewModel.providerMode = .openAICompatible
+            viewModel.providerBaseURL = "api.openai.com/v1"
+            viewModel.providerModel = ""
+            viewModel.providerAPIKey = ""
+            viewModel.contextMeCard = "不应该保存的新上下文"
+
+            viewModel.restoreMeeting(id: restored.id)
+            try await waitFor("failed invalid runtime restore") {
+                !viewModel.isBusy && viewModel.errorMessage != nil
+            }
+            let savedSettings = try await settingsStore.loadSettings()
+            let savedContext = try await contextStore.loadContext()
+
+            try expect(viewModel.state == nil)
+            try expect(viewModel.errorMessage == "OpenAI 配置还不完整，请检查 Base URL、模型名和 API Key。")
+            try expect(savedSettings == ProviderRuntimeSettings())
+            try expect(savedContext == storedContext)
+        }
+
         try await runner.runAsync("meeting view model restores archived paper offline") {
             let repository = InMemoryMeetingRepository()
             var archived = try MeetingFlowEngine().start(rawInput: "已经完成的纸页")
