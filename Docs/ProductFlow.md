@@ -12,6 +12,8 @@ The user starts with a messy, emotional, incomplete description. The product sho
 
 On iOS, the empty home screen offers a small set of starter prompts. They are not templates for the final answer; they are safe first sentences that help the user begin when the page is blank. Selecting one fills the raw petition editor, and the user can rewrite it before starting the meeting.
 
+Before the first model-backed step, the home screen explains whether the meeting can start. Empty petitions and incomplete OpenAI-compatible settings are surfaced as explicit readiness blockers instead of leaving the user with a disabled button and no reason.
+
 ## 2. Scribe Defining
 
 The scribe completes a four-key issue proposal:

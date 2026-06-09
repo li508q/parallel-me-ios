@@ -128,6 +128,36 @@ struct PetitionStarterPromptGrid: View {
     }
 }
 
+struct StartReadinessView: View {
+    var snapshot: MeetingStartReadinessSnapshot
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
+            Image(systemName: snapshot.canStart ? "checkmark.seal.fill" : "info.circle")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(snapshot.canStart ? ParallelMeColor.rest : ParallelMeColor.inkMuted)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(snapshot.title)
+                    .font(ParallelMeTypography.compact.weight(.medium))
+                    .foregroundStyle(ParallelMeColor.ink)
+                Text(snapshot.detail)
+                    .font(ParallelMeTypography.compact)
+                    .foregroundStyle(ParallelMeColor.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(ParallelMeSpacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(ParallelMeColor.paper.opacity(0.68))
+        .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.control))
+        .overlay(
+            RoundedRectangle(cornerRadius: ParallelMeRadius.control)
+                .stroke(ParallelMeColor.line.opacity(0.6), lineWidth: 1)
+        )
+    }
+}
+
 struct ResumeMeetingCard: View {
     var meeting: MeetingSummary
     var restore: (String) -> Void

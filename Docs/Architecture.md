@@ -48,6 +48,7 @@ This keeps prompt iteration, network transport, and product state transitions in
 
 The repository stores full `MeetingFlowState`, which makes debugging easier and allows later migration into SwiftData without changing the flow engine.
 `PetitionStarterPrompts` provides the home screen's first-sentence seeds from Core, keeping onboarding copy stable and testable instead of scattered through SwiftUI.
+`MeetingStartReadinessSnapshot` derives home-screen start blockers, button text, and user-facing guidance from the raw petition and provider settings.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
 `MeetingStageProgressSnapshot` derives the five-step product rail, localized stage titles, current position, and completion state from `MeetingStage`.
 `MeetingTimeline` derives the active paper's progress markers from the same state, and `MeetingTimelineSnapshot` defines recent-versus-full timeline presentation, so UI and future debug/export surfaces share one interpretation of the meeting path.
@@ -85,6 +86,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 
 - Every model-facing action returns a typed payload.
 - Starter petition prompts are defined in Core and tested for uniqueness and usable seed text before SwiftUI renders them.
+- Home-screen start readiness is derived in Core and tested for empty petitions and incomplete provider settings.
 - Every user-visible transition is represented by `MeetingStage`.
 - Stage rail labels and completion state are derived in Core and tested against the fixed product flow.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.

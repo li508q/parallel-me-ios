@@ -315,6 +315,14 @@ struct ParallelMeCoreSmokeTests {
             try expect(ProviderRuntimeSettings(mode: .demo).isUsable)
             try expect(!ProviderRuntimeSettings(mode: .openAICompatible).isUsable)
             try expect(
+                !ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "api.openai.com/v1",
+                    model: "gpt-4o-mini",
+                    apiKey: "test-key"
+                ).isUsable
+            )
+            try expect(
                 ProviderRuntimeSettings(
                     mode: .openAICompatible,
                     baseURLString: "https://api.openai.com/v1",
@@ -328,6 +336,38 @@ struct ParallelMeCoreSmokeTests {
             } catch ProviderRuntimeFactoryError.invalidOpenAICompatibleSettings {
                 // expected
             }
+        }
+
+        try runner.run("meeting start readiness explains blocked starts") {
+            let emptyDemo = MeetingStartReadinessSnapshot(
+                petition: "   ",
+                providerSettings: ProviderRuntimeSettings(mode: .demo)
+            )
+            try expect(!emptyDemo.canStart)
+            try expect(emptyDemo.blockers == [.emptyPetition])
+            try expect(emptyDemo.actionTitle == "还不能开始")
+
+            let invalidProvider = MeetingStartReadinessSnapshot(
+                petition: "我想换工作",
+                providerSettings: ProviderRuntimeSettings(
+                    mode: .openAICompatible,
+                    baseURLString: "api.openai.com/v1",
+                    model: " ",
+                    apiKey: " "
+                )
+            )
+            try expect(!invalidProvider.canStart)
+            try expect(invalidProvider.blockers == [.invalidBaseURL, .missingModel, .missingAPIKey])
+            try expect(invalidProvider.detail.contains("Base URL"))
+            try expect(invalidProvider.detail.contains("模型名"))
+            try expect(invalidProvider.detail.contains("API Key"))
+
+            let ready = MeetingStartReadinessSnapshot(
+                petition: "我想换工作",
+                providerSettings: ProviderRuntimeSettings(mode: .demo)
+            )
+            try expect(ready.canStart)
+            try expect(ready.actionTitle == "开始五声圆桌")
         }
 
         try runner.run("provider prompt specs preserve product contracts") {
@@ -936,11 +976,13 @@ struct ParallelMeCoreSmokeTests {
 
             try expect(viewModel.petition.isEmpty)
             try expect(!viewModel.canStart)
+            try expect(viewModel.startReadiness.blockers == [.emptyPetition])
 
             viewModel.useStarterPrompt(prompt)
 
             try expect(viewModel.petition == prompt.seedText)
             try expect(viewModel.canStart)
+            try expect(viewModel.startReadiness.canStart)
         }
 
         try await runner.runAsync("meeting view model saves and clears runtime preferences") {

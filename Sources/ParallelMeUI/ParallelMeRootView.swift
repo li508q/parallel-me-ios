@@ -97,10 +97,11 @@ public struct ParallelMeRootView: View {
                     RoundedRectangle(cornerRadius: ParallelMeRadius.card)
                         .stroke(ParallelMeColor.line, lineWidth: 1)
                 )
+            StartReadinessView(snapshot: viewModel.startReadiness)
             Button {
                 viewModel.startMeeting()
             } label: {
-                Label(viewModel.isBusy ? "书记员整理中" : "开始五声圆桌", systemImage: "arrow.right.circle.fill")
+                Label(viewModel.startReadiness.actionTitle, systemImage: "arrow.right.circle.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)

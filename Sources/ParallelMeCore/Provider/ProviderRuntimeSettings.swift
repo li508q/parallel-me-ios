@@ -44,7 +44,14 @@ public struct ProviderRuntimeSettings: Codable, Equatable, Sendable {
     }
 
     public var resolvedBaseURL: URL? {
-        URL(string: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines))
+        let trimmed = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              url.host?.isEmpty == false else {
+            return nil
+        }
+        return url
     }
 }
 
@@ -73,4 +80,3 @@ public enum ProviderRuntimeFactory {
 public enum ProviderRuntimeFactoryError: Error, Equatable, Sendable {
     case invalidOpenAICompatibleSettings
 }
-

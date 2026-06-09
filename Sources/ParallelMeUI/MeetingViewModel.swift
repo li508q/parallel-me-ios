@@ -72,9 +72,15 @@ public final class MeetingViewModel: ObservableObject {
     }
 
     public var canStart: Bool {
-        !petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        providerSettings.isUsable &&
-        !isBusy
+        startReadiness.canStart
+    }
+
+    public var startReadiness: MeetingStartReadinessSnapshot {
+        MeetingStartReadinessSnapshot(
+            petition: petition,
+            providerSettings: providerSettings,
+            isBusy: isBusy
+        )
     }
 
     public var activeInquiryQuestions: [ScribeInquiryQuestion] {
