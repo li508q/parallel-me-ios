@@ -268,6 +268,66 @@ struct ParallelMeCoreSmokeTests {
             try expect(busy.statusTitle == "圆桌正在整理")
         }
 
+        try runner.run("roundtable controls presentation derives action copy and input gates") {
+            let engine = MeetingFlowEngine()
+            let started = try engine.start(rawInput: "我想辞职又怕没钱")
+            let proposed = try engine.receiveIssueProposal(completeProposal, in: started)
+            let opened = try engine.receiveOpenings(
+                VoiceID.allCases.map { opening($0) },
+                in: try engine.confirmProposal(in: proposed)
+            )
+            let waitingAvailability = RoundtableActionAvailabilitySnapshot(state: opened)
+            let waitingControls = RoundtableControlsPresentationSnapshot(
+                availability: waitingAvailability,
+                tableQuestion: "  身体底线在哪里？  ",
+                voiceQuestion: "   ",
+                selectedVoice: .lay,
+                duelFrom: .money,
+                duelTo: .money
+            )
+
+            try expect(waitingControls.statusSystemImage == "hourglass")
+            try expect(waitingControls.continueAction.title == "继续一轮")
+            try expect(waitingControls.continueAction.systemImage == "arrow.triangle.2.circlepath")
+            try expect(waitingControls.continueAction.isEnabled)
+            try expect(waitingControls.inquiryAction.title == "材料还不够")
+            try expect(!waitingControls.inquiryAction.isEnabled)
+            try expect(waitingControls.askTable.title == "问全桌")
+            try expect(waitingControls.askTable.prompt == "把你想抛给全桌的问题写在这里")
+            try expect(waitingControls.askTable.action.title == "发送给全桌")
+            try expect(waitingControls.askTable.action.isEnabled)
+            try expect(waitingControls.askVoice.title == "问一声")
+            try expect(waitingControls.askVoice.pickerTitle == "声音")
+            try expect(waitingControls.askVoice.action.title == "发送给躺平的我")
+            try expect(!waitingControls.askVoice.action.isEnabled)
+            try expect(waitingControls.duel.title == "让两声对话")
+            try expect(waitingControls.duel.fromPickerTitle == "发问")
+            try expect(waitingControls.duel.toPickerTitle == "回应")
+            try expect(!waitingControls.duel.action.isEnabled)
+
+            let moved = try engine.appendRoundtableMove(
+                RoundtableMove(type: .continueAll),
+                turns: [RoundtableTurn(voiceID: .future, text: "先把长期后果说清楚。")],
+                in: opened
+            )
+            let readyControls = RoundtableControlsPresentationSnapshot(
+                availability: RoundtableActionAvailabilitySnapshot(state: moved),
+                tableQuestion: "",
+                voiceQuestion: "问未来的我一句",
+                selectedVoice: .future,
+                duelFrom: .money,
+                duelTo: .lay
+            )
+
+            try expect(readyControls.statusSystemImage == "checkmark.seal.fill")
+            try expect(readyControls.inquiryAction.title == "进入问询")
+            try expect(readyControls.inquiryAction.isEnabled)
+            try expect(!readyControls.askTable.action.isEnabled)
+            try expect(readyControls.askVoice.action.title == "发送给5 年后的我")
+            try expect(readyControls.askVoice.action.isEnabled)
+            try expect(readyControls.duel.action.isEnabled)
+        }
+
         try runner.run("scribe drops duplicate purposes") {
             let deduplicator = ScribeQuestionDeduplicator()
             let normalized = deduplicator.normalize([

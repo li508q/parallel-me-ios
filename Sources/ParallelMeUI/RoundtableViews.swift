@@ -19,6 +19,17 @@ struct RoundtableView: View {
         RoundtableActionAvailabilitySnapshot(state: state, isBusy: viewModel.isBusy)
     }
 
+    private var controlsPresentation: RoundtableControlsPresentationSnapshot {
+        RoundtableControlsPresentationSnapshot(
+            availability: actionAvailability,
+            tableQuestion: tableQuestion,
+            voiceQuestion: voiceQuestion,
+            selectedVoice: selectedVoice,
+            duelFrom: duelFrom,
+            duelTo: duelTo
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             Text("五声圆桌")
@@ -33,7 +44,7 @@ struct RoundtableView: View {
     private var roundtableControls: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             HStack(alignment: .top, spacing: ParallelMeSpacing.sm) {
-                Image(systemName: actionAvailability.canStartInquiry ? "checkmark.seal.fill" : "hourglass")
+                Image(systemName: controlsPresentation.statusSystemImage)
                     .foregroundStyle(actionAvailability.canStartInquiry ? ParallelMeColor.rest : statusColor)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(actionAvailability.statusTitle)
@@ -48,59 +59,71 @@ struct RoundtableView: View {
 
             HStack {
                 Button(action: viewModel.continueRoundtable) {
-                    Label("继续一轮", systemImage: "arrow.triangle.2.circlepath")
+                    Label(
+                        controlsPresentation.continueAction.title,
+                        systemImage: controlsPresentation.continueAction.systemImage
+                    )
                 }
                 .buttonStyle(.bordered)
-                .disabled(!actionAvailability.canContinueRoundtable)
+                .disabled(!controlsPresentation.continueAction.isEnabled)
                 Button(action: viewModel.startInquiry) {
-                    Label(actionAvailability.inquiryActionTitle, systemImage: "arrow.right.circle.fill")
+                    Label(
+                        controlsPresentation.inquiryAction.title,
+                        systemImage: controlsPresentation.inquiryAction.systemImage
+                    )
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!actionAvailability.canStartInquiry)
+                .disabled(!controlsPresentation.inquiryAction.isEnabled)
             }
-            DisclosureGroup("问全桌") {
+            DisclosureGroup(controlsPresentation.askTable.title) {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                    TextField("把你想抛给全桌的问题写在这里", text: $tableQuestion, axis: .vertical)
+                    TextField(controlsPresentation.askTable.prompt, text: $tableQuestion, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                     Button {
                         viewModel.askTable(tableQuestion)
                         tableQuestion = ""
                     } label: {
-                        Label("发送给全桌", systemImage: "paperplane.fill")
+                        Label(
+                            controlsPresentation.askTable.action.title,
+                            systemImage: controlsPresentation.askTable.action.systemImage
+                        )
                     }
                     .buttonStyle(.bordered)
-                    .disabled(!actionAvailability.canAskTable || tableQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!controlsPresentation.askTable.action.isEnabled)
                 }
                 .padding(.top, ParallelMeSpacing.sm)
             }
-            DisclosureGroup("问一声") {
+            DisclosureGroup(controlsPresentation.askVoice.title) {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                    Picker("声音", selection: $selectedVoice) {
+                    Picker(controlsPresentation.askVoice.pickerTitle, selection: $selectedVoice) {
                         ForEach(VoiceID.allCases) { voice in
                             Text(voice.displayName).tag(voice)
                         }
                     }
-                    TextField("问这一声一句", text: $voiceQuestion, axis: .vertical)
+                    TextField(controlsPresentation.askVoice.prompt, text: $voiceQuestion, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                     Button {
                         viewModel.askVoice(selectedVoice, text: voiceQuestion)
                         voiceQuestion = ""
                     } label: {
-                        Label("发送给\(selectedVoice.displayName)", systemImage: "person.wave.2.fill")
+                        Label(
+                            controlsPresentation.askVoice.action.title,
+                            systemImage: controlsPresentation.askVoice.action.systemImage
+                        )
                     }
                     .buttonStyle(.bordered)
-                    .disabled(!actionAvailability.canAskVoice || voiceQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!controlsPresentation.askVoice.action.isEnabled)
                 }
                 .padding(.top, ParallelMeSpacing.sm)
             }
-            DisclosureGroup("让两声对话") {
+            DisclosureGroup(controlsPresentation.duel.title) {
                 VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
-                    Picker("发问", selection: $duelFrom) {
+                    Picker(controlsPresentation.duel.fromPickerTitle, selection: $duelFrom) {
                         ForEach(VoiceID.allCases) { voice in
                             Text(voice.displayName).tag(voice)
                         }
                     }
-                    Picker("回应", selection: $duelTo) {
+                    Picker(controlsPresentation.duel.toPickerTitle, selection: $duelTo) {
                         ForEach(VoiceID.allCases) { voice in
                             Text(voice.displayName).tag(voice)
                         }
@@ -108,10 +131,13 @@ struct RoundtableView: View {
                     Button {
                         viewModel.startDuel(from: duelFrom, to: duelTo)
                     } label: {
-                        Label("开始对话", systemImage: "arrow.left.and.right")
+                        Label(
+                            controlsPresentation.duel.action.title,
+                            systemImage: controlsPresentation.duel.action.systemImage
+                        )
                     }
                     .buttonStyle(.bordered)
-                    .disabled(!actionAvailability.canStartDuel || duelFrom == duelTo)
+                    .disabled(!controlsPresentation.duel.action.isEnabled)
                 }
                 .padding(.top, ParallelMeSpacing.sm)
             }
