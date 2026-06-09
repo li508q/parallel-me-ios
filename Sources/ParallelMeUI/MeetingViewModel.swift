@@ -103,6 +103,11 @@ public final class MeetingViewModel: ObservableObject {
         runtimePreferencesMessage = nil
     }
 
+    public func useStarterPrompt(_ prompt: PetitionStarterPrompt) {
+        guard !isBusy else { return }
+        petition = prompt.seedText
+    }
+
     public func loadProviderSettings() async {
         guard !hasLoadedProviderSettings, let providerSettingsStore else { return }
         hasLoadedProviderSettings = true

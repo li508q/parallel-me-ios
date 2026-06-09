@@ -18,6 +18,17 @@ struct ParallelMeCoreSmokeTests {
             try expect(Set(VoicePersonas.all.map(\.coreValue)).count == VoicePersonas.all.count)
         }
 
+        try runner.run("starter prompts provide distinct petition seeds") {
+            let prompts = PetitionStarterPrompts.all
+
+            try expect(prompts.count >= 4)
+            try expect(Set(prompts.map(\.id)).count == prompts.count)
+            try expect(Set(prompts.map(\.seedText)).count == prompts.count)
+            try expect(Set(prompts.map(\.accentVoiceID)).isSubset(of: Set(VoiceID.allCases)))
+            try expect(prompts.allSatisfy { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+            try expect(prompts.allSatisfy { $0.seedText.count >= 18 })
+        }
+
         try runner.run("meeting flow requires complete proposal") {
             let engine = MeetingFlowEngine()
             do {
@@ -912,6 +923,24 @@ struct ParallelMeCoreSmokeTests {
             try expect(loaded.meCard == "我长期在高压工作里消耗自己")
             try expect(loaded.tasteProfile == "直接一点，但不要替我决定")
             try expect(cleared.isEmpty)
+        }
+
+        try await runner.runAsync("meeting view model applies starter prompt") {
+            let viewModel = MeetingViewModel(
+                coordinator: MeetingSessionCoordinator(
+                    provider: DemoLLMProvider(),
+                    repository: InMemoryMeetingRepository()
+                )
+            )
+            let prompt = try unwrap(PetitionStarterPrompts.all.first, "Expected starter prompt")
+
+            try expect(viewModel.petition.isEmpty)
+            try expect(!viewModel.canStart)
+
+            viewModel.useStarterPrompt(prompt)
+
+            try expect(viewModel.petition == prompt.seedText)
+            try expect(viewModel.canStart)
         }
 
         try await runner.runAsync("meeting view model saves and clears runtime preferences") {

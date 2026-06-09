@@ -80,6 +80,11 @@ public struct ParallelMeRootView: View {
     private var startCard: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.md) {
             ProviderSettingsPanel(viewModel: viewModel)
+            if viewModel.petition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                PetitionStarterPromptGrid { prompt in
+                    viewModel.useStarterPrompt(prompt)
+                }
+            }
             TextEditor(text: $viewModel.petition)
                 .font(ParallelMeTypography.body)
                 .foregroundStyle(ParallelMeColor.ink)

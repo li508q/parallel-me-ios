@@ -10,6 +10,8 @@ Before a meeting, the user can optionally keep a private personal context: who t
 
 The user starts with a messy, emotional, incomplete description. The product should accept this as-is. The first job is not advice; it is issue definition.
 
+On iOS, the empty home screen offers a small set of starter prompts. They are not templates for the final answer; they are safe first sentences that help the user begin when the page is blank. Selecting one fills the raw petition editor, and the user can rewrite it before starting the meeting.
+
 ## 2. Scribe Defining
 
 The scribe completes a four-key issue proposal:

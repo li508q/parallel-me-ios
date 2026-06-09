@@ -6,6 +6,7 @@ The first test layer is `ParallelMeCore`.
 
 - A roundtable cannot start before a complete issue proposal exists.
 - The five voice list is stable and complete.
+- Starter prompts are distinct, non-empty first-sentence seeds and can be applied by the view model.
 - Stage-one questions are deduplicated by purpose and similar wording.
 - Free-text answers are preserved for both defining questions and final inquiry.
 - Stage-one proposal feedback is persisted and can regenerate the four-key proposal.
@@ -38,4 +39,4 @@ swift run ParallelMeCoreSmokeTests
 
 This machine's command-line Swift toolchain does not expose `XCTest` or Swift `Testing`, so the repository includes a small executable smoke-test runner that still exercises the core unit rules. UI and simulator tests should be added once a full Xcode installation is available.
 
-Current smoke coverage includes 47 checks across flow rules, stage progress, roundtable inquiry readiness, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, export file writing, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, runtime preference actions, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.
+Current smoke coverage includes 49 checks across flow rules, starter prompts, stage progress, roundtable inquiry readiness, runtime snapshots, restored-paper runtime rebuilding, lifecycle timestamps, paper library grouping and full-paper search, archived detail snapshots, Markdown export, export file writing, provider prompt contracts, provider configuration, secure settings persistence, provider context persistence, runtime preference actions, deduplication, free-text answers, proposal refinement, resume policy, meeting timeline, roundtable transcript grouping, settlement readiness, settlement revision drafts, user settlement revisions, archive summaries, repositories, session events, and all demo roundtable move types.

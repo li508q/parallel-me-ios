@@ -84,6 +84,50 @@ struct ProviderSettingsPanel: View {
     }
 }
 
+struct PetitionStarterPromptGrid: View {
+    var prompts: [PetitionStarterPrompt] = PetitionStarterPrompts.all
+    var select: (PetitionStarterPrompt) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: ParallelMeSpacing.sm)], spacing: ParallelMeSpacing.sm) {
+            ForEach(prompts) { prompt in
+                Button {
+                    select(prompt)
+                } label: {
+                    VStack(alignment: .leading, spacing: ParallelMeSpacing.xs) {
+                        HStack(spacing: ParallelMeSpacing.xs) {
+                            Circle()
+                                .fill(ParallelMeTheme.voiceColor(prompt.accentVoiceID.rawValue))
+                                .frame(width: 8, height: 8)
+                            Text(prompt.title)
+                                .font(ParallelMeTypography.bodyStrong)
+                                .foregroundStyle(ParallelMeColor.ink)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.82)
+                        }
+                        Text(prompt.detail)
+                            .font(ParallelMeTypography.compact)
+                            .foregroundStyle(ParallelMeColor.inkMuted)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
+                    .padding(ParallelMeSpacing.md)
+                    .background(ParallelMeTheme.voiceColor(prompt.accentVoiceID.rawValue).opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: ParallelMeRadius.card))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ParallelMeRadius.card)
+                            .stroke(ParallelMeTheme.voiceColor(prompt.accentVoiceID.rawValue).opacity(0.32), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(prompt.title))
+                .accessibilityHint(Text("填入起笔困惑：\(prompt.seedText)"))
+            }
+        }
+    }
+}
+
 struct ResumeMeetingCard: View {
     var meeting: MeetingSummary
     var restore: (String) -> Void
