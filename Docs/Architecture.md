@@ -60,6 +60,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `RoundtableTransitionSnapshot` derives whether the roundtable has complete openings and at least one substantive exchange, so the UI cannot make inquiry available before there is real material.
 `MeetingResumePolicy` chooses the latest unfinished paper from saved states, keeping resume behavior testable outside SwiftUI.
 `MeetingLibrarySnapshot` groups, status-filters, and full-text searches saved papers into recent, unfinished, and archived sections. `MeetingSummary` derives a searchable text index from the full meeting state, keeping home library behavior out of SwiftUI.
+`PaperLibraryActionAvailabilitySnapshot` locks restore and delete actions while a paper-library operation is in flight.
 `MeetingArchiveSnapshot` derives archived-paper detail rows and full timeline data from Core state, so restored archived papers can be inspected without rebuilding business rules in SwiftUI.
 `MeetingExportAvailabilitySnapshot` defines when a paper can be shared from the UI, keeping export entry points aligned with the archive lifecycle. `MeetingExportDocument` renders a saved paper into deterministic Markdown from Core state, so sharing/exporting can evolve without moving product formatting rules into SwiftUI.
 `MeetingExportFileWriter` writes that Markdown to a named local `.md` file for iOS sharing while keeping file IO testable outside SwiftUI.
@@ -109,6 +110,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Settlement and archive timestamps are stored in Core state and tested through summaries, library sorting, and timelines.
 - Resume selection is derived in Core and ignores archived papers.
 - Paper library grouping, ordering, status filtering, and search filtering are derived in Core and tested without UI.
+- Paper library restore/delete actions lock while paper-library work is in flight.
 - Runtime snapshots make provider and context state visible on the active paper and are tested through flow and session persistence.
 - Runtime preferences can be saved or cleared explicitly from the UI and are tested through the view model.
 - Runtime preference fields and actions lock while runtime preference work is in flight.

@@ -174,8 +174,13 @@ struct StartReadinessView: View {
 
 struct ResumeMeetingCard: View {
     var meeting: MeetingSummary
+    var isBusy: Bool
     var restore: (String) -> Void
     var delete: (String) -> Void
+
+    private var availability: PaperLibraryActionAvailabilitySnapshot {
+        PaperLibraryActionAvailabilitySnapshot(isBusy: isBusy)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
@@ -197,7 +202,8 @@ struct ResumeMeetingCard: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                DeletePaperButton(meeting: meeting, delete: delete) {
+                .disabled(!availability.canRestore)
+                DeletePaperButton(meeting: meeting, canDelete: availability.canDelete, delete: delete) {
                     Image(systemName: "trash")
                         .frame(width: 34, height: 34)
                 }
@@ -217,6 +223,7 @@ struct ResumeMeetingCard: View {
 struct PaperLibrarySection: View {
     var library: MeetingLibrarySnapshot
     var sourceLibrary: MeetingLibrarySnapshot
+    var isBusy: Bool
     @Binding var searchText: String
     @Binding var filter: MeetingLibraryFilter
     var restore: (String) -> Void
@@ -230,6 +237,10 @@ struct PaperLibrarySection: View {
         filter != .all
     }
 
+    private var availability: PaperLibraryActionAvailabilitySnapshot {
+        PaperLibraryActionAvailabilitySnapshot(isBusy: isBusy)
+    }
+
     var body: some View {
         if !sourceLibrary.isEmpty {
             VStack(alignment: .leading, spacing: ParallelMeSpacing.sm) {
@@ -241,6 +252,13 @@ struct PaperLibrarySection: View {
                     Text(statusText)
                         .font(ParallelMeTypography.compact)
                         .foregroundStyle(ParallelMeColor.inkMuted)
+                }
+
+                if let message = availability.message {
+                    Text(message)
+                        .font(ParallelMeTypography.compact)
+                        .foregroundStyle(ParallelMeColor.inkMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 HStack(spacing: ParallelMeSpacing.xs) {
@@ -292,6 +310,7 @@ struct PaperLibrarySection: View {
                             title: "未完成",
                             meetings: library.unfinished,
                             tint: ParallelMeColor.future,
+                            availability: availability,
                             restore: restore,
                             delete: delete
                         )
@@ -302,6 +321,7 @@ struct PaperLibrarySection: View {
                             title: "已归档",
                             meetings: library.archived,
                             tint: ParallelMeColor.money,
+                            availability: availability,
                             restore: restore,
                             delete: delete
                         )
@@ -336,6 +356,7 @@ private struct PaperLibraryGroup: View {
     var title: String
     var meetings: [MeetingSummary]
     var tint: Color
+    var availability: PaperLibraryActionAvailabilitySnapshot
     var restore: (String) -> Void
     var delete: (String) -> Void
 
@@ -346,6 +367,7 @@ private struct PaperLibraryGroup: View {
                     PaperLibraryRow(
                         meeting: meeting,
                         tint: tint,
+                        availability: availability,
                         restore: restore,
                         delete: delete
                     )
@@ -361,6 +383,7 @@ private struct PaperLibraryGroup: View {
 private struct PaperLibraryRow: View {
     var meeting: MeetingSummary
     var tint: Color
+    var availability: PaperLibraryActionAvailabilitySnapshot
     var restore: (String) -> Void
     var delete: (String) -> Void
 
@@ -381,8 +404,9 @@ private struct PaperLibraryRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .disabled(!availability.canRestore)
 
-            DeletePaperButton(meeting: meeting, delete: delete) {
+            DeletePaperButton(meeting: meeting, canDelete: availability.canDelete, delete: delete) {
                 Image(systemName: "trash")
                     .font(.system(size: 14, weight: .medium))
             }
@@ -401,6 +425,7 @@ private struct PaperLibraryRow: View {
 
 private struct DeletePaperButton<Label: View>: View {
     var meeting: MeetingSummary
+    var canDelete: Bool
     var delete: (String) -> Void
     @ViewBuilder var label: () -> Label
     @State private var isConfirmingDelete = false
@@ -411,6 +436,7 @@ private struct DeletePaperButton<Label: View>: View {
         } label: {
             label()
         }
+        .disabled(!canDelete)
         .confirmationDialog(
             "删除这张纸页？",
             isPresented: $isConfirmingDelete,
@@ -419,6 +445,7 @@ private struct DeletePaperButton<Label: View>: View {
             Button("删除纸页", role: .destructive) {
                 delete(meeting.id)
             }
+            .disabled(!canDelete)
             Button("取消", role: .cancel) {}
         } message: {
             Text("“\(meeting.title)” 会从这台设备移除。这个操作不能撤销。")

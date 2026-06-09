@@ -719,6 +719,18 @@ struct ParallelMeCoreSmokeTests {
             try expect(library.filtered(searchText: "未来的我").archived.map(\.id) == [state.id])
         }
 
+        try runner.run("paper library actions lock while busy") {
+            let ready = PaperLibraryActionAvailabilitySnapshot()
+            let busy = PaperLibraryActionAvailabilitySnapshot(isBusy: true)
+
+            try expect(ready.canRestore)
+            try expect(ready.canDelete)
+            try expect(ready.message == nil)
+            try expect(!busy.canRestore)
+            try expect(!busy.canDelete)
+            try expect(busy.message?.contains("纸页库正在处理") == true)
+        }
+
         try runner.run("meeting timeline summarizes current paper progress") {
             let engine = MeetingFlowEngine()
             let started = try engine.start(rawInput: "我想辞职又怕没钱")

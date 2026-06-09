@@ -34,6 +34,7 @@ public struct ParallelMeRootView: View {
                             if let resumable = viewModel.resumableMeeting {
                                 ResumeMeetingCard(
                                     meeting: resumable,
+                                    isBusy: viewModel.isBusy,
                                     restore: viewModel.restoreMeeting,
                                     delete: viewModel.deleteMeeting
                                 )
@@ -42,6 +43,7 @@ public struct ParallelMeRootView: View {
                             PaperLibrarySection(
                                 library: viewModel.visibleMeetingLibrary,
                                 sourceLibrary: viewModel.meetingLibrary,
+                                isBusy: viewModel.isBusy,
                                 searchText: $viewModel.librarySearchText,
                                 filter: $viewModel.libraryFilter,
                                 restore: viewModel.restoreMeeting,
