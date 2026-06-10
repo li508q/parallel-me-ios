@@ -1280,6 +1280,8 @@ struct ParallelMeCoreSmokeTests {
             try expect(definitionPrompt.contains("不要使用固定收尾题"))
             try expect(definitionPrompt.contains("thinking 必须与 questions"))
             try expect(definitionPrompt.contains("userFeedback"))
+            try expect(definitionPrompt.contains("input.harnessFeedback"))
+            try expect(definitionPrompt.contains("previousFailures"))
             try expect(definitionPrompt.contains("custom"))
 
             let openingPrompt = ProviderPromptSpec.spec(for: .openRoundtable).systemPrompt
@@ -1306,6 +1308,8 @@ struct ParallelMeCoreSmokeTests {
             try expect(inquiryPrompt.contains("questions、readyForSettlement 与 profile 必须一致"))
             try expect(inquiryPrompt.contains("readyForSettlement=true"))
             try expect(inquiryPrompt.contains("questions 必须为空"))
+            try expect(inquiryPrompt.contains("input.harnessFeedback"))
+            try expect(inquiryPrompt.contains("previousFailures"))
             try expect(inquiryPrompt.contains("creativeHopelessness"))
             try expect(inquiryPrompt.contains("dialecticSynthesis"))
             try expect(inquiryPrompt.contains("custom"))
@@ -2361,6 +2365,21 @@ struct ParallelMeCoreSmokeTests {
                 ),
                 responseType: IssueDefinitionResponse.self
             )
+            let proposed = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(
+                        rawInput: "我想辞职又怕没钱",
+                        dialogue: answeredDefinitionHistory(answers: [
+                            (.surfaceDilemma, "我是在辞职和留下之间卡住。"),
+                            (.currentConstraints, "现金流和身体状态都是硬限制。"),
+                            (.coreFears, "我怕失去安全感，也怕不再尊重自己。"),
+                            (.expectedResolution, "我希望圆桌给一个判断标准和最小行动。")
+                        ])
+                    )
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
             let refined = try await provider.generate(
                 request: LLMRequest(
                     kind: .defineIssue,
@@ -2372,7 +2391,9 @@ struct ParallelMeCoreSmokeTests {
                 ),
                 responseType: IssueDefinitionResponse.self
             )
-            try expect(envelope.payload.proposal?.isComplete == true)
+            try expect(envelope.payload.questions.isEmpty == false)
+            try expect(envelope.payload.readyToPropose == false)
+            try expect(proposed.payload.proposal?.isComplete == true)
             try expect(refined.payload.proposal?.expectedResolution.content.contains("身体底线") == true)
             try expect(envelope.trace == ["demo:defineIssue"])
         }
@@ -2508,6 +2529,49 @@ struct ParallelMeCoreSmokeTests {
 
             try expect(envelope.payload.proposal == completeProposal)
             try expect(envelope.payload.thinking == "proposal ready with {evidence} and \"quoted\" text")
+        }
+
+        try await runner.runAsync("openai-compatible provider repairs invalid JSON payload once") {
+            let payload = IssueDefinitionResponse(
+                proposal: completeProposal,
+                readyToPropose: true,
+                thinking: "proposal ready"
+            )
+            let payloadData = try ParallelMeCoding.makeEncoder().encode(payload)
+            let payloadJSON = try unwrap(String(data: payloadData, encoding: .utf8), "Expected payload JSON")
+            let transport = SequenceOpenAITransport(responseData: [
+                try chatCompletionResponseData(content: #"{"questions":[]}"#),
+                try chatCompletionResponseData(content: payloadJSON)
+            ])
+            let provider = OpenAICompatibleProvider(
+                configuration: OpenAICompatibleConfiguration(
+                    baseURL: URL(string: "https://api.example.com/v1")!,
+                    apiKey: "sk-test",
+                    model: "gpt-4.1-mini"
+                ),
+                transport: transport
+            )
+
+            let envelope = try await provider.generate(
+                request: LLMRequest(
+                    kind: .defineIssue,
+                    payload: IssueDefinitionInput(rawInput: "我想辞职又怕没钱", dialogue: [])
+                ),
+                responseType: IssueDefinitionResponse.self
+            )
+            let requests = await transport.requests()
+            let repairBodyData = try unwrap(requests.last?.body, "Expected repair request body")
+            let repairBody = try unwrap(
+                JSONSerialization.jsonObject(with: repairBodyData) as? [String: Any],
+                "Expected repair JSON request body"
+            )
+            let messages = try unwrap(repairBody["messages"] as? [[String: Any]], "Expected repair messages")
+            let systemPrompt = try unwrap(messages.first?["content"] as? String, "Expected repair system prompt")
+
+            try expect(envelope.payload.proposal == completeProposal)
+            try expect(envelope.trace == ["openai-compatible:defineIssue", "json-repair"])
+            try expect(requests.count == 2)
+            try expect(systemPrompt.contains("JSON 修复器"))
         }
 
         try await runner.runAsync("openai-compatible provider reports HTTP error body") {
@@ -2754,9 +2818,12 @@ struct ParallelMeCoreSmokeTests {
         try await runner.runAsync("meeting view model retries failed definition request") {
             let provider = FlakyDefinitionProvider(
                 success: IssueDefinitionResponse(
-                    proposal: completeProposal,
-                    readyToPropose: true,
-                    thinking: "proposal ready"
+                    questions: [
+                        question("retry_definition_surface", "你现在真正卡住的是辞职和留下，还是另一个更具体的岔路？", .surfaceDilemma)
+                    ],
+                    proposal: nil,
+                    readyToPropose: false,
+                    thinking: "需要先问清楚 surfaceDilemma。"
                 )
             )
             let repository = InMemoryMeetingRepository()
@@ -2918,7 +2985,12 @@ struct ParallelMeCoreSmokeTests {
 
         try await runner.runAsync("session coordinator forwards provider context") {
             let provider = ContextRecordingProvider(
-                definitionResponse: IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true)
+                definitionResponse: IssueDefinitionResponse(
+                    questions: [
+                        question("context_definition_surface", "这件事里最需要比较的是哪两个具体方向？", .surfaceDilemma)
+                    ],
+                    readyToPropose: false
+                )
             )
             let coordinator = MeetingSessionCoordinator(
                 provider: provider,
@@ -3096,28 +3168,36 @@ struct ParallelMeCoreSmokeTests {
             try expect(saved?.definingDialogue.last?.answer?.questionID == "proposal_feedback")
         }
 
-        try await runner.runAsync("session coordinator blocks early definition proposal without user evidence") {
-            let provider = MockLLMProvider()
-            let repository = InMemoryMeetingRepository()
-            await provider.register(
+        try await runner.runAsync("session coordinator retries early definition proposal without user evidence") {
+            let followUp = question("model_surface_retry", "你说辞职和留下都难，真正要比较的是哪两个具体方向？", .surfaceDilemma)
+            let provider = SequenceDefinitionProvider(responses: [
                 IssueDefinitionResponse(
                     proposal: completeProposal,
                     readyToPropose: true,
                     thinking: "模型觉得已经足够成案。"
                 ),
-                for: .defineIssue
-            )
+                IssueDefinitionResponse(
+                    questions: [followUp],
+                    proposal: nil,
+                    readyToPropose: false,
+                    thinking: "本地证据不足，需要先追问 surfaceDilemma。"
+                )
+            ])
+            let repository = InMemoryMeetingRepository()
             let coordinator = MeetingSessionCoordinator(provider: provider, repository: repository)
 
             _ = try await coordinator.start(rawInput: "辞职还是留下，月薪和身体都卡住，我怕后悔，也想让圆桌给判断规则。")
             let probing = try await coordinator.requestDefinition()
             let saved = try await repository.load(id: probing.id)
+            let inputs = await provider.definitionInputs()
 
             try expect(probing.stage == .defining)
             try expect(probing.definingSubstage == .probing)
             try expect(probing.issueProposal == nil)
-            try expect(probing.currentQuestions.count == 3)
-            try expect(probing.currentQuestions.map(\.purpose) == [.surfaceDilemma, .currentConstraints, .coreFears])
+            try expect(probing.currentQuestions.map(\.id) == [followUp.id])
+            try expect(inputs.count == 2)
+            try expect(inputs[0].harnessFeedback == nil)
+            try expect(inputs[1].harnessFeedback?.previousFailures.isEmpty == false)
             try expect(saved?.issueProposal == nil)
         }
 
@@ -3147,17 +3227,24 @@ struct ParallelMeCoreSmokeTests {
             try expect(saved?.currentQuestions.map(\.id) == [followUp.id])
         }
 
-        try await runner.runAsync("session coordinator recovers when definition questions dedupe empty") {
-            let provider = StaticDefinitionProvider(
-                response: IssueDefinitionResponse(
+        try await runner.runAsync("session coordinator retries when definition questions dedupe empty") {
+            let retryQuestion = question("model_expected_retry", "除了“验证什么”之外，你最想让圆桌产出一个判断标准还是一个行动？", .expectedResolution)
+            let provider = SequenceDefinitionProvider(responses: [
+                IssueDefinitionResponse(
                     questions: [
                         question("repeat_expected", "你希望这次圆桌讨论帮自己验证什么？", .expectedResolution)
                     ],
                     proposal: nil,
                     readyToPropose: false,
                     thinking: "仍然缺 expectedResolution。"
+                ),
+                IssueDefinitionResponse(
+                    questions: [retryQuestion],
+                    proposal: nil,
+                    readyToPropose: false,
+                    thinking: "换一个不重复的 expectedResolution 问题。"
                 )
-            )
+            ])
             let repository = InMemoryMeetingRepository()
             let engine = MeetingFlowEngine()
             let previous = question("previous_expected", "你希望这次圆桌最终帮你验证什么？", .expectedResolution)
@@ -3176,13 +3263,12 @@ struct ParallelMeCoreSmokeTests {
             _ = try await coordinator.restore(state)
 
             let probing = try await coordinator.requestDefinition()
+            let inputs = await provider.definitionInputs()
 
-            try expect(probing.currentQuestions.count == 3)
-            try expect(probing.currentQuestions.map(\.purpose) == [.surfaceDilemma, .currentConstraints, .coreFears])
-            try expect(!probing.currentQuestions.map(\.id).contains("repeat_expected"))
-            try expect(probing.currentQuestions.allSatisfy { question in
-                question.options.contains { $0.isCustomAnswer }
-            })
+            try expect(probing.currentQuestions.map(\.id) == [retryQuestion.id])
+            try expect(inputs.count == 2)
+            try expect(inputs[1].harnessFeedback?.previousFailures.first?.contains("非重复问题") == true)
+            try expect(probing.currentQuestions.first?.options.contains { $0.isCustomAnswer } == true)
         }
 
         try await runner.runAsync("session coordinator preserves contradictory inquiry questions") {
@@ -3238,7 +3324,7 @@ struct ParallelMeCoreSmokeTests {
             try expect(availability.blockers.contains(.activeQuestionsUnanswered))
         }
 
-        try await runner.runAsync("session coordinator recovers when inquiry questions dedupe empty") {
+        try await runner.runAsync("session coordinator retries when inquiry questions dedupe empty") {
             let previous = ScribeInquiryQuestion(
                 id: "previous_action",
                 question: "24 小时内，哪个动作最小但能让局面更真实一点？",
@@ -3248,8 +3334,17 @@ struct ParallelMeCoreSmokeTests {
                 ],
                 module: .minimumAction
             )
-            let provider = StaticInquiryProvider(
-                response: AlignmentInquiryResponse(
+            let retryQuestion = ScribeInquiryQuestion(
+                id: "model_action_retry",
+                question: "你刚才说还不知道，那 24 小时内哪个动作最小、但能让现金流和身体状态更可见？",
+                options: [
+                    ScribeInquiryOption(id: "cash_body", label: "写现金流和身体底线。"),
+                    ScribeInquiryOption(id: "custom", label: "都不准，我自己说")
+                ],
+                module: .minimumAction
+            )
+            let provider = SequenceInquiryProvider(responses: [
+                AlignmentInquiryResponse(
                     questions: [
                         ScribeInquiryQuestion(
                             id: "repeated_action",
@@ -3263,8 +3358,14 @@ struct ParallelMeCoreSmokeTests {
                     readyForSettlement: true,
                     profile: completeProfile,
                     ledger: ScribeObservationLedger()
+                ),
+                AlignmentInquiryResponse(
+                    questions: [retryQuestion],
+                    readyForSettlement: false,
+                    profile: nil,
+                    ledger: ScribeObservationLedger()
                 )
-            )
+            ])
             let repository = InMemoryMeetingRepository()
             let engine = MeetingFlowEngine()
             var state = try engine.start(rawInput: "我想辞职又怕没钱")
@@ -3297,20 +3398,16 @@ struct ParallelMeCoreSmokeTests {
             _ = try await coordinator.restore(state)
 
             let inquiry = try await coordinator.requestNextInquiry()
+            let inputs = await provider.inquiryInputs()
             let answeredIDs = Set(inquiry.inquiryAnswers.map(\.questionID))
             let activeQuestions = inquiry.inquiryQuestions.filter { !answeredIDs.contains($0.id) }
-            let restoredProfile = try unwrap(inquiry.alignmentProfile, "Expected guarded profile to persist")
-            let readiness = SettlementReadinessEvaluator().evaluate(
-                profile: restoredProfile,
-                ledger: inquiry.scribeObservationLedger,
-                answers: inquiry.inquiryAnswers
-            )
 
-            try expect(!readiness.isReady)
             try expect(activeQuestions.count == 1)
-            try expect(activeQuestions.first?.module == .minimumAction)
-            try expect(activeQuestions.first?.id.hasPrefix("recovery_minimum_action") == true)
+            try expect(activeQuestions.first?.id == retryQuestion.id)
             try expect(activeQuestions.first?.options.contains(where: \.isCustomAnswer) == true)
+            try expect(inquiry.alignmentProfile == nil)
+            try expect(inputs.count == 2)
+            try expect(inputs[1].harnessFeedback?.previousFailures.first?.contains("非重复问询") == true)
         }
 
         try await runner.runAsync("session coordinator settles only after readiness") {
@@ -3440,13 +3537,17 @@ struct ParallelMeCoreSmokeTests {
         }
 
         try await runner.runAsync("session events record provider and persistence milestones") {
-            let provider = MockLLMProvider()
+            let provider = SequenceDefinitionProvider(responses: [
+                IssueDefinitionResponse(
+                    questions: [
+                        question("events_definition_surface", "这件事最像哪两个具体方向在拉扯你？", .surfaceDilemma)
+                    ],
+                    readyToPropose: false,
+                    thinking: "先补一个真实追问。"
+                )
+            ])
             let repository = InMemoryMeetingRepository()
             let events = InMemoryMeetingSessionEventSink()
-            await provider.register(
-                IssueDefinitionResponse(proposal: completeProposal, readyToPropose: true),
-                for: .defineIssue
-            )
             let coordinator = MeetingSessionCoordinator(
                 provider: provider,
                 repository: repository,
@@ -3743,6 +3844,17 @@ struct ParallelMeCoreSmokeTests {
         maxRounds: Int = 4
     ) async throws -> MeetingFlowState
     where Provider: LLMProvider, Repository: MeetingRepository {
+        if var current = await coordinator.currentState(),
+           current.issueProposal == nil,
+           current.definingDialogue.isEmpty {
+            current.definingDialogue = answeredDefinitionHistory(answers: [
+                (.surfaceDilemma, "我是在继续高压工作和离开观察期之间卡住。"),
+                (.currentConstraints, "现金流、父母期待和身体状态都是现实边界。"),
+                (.coreFears, "我怕失去安全感，也怕继续消耗后不再尊重自己。"),
+                (.expectedResolution, "我希望圆桌帮我确认判断规则和一个可承受的最小行动。")
+            ])
+            _ = try await coordinator.restore(current)
+        }
         var state = try await coordinator.requestDefinition()
         var rounds = 0
 
@@ -3917,6 +4029,40 @@ private actor MockOpenAITransport: OpenAICompatibleTransport {
     }
 }
 
+private actor SequenceOpenAITransport: OpenAICompatibleTransport {
+    private var responseData: [Data]
+    private var capturedRequests: [CapturedOpenAIRequest] = []
+
+    init(responseData: [Data]) {
+        self.responseData = responseData
+    }
+
+    func requests() -> [CapturedOpenAIRequest] {
+        capturedRequests
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        capturedRequests.append(
+            CapturedOpenAIRequest(
+                urlString: request.url?.absoluteString,
+                method: request.httpMethod,
+                timeout: request.timeoutInterval,
+                body: request.httpBody,
+                authorization: request.value(forHTTPHeaderField: "Authorization"),
+                contentType: request.value(forHTTPHeaderField: "Content-Type")
+            )
+        )
+        let next = responseData.isEmpty ? Data(#"{"choices":[]}"#.utf8) : responseData.removeFirst()
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://mock.parallelme.local")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (next, response)
+    }
+}
+
 private actor FlakyDefinitionProvider: LLMProvider {
     private let success: IssueDefinitionResponse
     private var remainingFailures: Int
@@ -4022,6 +4168,68 @@ private actor StaticInquiryProvider: LLMProvider {
             throw MockLLMProviderError.missingResponse(kind: request.kind)
         }
         return LLMEnvelope(payload: payload, trace: ["static:\(request.kind.rawValue)"])
+    }
+}
+
+private actor SequenceDefinitionProvider: LLMProvider {
+    private var responses: [IssueDefinitionResponse]
+    private var inputs: [IssueDefinitionInput] = []
+
+    init(responses: [IssueDefinitionResponse]) {
+        self.responses = responses
+    }
+
+    func definitionInputs() -> [IssueDefinitionInput] {
+        inputs
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .defineIssue,
+              let input = request.payload as? IssueDefinitionInput,
+              !responses.isEmpty else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        inputs.append(input)
+        let response = responses.removeFirst()
+        guard let payload = response as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        return LLMEnvelope(payload: payload, trace: ["sequence:\(request.kind.rawValue)"])
+    }
+}
+
+private actor SequenceInquiryProvider: LLMProvider {
+    private var responses: [AlignmentInquiryResponse]
+    private var inputs: [AlignmentInquiryInput] = []
+
+    init(responses: [AlignmentInquiryResponse]) {
+        self.responses = responses
+    }
+
+    func inquiryInputs() -> [AlignmentInquiryInput] {
+        inputs
+    }
+
+    func generate<RequestPayload, ResponsePayload>(
+        request: LLMRequest<RequestPayload>,
+        responseType: ResponsePayload.Type
+    ) async throws -> LLMEnvelope<ResponsePayload>
+    where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
+        guard request.kind == .alignmentInquiry,
+              let input = request.payload as? AlignmentInquiryInput,
+              !responses.isEmpty else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        inputs.append(input)
+        let response = responses.removeFirst()
+        guard let payload = response as? ResponsePayload else {
+            throw MockLLMProviderError.missingResponse(kind: request.kind)
+        }
+        return LLMEnvelope(payload: payload, trace: ["sequence:\(request.kind.rawValue)"])
     }
 }
 

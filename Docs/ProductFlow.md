@@ -29,6 +29,7 @@ The scribe can ask 1-3 questions per turn. There is no total-turn cap. Repetitio
 Every question must include a free-text escape. If the provided options miss the user's real answer, the user can write their own language and that text becomes part of the meeting evidence. When the scribe asks multiple questions in one turn, iOS keeps them as one answer batch; the user answers every current question before the app sends the batch back to the scribe.
 
 Raw petition keywords are treated as leads, not confirmed evidence. Even if a provider returns a complete-looking proposal, iOS keeps the scribe in the defining loop until all four purposes have user answers, the dialogue has enough exploration, and at least one answer contains real user articulation plus a boundary or condition test.
+If a provider returns duplicate, empty, or premature-ready definition output, iOS rejects that attempt and asks the model to regenerate with explicit harness feedback. It does not invent local template questions; after repeated failures, the paper remains retryable and the UI surfaces a real retry path.
 
 ## 3. Proposal Confirmation
 
@@ -69,6 +70,7 @@ The inquiry loop asks only questions that can still change the settlement qualit
 - dialectic synthesis
 
 The loop is sufficiency-driven, not count-driven. Like stage-one defining, each visible inquiry turn is answered as a batch: if the scribe asks multiple high-density questions together, the app waits until every current question has an answer before sending the turn back.
+The inquiry loop follows the same harness rule as stage-one defining: visible questions must come from the provider, pass local deduplication and readiness checks, and include a free-text escape. Invalid attempts are retried with structured feedback; persistent failure stays visible as a retryable model error instead of a fabricated closing question.
 
 ## 7. Heart Settlement
 

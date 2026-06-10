@@ -32,6 +32,7 @@ public struct IssueDefinitionInput: Codable, Equatable, Sendable {
     public var dialogue: [DefiningDialogueEntry]
     public var currentProposal: IssueProposal?
     public var userFeedback: String?
+    public var harnessFeedback: LLMHarnessFeedback?
     public var context: ProviderContext?
 
     public init(
@@ -39,13 +40,27 @@ public struct IssueDefinitionInput: Codable, Equatable, Sendable {
         dialogue: [DefiningDialogueEntry],
         currentProposal: IssueProposal? = nil,
         userFeedback: String? = nil,
+        harnessFeedback: LLMHarnessFeedback? = nil,
         context: ProviderContext? = nil
     ) {
         self.rawInput = rawInput
         self.dialogue = dialogue
         self.currentProposal = currentProposal
         self.userFeedback = userFeedback
+        self.harnessFeedback = harnessFeedback
         self.context = context
+    }
+}
+
+public struct LLMHarnessFeedback: Codable, Equatable, Sendable {
+    public var attempt: Int
+    public var previousFailures: [String]
+    public var instruction: String
+
+    public init(attempt: Int, previousFailures: [String], instruction: String) {
+        self.attempt = attempt
+        self.previousFailures = previousFailures
+        self.instruction = instruction
     }
 }
 
@@ -127,6 +142,7 @@ public struct AlignmentInquiryInput: Codable, Equatable, Sendable {
     public var ledger: ScribeObservationLedger
     public var questions: [ScribeInquiryQuestion]
     public var answers: [ScribeInquiryAnswer]
+    public var harnessFeedback: LLMHarnessFeedback?
     public var context: ProviderContext?
 
     public init(
@@ -136,6 +152,7 @@ public struct AlignmentInquiryInput: Codable, Equatable, Sendable {
         ledger: ScribeObservationLedger,
         questions: [ScribeInquiryQuestion],
         answers: [ScribeInquiryAnswer],
+        harnessFeedback: LLMHarnessFeedback? = nil,
         context: ProviderContext? = nil
     ) {
         self.taskFrame = taskFrame
@@ -144,6 +161,7 @@ public struct AlignmentInquiryInput: Codable, Equatable, Sendable {
         self.ledger = ledger
         self.questions = questions
         self.answers = answers
+        self.harnessFeedback = harnessFeedback
         self.context = context
     }
 }

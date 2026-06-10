@@ -70,10 +70,31 @@ public actor OpenAICompatibleProvider: LLMProvider {
         responseType: ResponsePayload.Type
     ) async throws -> LLMEnvelope<ResponsePayload>
     where RequestPayload: Codable & Sendable, ResponsePayload: Codable & Sendable {
-        let chatRequest = try ChatCompletionRequest(
+        let content = try await chatContent(
+            messages: PromptFactory.messages(for: request, encoder: encoder)
+        )
+        let baseTrace = "openai-compatible:\(request.kind.rawValue)"
+        do {
+            let payload = try decodeModelJSON(content, as: responseType)
+            return LLMEnvelope(payload: payload, trace: [baseTrace])
+        } catch {
+            let repairedContent = try await chatContent(
+                messages: PromptFactory.repairMessages(
+                    for: request.kind,
+                    originalContent: content,
+                    error: error
+                )
+            )
+            let payload = try decodeModelJSON(repairedContent, as: responseType)
+            return LLMEnvelope(payload: payload, trace: [baseTrace, "json-repair"])
+        }
+    }
+
+    private func chatContent(messages: [ChatMessage]) async throws -> String {
+        let chatRequest = ChatCompletionRequest(
             model: configuration.model,
             temperature: configuration.temperature,
-            messages: PromptFactory.messages(for: request, encoder: encoder),
+            messages: messages,
             responseFormat: ChatResponseFormat(type: "json_object")
         )
         let data = try encoder.encode(chatRequest)
@@ -96,8 +117,7 @@ public actor OpenAICompatibleProvider: LLMProvider {
         guard let content = chatResponse.choices.first?.message.content else {
             throw OpenAICompatibleProviderError.missingMessageContent
         }
-        let payload = try decodeModelJSON(content, as: responseType)
-        return LLMEnvelope(payload: payload, trace: ["openai-compatible:\(request.kind.rawValue)"])
+        return content
     }
 
     private func decodeModelJSON<ResponsePayload: Codable & Sendable>(
@@ -210,6 +230,37 @@ private enum PromptFactory {
         return [
             ChatMessage(role: "system", content: ProviderPromptSpec.spec(for: request.kind).systemPrompt),
             ChatMessage(role: "user", content: "任务输入 JSON：\n\(payloadJSON)")
+        ]
+    }
+
+    static func repairMessages(
+        for kind: LLMTaskKind,
+        originalContent: String,
+        error: Error
+    ) -> [ChatMessage] {
+        let spec = ProviderPromptSpec.spec(for: kind)
+        return [
+            ChatMessage(
+                role: "system",
+                content: """
+                你是 ParallelMe 的 JSON 修复器。把上一轮模型输出修复为当前任务要求的严格 JSON object。
+
+                返回契约：
+                \(spec.responseContract)
+
+                只返回一个 JSON object。不要输出 Markdown、代码块、解释或额外文本。
+                """
+            ),
+            ChatMessage(
+                role: "user",
+                content: """
+                解码失败：
+                \(String(describing: error))
+
+                上一轮输出：
+                \(originalContent)
+                """
+            )
         ]
     }
 }

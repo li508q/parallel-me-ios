@@ -13,16 +13,26 @@ public actor DemoLLMProvider: LLMProvider {
         case .defineIssue:
             let input = request.payload as? IssueDefinitionInput
             let feedback = input?.userFeedback?.trimmingCharacters(in: .whitespacesAndNewlines)
-            payload = IssueDefinitionResponse(
-                proposal: Self.proposal(
-                    rawInput: input?.rawInput ?? "这件事还没有被说清楚",
-                    feedback: feedback?.isEmpty == false ? feedback : nil
-                ),
-                readyToPropose: true,
-                thinking: feedback?.isEmpty == false
-                    ? "演示模式：按用户反馈修订四 Key 议题提案。"
-                    : "演示模式：直接生成四 Key 议题提案。"
-            )
+            if let input,
+               feedback?.isEmpty != false,
+               !IssueDefinitionEvidenceEvaluator().evaluate(rawInput: input.rawInput, history: input.dialogue).isReady {
+                payload = IssueDefinitionResponse(
+                    questions: Self.definitionQuestions(rawInput: input.rawInput, history: input.dialogue),
+                    readyToPropose: false,
+                    thinking: "演示模式：先补齐四 Key 所需的用户回答证据。"
+                )
+            } else {
+                payload = IssueDefinitionResponse(
+                    proposal: Self.proposal(
+                        rawInput: input?.rawInput ?? "这件事还没有被说清楚",
+                        feedback: feedback?.isEmpty == false ? feedback : nil
+                    ),
+                    readyToPropose: true,
+                    thinking: feedback?.isEmpty == false
+                        ? "演示模式：按用户反馈修订四 Key 议题提案。"
+                        : "演示模式：基于已回答证据生成四 Key 议题提案。"
+                )
+            }
         case .openRoundtable:
             payload = RoundtableOpeningResponse(openings: VoiceID.allCases.map(Self.opening))
         case .continueRoundtable:
@@ -111,6 +121,69 @@ public actor DemoLLMProvider: LLMProvider {
                 details: ["排出代价优先级", "给出一个 24 小时行动"]
             )
         )
+    }
+
+    private static func definitionQuestions(
+        rawInput: String,
+        history: [DefiningDialogueEntry]
+    ) -> [ScribeQuestion] {
+        let missing = IssueDefinitionEvidenceEvaluator()
+            .blockingPurposes(rawInput: rawInput, history: history)
+        return Array(missing.prefix(3)).map { purpose in
+            ScribeQuestion(
+                id: "demo_\(purpose.rawValue)",
+                text: definitionQuestionText(for: purpose, rawInput: rawInput),
+                options: definitionOptions(for: purpose),
+                purpose: purpose
+            )
+        }
+    }
+
+    private static func definitionQuestionText(for purpose: ProbePurpose, rawInput: String) -> String {
+        let focus = rawInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "这件事"
+            : "“\(String(rawInput.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20)))”"
+        switch purpose {
+        case .surfaceDilemma:
+            return "\(focus)里真正需要比较的是哪两个具体方向？"
+        case .currentConstraints:
+            return "\(focus)里哪条现实限制最硬，足以改变你的判断？"
+        case .coreFears:
+            return "如果这次选错，你最怕具体失去什么？"
+        case .expectedResolution:
+            return "这场圆桌最后要帮你验证一个答案、一个标准，还是一个行动？"
+        }
+    }
+
+    private static func definitionOptions(for purpose: ProbePurpose) -> [ScribeProbeOption] {
+        let options: [ScribeProbeOption]
+        switch purpose {
+        case .surfaceDilemma:
+            options = [
+                ScribeProbeOption(id: "two_paths", label: "两个方向都代价很大"),
+                ScribeProbeOption(id: "unclear_choice", label: "真正选择还没分清"),
+                ScribeProbeOption(id: "not_binary", label: "其实不是二选一")
+            ]
+        case .currentConstraints:
+            options = [
+                ScribeProbeOption(id: "cash", label: "现金流最硬"),
+                ScribeProbeOption(id: "body", label: "身体状态最硬"),
+                ScribeProbeOption(id: "relationship", label: "关系期待最硬")
+            ]
+        case .coreFears:
+            options = [
+                ScribeProbeOption(id: "security", label: "怕失去安全感"),
+                ScribeProbeOption(id: "freedom", label: "怕失去自由感"),
+                ScribeProbeOption(id: "respect", label: "怕不再尊重自己")
+            ]
+        case .expectedResolution:
+            options = [
+                ScribeProbeOption(id: "standard", label: "一个判断标准"),
+                ScribeProbeOption(id: "action", label: "一个最小行动"),
+                ScribeProbeOption(id: "voice_map", label: "分清谁在保护什么")
+            ]
+        }
+        return options + [ScribeProbeOption(id: "custom", label: "都不准，我自己说")]
     }
 
     private static func opening(_ id: VoiceID) -> VoiceOpeningTurn {

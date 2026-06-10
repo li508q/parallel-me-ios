@@ -74,13 +74,12 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             dialogue: current.definingDialogue,
             context: context
         )
-        await emit(.providerRequest, meetingID: current.id, message: "Requesting issue definition")
-        let envelope = try await provider.generate(
-            request: LLMRequest(kind: .defineIssue, payload: input),
-            responseType: IssueDefinitionResponse.self
+        return try await requestDefinitionWithHarness(
+            input: input,
+            current: current,
+            requestMessage: "Requesting issue definition",
+            responseMessage: "Received issue definition"
         )
-        await emit(.providerResponse, meetingID: current.id, message: "Received issue definition", trace: envelope.trace)
-        return try await applyDefinition(envelope.payload, to: current)
     }
 
     public func submitProbeAnswers(_ answers: [ScribeAnswer]) async throws -> MeetingFlowState {
@@ -116,13 +115,12 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
             userFeedback: trimmedFeedback,
             context: context
         )
-        await emit(.providerRequest, meetingID: feedbackState.id, message: "Refining issue proposal")
-        let envelope = try await provider.generate(
-            request: LLMRequest(kind: .defineIssue, payload: input),
-            responseType: IssueDefinitionResponse.self
+        return try await requestDefinitionWithHarness(
+            input: input,
+            current: feedbackState,
+            requestMessage: "Refining issue proposal",
+            responseMessage: "Received refined definition"
         )
-        await emit(.providerResponse, meetingID: feedbackState.id, message: "Received refined definition", trace: envelope.trace)
-        return try await applyDefinition(envelope.payload, to: feedbackState)
     }
 
     public func confirmProposalAndOpenRoundtable() async throws -> MeetingFlowState {
@@ -190,37 +188,16 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         guard let taskFrame = current.taskFrame else { throw MeetingSessionError.missingTaskFrame }
         guard let proposal = current.issueProposal else { throw MeetingSessionError.missingProposal }
 
-        await emit(.providerRequest, meetingID: current.id, message: "Requesting alignment inquiry")
-        let envelope = try await provider.generate(
-            request: LLMRequest(
-                kind: .alignmentInquiry,
-                payload: AlignmentInquiryInput(
-                    taskFrame: taskFrame,
-                    proposal: proposal,
-                    roundtable: current.roundtable,
-                    ledger: current.scribeObservationLedger,
-                    questions: current.inquiryQuestions,
-                    answers: current.inquiryAnswers,
-                    context: context
-                )
-            ),
-            responseType: AlignmentInquiryResponse.self
+        let input = AlignmentInquiryInput(
+            taskFrame: taskFrame,
+            proposal: proposal,
+            roundtable: current.roundtable,
+            ledger: current.scribeObservationLedger,
+            questions: current.inquiryQuestions,
+            answers: current.inquiryAnswers,
+            context: context
         )
-        await emit(.providerResponse, meetingID: current.id, message: "Received alignment inquiry", trace: envelope.trace)
-        let response = inquiryResponseGuard.normalize(
-            envelope.payload,
-            existingQuestions: current.inquiryQuestions,
-            existingAnswers: current.inquiryAnswers
-        )
-        let next = try engine.receiveInquiryQuestions(
-            response.questions,
-            profile: response.profile,
-            ledger: response.ledger,
-            readyForSettlement: response.readyForSettlement,
-            in: current
-        )
-        state = next
-        return try await persist(next)
+        return try await requestInquiryWithHarness(input: input, current: current)
     }
 
     public func requestSettlement() async throws -> MeetingFlowState {
@@ -271,33 +248,158 @@ public actor MeetingSessionCoordinator<Provider: LLMProvider, Repository: Meetin
         return try await persist(revised)
     }
 
-    private func applyDefinition(
-        _ response: IssueDefinitionResponse,
-        to current: MeetingFlowState
+    private func requestDefinitionWithHarness(
+        input: IssueDefinitionInput,
+        current: MeetingFlowState,
+        requestMessage: String,
+        responseMessage: String
     ) async throws -> MeetingFlowState {
+        var input = input
+        var failures: [String] = []
+
+        for attempt in 1...3 {
+            if attempt > 1 {
+                input.harnessFeedback = LLMHarnessFeedback(
+                    attempt: attempt,
+                    previousFailures: failures,
+                    instruction: "请重新生成阶段一定义结果。若本地证据不足，必须返回 1-3 个真实追问；不要返回模板题或空 questions。"
+                )
+            }
+            await emit(.providerRequest, meetingID: current.id, message: "\(requestMessage) (attempt \(attempt))")
+            let envelope = try await provider.generate(
+                request: LLMRequest(kind: .defineIssue, payload: input),
+                responseType: IssueDefinitionResponse.self
+            )
+            await emit(.providerResponse, meetingID: current.id, message: "\(responseMessage) (attempt \(attempt))", trace: envelope.trace)
+
+            switch definitionOutcome(for: envelope.payload, current: current) {
+            case .proposal(let proposal):
+                let proposed = try engine.receiveIssueProposal(proposal, in: current)
+                state = proposed
+                return try await persist(proposed)
+            case .questions(let questions):
+                let probing = try engine.receiveProbeQuestions(questions, in: current)
+                state = probing
+                return try await persist(probing)
+            case .retry(let reasons):
+                failures = reasons
+            }
+        }
+
+        throw MeetingSessionError.emptyModelResult
+    }
+
+    private func requestInquiryWithHarness(
+        input: AlignmentInquiryInput,
+        current: MeetingFlowState
+    ) async throws -> MeetingFlowState {
+        var input = input
+        var failures: [String] = []
+
+        for attempt in 1...3 {
+            if attempt > 1 {
+                input.harnessFeedback = LLMHarnessFeedback(
+                    attempt: attempt,
+                    previousFailures: failures,
+                    instruction: "请重新生成最终问询结果。证据不足时必须返回 1-3 个真实问询；证据充足时 questions 必须为空且 profile 必须完整。"
+                )
+            }
+            await emit(.providerRequest, meetingID: current.id, message: "Requesting alignment inquiry (attempt \(attempt))")
+            let envelope = try await provider.generate(
+                request: LLMRequest(kind: .alignmentInquiry, payload: input),
+                responseType: AlignmentInquiryResponse.self
+            )
+            await emit(.providerResponse, meetingID: current.id, message: "Received alignment inquiry (attempt \(attempt))", trace: envelope.trace)
+
+            switch inquiryOutcome(for: envelope.payload, current: current) {
+            case .ready(let response):
+                let next = try engine.receiveInquiryQuestions(
+                    response.questions,
+                    profile: response.profile,
+                    ledger: response.ledger,
+                    readyForSettlement: response.readyForSettlement,
+                    in: current
+                )
+                state = next
+                return try await persist(next)
+            case .retry(let reasons):
+                failures = reasons
+            }
+        }
+
+        throw MeetingSessionError.emptyModelResult
+    }
+
+    private enum DefinitionOutcome {
+        case proposal(IssueProposal)
+        case questions([ScribeQuestion])
+        case retry([String])
+    }
+
+    private enum InquiryOutcome {
+        case ready(AlignmentInquiryResponse)
+        case retry([String])
+    }
+
+    private func definitionOutcome(
+        for response: IssueDefinitionResponse,
+        current: MeetingFlowState
+    ) -> DefinitionOutcome {
         let response = definitionResponseGuard.normalize(response)
         let mustKeepProbing = response.readyToPropose &&
             deduplicator.shouldForceProbe(rawInput: current.rawInput, history: current.definingDialogue)
 
         if response.readyToPropose, !mustKeepProbing, let proposal = response.proposal, proposal.isComplete {
-            let proposed = try engine.receiveIssueProposal(proposal, in: current)
-            state = proposed
-            return try await persist(proposed)
+            return .proposal(proposal)
         }
 
-        let normalizedQuestions = deduplicator.normalize(response.questions, history: current.definingDialogue)
-        let questions = (normalizedQuestions.isEmpty || mustKeepProbing)
-            ? deduplicator.recoveryQuestions(rawInput: current.rawInput, history: current.definingDialogue)
-            : normalizedQuestions
-        guard !questions.isEmpty else {
-            if response.readyToPropose {
-                throw MeetingSessionError.emptyModelResult
-            }
-            throw MeetingSessionError.emptyModelResult
+        let questions = deduplicator.normalize(response.questions, history: current.definingDialogue)
+        if !questions.isEmpty {
+            return .questions(questions)
         }
-        let probing = try engine.receiveProbeQuestions(questions, in: current)
-        state = probing
-        return try await persist(probing)
+
+        var reasons: [String] = []
+        if mustKeepProbing {
+            let missing = deduplicator
+                .coverage(rawInput: current.rawInput, history: current.definingDialogue)
+                .missingPurposes
+                .map(\.rawValue)
+                .joined(separator: ", ")
+            reasons.append("本地证据仍不足，不能进入议题确认；缺口：\(missing.isEmpty ? "用户回答和边界证据不足" : missing)")
+        } else if response.readyToPropose {
+            reasons.append("readyToPropose=true 但 proposal 不完整，或同时返回了未解决问题")
+        } else {
+            reasons.append("模型认为信息不足，但没有返回可展示的非重复问题")
+        }
+        return .retry(reasons)
+    }
+
+    private func inquiryOutcome(
+        for response: AlignmentInquiryResponse,
+        current: MeetingFlowState
+    ) -> InquiryOutcome {
+        let response = inquiryResponseGuard.normalize(
+            response,
+            existingQuestions: current.inquiryQuestions,
+            existingAnswers: current.inquiryAnswers
+        )
+        let readiness = readinessEvaluator.evaluate(
+            profile: response.profile ?? AlignmentProfile(),
+            ledger: response.ledger,
+            answers: current.inquiryAnswers
+        )
+
+        if response.readyForSettlement {
+            return .ready(response)
+        }
+        if !response.questions.isEmpty {
+            return .ready(response)
+        }
+
+        let missing = readiness.missingModules.map(\.rawValue).joined(separator: ", ")
+        return .retry([
+            "最终问询证据仍不足，缺口：\(missing.isEmpty ? "settlement profile 或用户证据不足" : missing)，但模型没有返回可展示的非重复问询"
+        ])
     }
 
     private func requireState() throws -> MeetingFlowState {

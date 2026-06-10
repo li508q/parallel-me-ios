@@ -33,8 +33,8 @@ The provider boundary is intentionally typed:
 
 - `ProviderPromptSpec` defines the role, hard constraints, and JSON response contract for every model-facing task.
 - `VoiceRoleContracts` is the single Core catalog for fixed-voice product roles. Each voice carries a role function, evidence lens, questioning duty, and boundary, and provider prompts, demo openings, and the home primer consume that catalog instead of re-describing the cast in separate places.
-- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type. Its HTTP transport is injectable, and its response parser extracts the first balanced JSON object so fenced payloads with trailing notes remain testable without live network calls.
-- `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key.
+- `OpenAICompatibleProvider` converts each product task into a chat-completions request and decodes the strict JSON result into the expected payload type. Its HTTP transport is injectable, and its response parser extracts the first balanced JSON object so fenced payloads with trailing notes remain testable without live network calls. If the first structured payload is malformed or missing required fields, it performs one JSON repair request before surfacing a provider error.
+- `DemoLLMProvider` is a deterministic local provider for UI development, simulator smoke runs, and demos without an API key. It follows the same definition evidence loop as live providers instead of jumping from an empty petition directly to a proposal.
 - `MockLLMProvider` is the precise test double used when a test needs one exact payload per task.
 - `ProviderContext` carries optional durable user background and response preferences through every provider payload. Prompt specs explicitly treat it as calibration only, so it cannot override the current petition, proposal, moves, answers, or feedback.
 
@@ -55,7 +55,7 @@ The repository stores full `MeetingFlowState`, which makes debugging easier and 
 `IssueDefinitionStagePresentationSnapshot` derives stage-one visible mode, loading copy, retry recovery, and proposal-revision controls, so SwiftUI does not decide when a defining paper should show questions, recovery, loading, or proposal confirmation.
 `ScribeProbeAnswerBatchDraft` keeps a stage-one question turn together until every current question has an answer, preserving multi-question definition rounds.
 `ScribeAnswerBatchPresentationSnapshot` derives shared progress text, submit actions, option selected chrome, and custom-answer control copy for definition and inquiry batches, keeping multi-question UI state aligned with the Core draft rules.
-`IssueDefinitionEvidenceEvaluator` owns the stage-one evidence guard: raw petition keywords are stored as signals, but proposal readiness requires user-answer coverage for all four purposes plus minimum exploration, articulation, and boundary evidence. `ScribeQuestionDeduplicator` uses the evaluator when it needs recovery questions, and `MeetingSessionCoordinator` applies the same evaluator-backed guard after provider responses, so a model cannot move the paper into proposal confirmation just by returning `readyToPropose=true`.
+`IssueDefinitionEvidenceEvaluator` owns the stage-one evidence guard: raw petition keywords are stored as signals, but proposal readiness requires user-answer coverage for all four purposes plus minimum exploration, articulation, and boundary evidence. `ScribeQuestionDeduplicator` only normalizes and filters model questions; it no longer fabricates user-visible recovery questions. `MeetingSessionCoordinator` applies the evaluator-backed guard after provider responses, rejects unusable or premature-ready attempts, and retries the provider with `harnessFeedback` before surfacing a retryable model error.
 `ScribeInquiryAnswerBatchDraft` keeps final inquiry turns together under the same rule, so evidence-gathering cannot skip a visible question.
 `InquiryStagePresentationSnapshot` derives the inquiry page mode, active unanswered questions, and settlement-request controls, so SwiftUI does not decide when to show question batches versus final settlement actions.
 `MeetingSummary` derives stable archive-list display data from the full state, so the UI can show recent papers without duplicating product wording rules.
@@ -117,10 +117,10 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - In-flight activity banners are derived in Core and tested so waiting states stay specific to the user's current action.
 - Definition-stage recovery keeps a started paper retryable when the first model-backed definition request fails.
 - `IssueDefinitionEvidenceEvaluator` treats the raw petition as signal only; Core requires user-answer evidence, minimum exploration, user articulation, and a boundary confirmation before accepting a provider proposal.
-- If the model returns an early complete proposal, the session coordinator forces more scribe questions until the local evidence guard passes.
-- If the model returns only duplicate or unusable definition questions, Core generates purpose-targeted recovery questions instead of failing the paper.
+- If the model returns an early complete proposal, the session coordinator rejects the attempt and retries with explicit harness feedback until the provider returns real questions or enough evidence exists.
+- If the model returns only duplicate or unusable definition questions, the session coordinator retries the provider instead of generating local template questions.
 - Inquiry-stage recovery keeps a paper retryable when the first model-backed inquiry request fails after the inquiry stage has been persisted.
-- Inquiry-stage guarding filters repeated or already answered question text, restores missing module questions when the provider returns only duplicates, and only counts substantive action answers as minimum-action evidence.
+- Inquiry-stage guarding filters repeated or already answered question text, retries the provider when no usable question remains, and only counts substantive action answers as minimum-action evidence.
 - Roundtable-to-inquiry readiness is derived in Core and tested as a minimum evidence guard, while preserving no maximum round cap.
 - Roundtable move actions and stage chrome are derived in Core and require complete fixed-voice openings, confirmed issue context, and task-frame availability.
 - Inquiry-to-settlement availability is derived in Core and requires no active questions, complete issue context, an alignment profile, and evidence for all settlement modules.
@@ -150,7 +150,7 @@ The app target resources live under `App/ParallelMe`, including `Assets.xcassets
 - Voice role contracts are tested for complete fixed-voice coverage, distinct boundaries, and prompt-ready text before any provider spec consumes them.
 - Provider prompt specs are tested for product invariants such as fixed voices, shared voice-role contracts, free-text exits, no hard inquiry cap, context boundaries, non-template inquiry rules, and required settlement modules.
 - Definition and inquiry response guarding are tested through the session coordinator so contradictory provider responses cannot swallow follow-up questions.
-- OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, and HTTP error bodies.
+- OpenAI-compatible transport is injectable and smoke-tested for request shape, strict JSON response format, fenced JSON decoding, one-shot JSON repair, and HTTP error bodies.
 - Runtime provider settings normalization is tested across validation, persistence, snapshots, and OpenAI-compatible provider factory requests.
 - The provider layer is protocol-based, so model calls can be mocked in unit tests.
 - Session events record provider requests, provider responses, persistence, and failures; Core derives the diagnostics snapshot, the active paper health snapshot, and the default app exposes both through the collapsible running trace panel.

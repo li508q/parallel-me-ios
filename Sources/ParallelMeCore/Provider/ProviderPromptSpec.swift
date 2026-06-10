@@ -48,7 +48,8 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                     "不要使用固定收尾题或模板题；每个问题都必须指向 rawInput、dialogue 或 userFeedback 里尚未被证实的具体缺口。",
                     "thinking 必须与 questions、readyToPropose 一致；如果 thinking 认为仍缺证据，就必须返回 questions 且 readyToPropose=false。",
                     "每个问题都必须包含一个自由文本选项，id 使用 custom，label 使用“都不准，我自己说”。",
-                    "如果 input.userFeedback 存在，优先按这段反馈修订 currentProposal，而不是重新发散。"
+                    "如果 input.userFeedback 存在，优先按这段反馈修订 currentProposal，而不是重新发散。",
+                    harnessFeedbackConstraint
                 ],
                 responseContract: """
                 如果信息不足，返回 {"questions":[ScribeQuestion], "proposal":null, "readyToPropose":false, "thinking":String}。
@@ -119,7 +120,8 @@ public struct ProviderPromptSpec: Equatable, Sendable {
                     "每次最多问 1-3 个高密度问题。",
                     "每个问题都必须包含一个自由文本选项，id 使用 custom，label 使用“都不准，我自己说”。",
                     "questions、readyForSettlement 与 profile 必须一致；只要仍有待问问题或证据缺口，就必须 readyForSettlement=false。",
-                    "只有 creativeHopelessness、coreValues、costAcceptance、minimumAction、dialecticSynthesis 都有足够证据时，才返回 readyForSettlement=true 和 profile。"
+                    "只有 creativeHopelessness、coreValues、costAcceptance、minimumAction、dialecticSynthesis 都有足够证据时，才返回 readyForSettlement=true 和 profile。",
+                    harnessFeedbackConstraint
                 ],
                 responseContract: """
                 未准备好时返回 {"questions":[ScribeInquiryQuestion], "readyForSettlement":false, "profile":AlignmentProfile|null, "ledger":ScribeObservationLedger}；questions 必须直接补齐缺证据模块，除非 input.questions 中还有未回答问题。
@@ -148,6 +150,10 @@ public struct ProviderPromptSpec: Equatable, Sendable {
 
     private static var contextConstraint: String {
         "如果 input.context 存在，它是用户长期背景和表达偏好；只能用于校准语气、追问角度和证据解释，不得覆盖本轮 rawInput、proposal、move、answers 或 userFeedback。"
+    }
+
+    private static var harnessFeedbackConstraint: String {
+        "如果 input.harnessFeedback 存在，它只用于修正上一轮不合格输出；必须逐条解决 previousFailures，但不要向用户提到 schema、JSON、字段名、解析、校验或重试过程。"
     }
 
     private static var fixedVoiceRoleCatalogConstraint: String {

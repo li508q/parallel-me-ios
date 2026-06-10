@@ -30,14 +30,15 @@ The running trace is summarized by Core before SwiftUI renders it, so failure co
 
 ## Runtime Providers
 
-- `DemoLLMProvider` drives a complete local meeting without network, useful for UI work and smoke tests.
-- `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object`, uses `ProviderPromptSpec` for tested product contracts, and decodes structured JSON back into typed product payloads through an injectable HTTP transport.
+- `DemoLLMProvider` drives a complete local meeting without network while still respecting the evidence-first definition loop.
+- `OpenAICompatibleProvider` targets `/chat/completions` with `response_format: json_object`, uses `ProviderPromptSpec` for tested product contracts, repairs one invalid structured response, and decodes JSON back into typed product payloads through an injectable HTTP transport.
 - `ProviderRuntimeSettings` normalizes provider URL, model, and API key text before persistence, runtime snapshots, and provider creation.
 - `FileMeetingRepository` stores meeting state as local JSON files; `InMemoryMeetingRepository` stays available for tests.
 - `PetitionStarterPrompts` keeps the home screen's first-sentence seeds in Core so onboarding copy is testable.
 - `MeetingStartReadinessSnapshot` explains empty petitions, incomplete provider settings, and busy start input locking before the first model-backed step.
 - Definition retry recovery keeps a started paper usable if the first model-backed definition request fails.
 - Inquiry retry recovery keeps a paper usable if the first model-backed inquiry request fails after entering inquiry.
+- Definition and inquiry use a session-level LLM harness: unusable, duplicate, or premature-ready visible questions are rejected, the model is retried with `harnessFeedback`, and the app never fabricates template questions for the user.
 - `ScribeProbeAnswerBatchDraft` keeps multi-question definition turns together so the scribe receives a complete answer batch.
 - `ScribeInquiryAnswerBatchDraft` keeps multi-question inquiry turns together before the settlement readiness check advances.
 - `SettlementRequestAvailabilitySnapshot` keeps the inquiry-to-settlement action aligned with unanswered questions, task context, alignment profile, settlement evidence, and busy state.

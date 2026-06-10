@@ -32,13 +32,7 @@ public struct AlignmentInquiryResponseGuard: Sendable {
             existingQuestions: existingQuestions,
             existingAnswers: existingAnswers
         )
-        guarded.questions = normalizedQuestions.isEmpty && !readiness.isReady
-            ? recoveryQuestions(
-                missingModules: readiness.missingModules,
-                existingQuestions: existingQuestions,
-                existingAnswers: existingAnswers
-            )
-            : normalizedQuestions
+        guarded.questions = normalizedQuestions
         guarded.readyForSettlement =
             response.readyForSettlement &&
             guarded.questions.isEmpty &&
@@ -87,43 +81,6 @@ public struct AlignmentInquiryResponseGuard: Sendable {
         return normalized
     }
 
-    private func recoveryQuestions(
-        missingModules: [SettlementModuleID],
-        existingQuestions: [ScribeInquiryQuestion],
-        existingAnswers: [ScribeInquiryAnswer],
-        maxPerTurn: Int = 3
-    ) -> [ScribeInquiryQuestion] {
-        let answeredIDs = Set(existingAnswers.map(\.questionID))
-        let activeModules = Set(existingQuestions.filter { !answeredIDs.contains($0.id) }.compactMap(\.module))
-        var historicalTexts = existingQuestions.map(\.question) + existingAnswers.map(\.question)
-        var recovered: [ScribeInquiryQuestion] = []
-
-        for module in missingModules where !activeModules.contains(module) {
-            let question = recoveryQuestion(for: module, existingTexts: historicalTexts)
-            recovered.append(question)
-            historicalTexts.append(question.question)
-            if recovered.count == maxPerTurn { break }
-        }
-
-        return recovered
-    }
-
-    private func recoveryQuestion(
-        for module: SettlementModuleID,
-        existingTexts: [String]
-    ) -> ScribeInquiryQuestion {
-        let candidates = recoveryTextCandidates(for: module)
-        let selectedIndex = candidates.indices.first { index in
-            !existingTexts.contains(where: { areSimilar($0, candidates[index]) })
-        } ?? candidates.indices.last ?? 0
-        return ScribeInquiryQuestion(
-            id: "recovery_\(module.rawValue)_\(selectedIndex + 1)",
-            question: candidates[selectedIndex],
-            options: recoveryOptions(for: module),
-            module: module
-        )
-    }
-
     private func normalizedOptions(_ options: [ScribeInquiryOption]) -> [ScribeInquiryOption] {
         var cleaned = options
             .map {
@@ -142,78 +99,6 @@ public struct AlignmentInquiryResponseGuard: Sendable {
             cleaned.append(ScribeInquiryOption(id: "custom", label: "都不准，我自己说"))
         }
         return Array(cleaned.prefix(4))
-    }
-
-    private func recoveryTextCandidates(for module: SettlementModuleID) -> [String] {
-        switch module {
-        case .creativeHopelessness:
-            return [
-                "这件事里，哪一个“无代价解决方案”已经不太可能了？",
-                "如果不再等完美答案，最需要承认的失望是什么？",
-                "你已经试过、但现在看起来走不通的办法是什么？"
-            ]
-        case .coreValues:
-            return [
-                "这次选择里，最不能被你背叛的价值是什么？",
-                "如果只能守住一个东西，你更想守住自由、稳定、关系、身体，还是别的？",
-                "哪个底线一旦被越过，你会觉得自己不像自己？"
-            ]
-        case .costAcceptance:
-            return [
-                "为了更接近真实选择，你愿意承认哪一种代价？",
-                "哪种损失你虽然不喜欢，但可以开始为它做准备？",
-                "这条路最不舒服的成本是什么，你能接受到什么程度？"
-            ]
-        case .minimumAction:
-            return [
-                "24 小时内，哪个动作最小但能让局面更真实一点？",
-                "今晚或明天，你能做哪一步来验证这次判断？",
-                "如果只做一个不会压垮自己的行动，它会是什么？"
-            ]
-        case .dialecticSynthesis:
-            return [
-                "如果把两个相反声音都留下，它们能合成哪一句更诚实的话？",
-                "你既想要的东西和你也必须承认的东西，能不能同时成立？",
-                "这件事最后有没有一个“不完美但更真实”的说法？"
-            ]
-        }
-    }
-
-    private func recoveryOptions(for module: SettlementModuleID) -> [ScribeInquiryOption] {
-        let options: [ScribeInquiryOption]
-        switch module {
-        case .creativeHopelessness:
-            options = [
-                ScribeInquiryOption(id: "no_cost_free", label: "没有无代价方案"),
-                ScribeInquiryOption(id: "old_strategy_failed", label: "旧办法已经失效"),
-                ScribeInquiryOption(id: "still_grieving", label: "我还在为它难过")
-            ]
-        case .coreValues:
-            options = [
-                ScribeInquiryOption(id: "freedom", label: "自由和尊严"),
-                ScribeInquiryOption(id: "stability", label: "稳定和安全"),
-                ScribeInquiryOption(id: "relationship", label: "关系和亏欠")
-            ]
-        case .costAcceptance:
-            options = [
-                ScribeInquiryOption(id: "money", label: "短期收入波动"),
-                ScribeInquiryOption(id: "time", label: "更慢的时间表"),
-                ScribeInquiryOption(id: "misunderstood", label: "被误解或失望")
-            ]
-        case .minimumAction:
-            options = [
-                ScribeInquiryOption(id: "write", label: "写出一个现实清单"),
-                ScribeInquiryOption(id: "talk", label: "找一个可信的人确认"),
-                ScribeInquiryOption(id: "rest", label: "先把身体状态拉回来")
-            ]
-        case .dialecticSynthesis:
-            options = [
-                ScribeInquiryOption(id: "both_true", label: "两个声音都是真的"),
-                ScribeInquiryOption(id: "slow_commit", label: "先慢一点承诺"),
-                ScribeInquiryOption(id: "conditional_path", label: "用条件换行动")
-            ]
-        }
-        return options + [ScribeInquiryOption(id: "custom", label: "都不准，我自己说")]
     }
 
     private func inferModule(from text: String) -> SettlementModuleID? {
